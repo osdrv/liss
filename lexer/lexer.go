@@ -47,6 +47,14 @@ func (l *Lexer) NextToken() token.Token {
 		return l.emitNumeric()
 	case l.isString():
 		return l.emitString()
+	case l.isOperator():
+		return l.emitOperator()
+	case l.isParenthesis():
+		return l.emitParenthesis()
+	case l.isKWOrIdentifier():
+		return l.emitKWOrIdentifier()
+	case l.isAccessor():
+		return l.emitAccessor()
 	default:
 		return l.emitError("Unexpected character `" + string(l.Source[l.pos]) + "`")
 	}
@@ -149,6 +157,144 @@ func (l *Lexer) emitNumeric() token.Token {
 	return tok
 }
 
+func (l *Lexer) emitOperator() token.Token {
+	tok := token.Token{
+		Location: token.Location{
+			Line:   l.line,
+			Column: l.column,
+		},
+	}
+	from := l.pos
+	l.advance(LexerModeDefault)
+	var typ token.TokenType
+	switch l.Source[from] {
+	case '+':
+		typ = token.Plus
+	case '-':
+		typ = token.Minus
+	case '*':
+		typ = token.Multiply
+	case '/':
+		typ = token.Divide
+	case '%':
+		typ = token.Modulus
+	case '!':
+		if l.pos < len(l.Source) && l.Source[l.pos] == '=' {
+			typ = token.NotEqual
+			l.advance(LexerModeDefault)
+		} else {
+			typ = token.Not
+		}
+	case '=':
+		typ = token.Equal
+	case '&':
+		typ = token.And
+	case '|':
+		typ = token.Or
+	case '>':
+		if l.pos < len(l.Source) && l.Source[l.pos] == '=' {
+			typ = token.GreaterThanOrEqual
+			l.advance(LexerModeDefault)
+		} else {
+			typ = token.GreaterThan
+		}
+	case '<':
+		if l.pos < len(l.Source) && l.Source[l.pos] == '=' {
+			typ = token.LessThanOrEqual
+			l.advance(LexerModeDefault)
+		} else {
+			typ = token.LessThan
+		}
+	default:
+		return l.emitError("Unknown operator `" + string(l.Source[from]) + "`")
+	}
+	tok.Type = typ
+	tok.Literal = l.Source[from:l.pos]
+	return tok
+}
+
+func (l *Lexer) emitParenthesis() token.Token {
+	tok := token.Token{
+		Location: token.Location{
+			Line:   l.line,
+			Column: l.column,
+		},
+	}
+	var typ token.TokenType
+	switch l.Source[l.pos] {
+	case '(':
+		typ = token.LParen
+	case ')':
+		typ = token.RParen
+	default:
+		return l.emitError("Unknown parenthesis `" + string(l.Source[l.pos]) + "`")
+	}
+	tok.Type = typ
+	tok.Literal = string(l.Source[l.pos])
+	l.advance(LexerModeDefault)
+	return tok
+}
+
+func (l *Lexer) emitKWOrIdentifier() token.Token {
+	tok := token.Token{
+		Location: token.Location{
+			Line:   l.line,
+			Column: l.column,
+		},
+	}
+
+	from := l.pos
+	to := from
+	for !l.isEOF() {
+		ch := l.Source[l.pos]
+		if isAlpha(ch) || ch == '_' || (to > from && isDigit(ch)) {
+			l.advance(LexerModeDefault)
+			to++
+		} else {
+			break
+		}
+	}
+
+	tok.Literal = l.Source[from:to]
+	if kwType, ok := token.Keywords[tok.Literal]; ok {
+		tok.Type = kwType
+	} else {
+		tok.Type = token.Identifier
+	}
+
+	if len(tok.Literal) == 0 {
+		return l.emitError("Empty identifier or keyword")
+	}
+
+	return tok
+}
+
+func (l *Lexer) emitAccessor() token.Token {
+	tok := token.Token{
+		Type: token.Accessor,
+		Location: token.Location{
+			Line:   l.line,
+			Column: l.column,
+		},
+	}
+
+	from := l.pos
+	to := from
+
+	for !l.isEOF() {
+		ch := l.Source[l.pos]
+		if ch == '.' || isBracket(ch) || isAlpha(ch) || isDigit(ch) {
+			l.advance(LexerModeDefault)
+			to++
+		} else {
+			break
+		}
+	}
+	tok.Literal = l.Source[from:to]
+
+	return tok
+}
+
 func (l *Lexer) emitError(msg string) token.Token {
 	err := fmt.Errorf("Syntax error: %s at line: %d column: %d", msg, l.line, l.column)
 	l.lastError = err
@@ -173,6 +319,36 @@ func (l *Lexer) isNumeric() bool {
 
 func (l *Lexer) isString() bool {
 	return !l.isEOF() && isQuote(l.Source[l.pos])
+}
+
+func (l *Lexer) isOperator() bool {
+	if l.isEOF() {
+		return false
+	}
+	ch := l.Source[l.pos]
+	return ch == '+' ||
+		ch == '-' ||
+		ch == '*' ||
+		ch == '/' ||
+		ch == '%' ||
+		ch == '!' ||
+		ch == '=' ||
+		ch == '&' ||
+		ch == '|' ||
+		ch == '>' ||
+		ch == '<'
+}
+
+func (l *Lexer) isParenthesis() bool {
+	return !l.isEOF() && (l.Source[l.pos] == '(' || l.Source[l.pos] == ')')
+}
+
+func (l *Lexer) isKWOrIdentifier() bool {
+	return !l.isEOF() && (isAlpha(l.Source[l.pos]) || l.Source[l.pos] == '_')
+}
+
+func (l *Lexer) isAccessor() bool {
+	return !l.isEOF() && l.Source[l.pos] == '.'
 }
 
 func (l *Lexer) skipWhitespace() {
@@ -207,4 +383,12 @@ func isWhitespace(ch byte) bool {
 
 func isNewline(ch byte) bool {
 	return ch == '\n' || ch == '\r'
+}
+
+func isAlpha(ch byte) bool {
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+}
+
+func isBracket(ch byte) bool {
+	return ch == '[' || ch == ']'
 }

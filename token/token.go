@@ -34,6 +34,7 @@ const (
 	Identifier
 	Numeric
 	String
+	Accessor
 	True
 	False
 	Null
@@ -57,15 +58,15 @@ var (
 		Divide:   "/",
 		Modulus:  "%",
 
-		Equal:              "==",
+		Equal:              "=",
 		NotEqual:           "!=",
 		LessThan:           "<",
 		LessThanOrEqual:    "<=",
 		GreaterThan:        ">",
 		GreaterThanOrEqual: ">=",
-		And:                "and",
-		Or:                 "or",
-		Not:                "not",
+		And:                "&",
+		Or:                 "|",
+		Not:                "!",
 
 		Fn:    "fn",
 		True:  "true",
@@ -73,6 +74,20 @@ var (
 		Null:  "null",
 		If:    "if",
 		Let:   "let",
+	}
+)
+
+var (
+	Keywords = map[string]TokenType{
+		"fn":    Fn,
+		"true":  True,
+		"false": False,
+		"null":  Null,
+		"if":    If,
+		"let":   Let,
+		"and":   And,
+		"or":    Or,
+		"not":   Not,
 	}
 )
 

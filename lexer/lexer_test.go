@@ -317,6 +317,216 @@ func TestNextToken(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "Single character operators",
+			input: "+ - * / % & | =",
+			match: TokenTypeMatch | TokenLiteralMatch,
+			want: []token.Token{
+				{
+					Type:    token.Plus,
+					Literal: "+",
+				},
+				{
+					Type:    token.Minus,
+					Literal: "-",
+				},
+				{
+					Type:    token.Multiply,
+					Literal: "*",
+				},
+				{
+					Type:    token.Divide,
+					Literal: "/",
+				},
+				{
+					Type:    token.Modulus,
+					Literal: "%",
+				},
+				{
+					Type:    token.And,
+					Literal: "&",
+				},
+				{
+					Type:    token.Or,
+					Literal: "|",
+				},
+				{
+					Type:    token.Equal,
+					Literal: "=",
+				},
+				{
+					Type: token.EOF,
+				},
+			},
+		},
+		{
+			name:  "Multi-character operators",
+			input: "!= <= >=",
+			match: TokenTypeMatch | TokenLiteralMatch,
+			want: []token.Token{
+				{
+					Type:    token.NotEqual,
+					Literal: "!=",
+				},
+				{
+					Type:    token.LessThanOrEqual,
+					Literal: "<=",
+				},
+				{
+					Type:    token.GreaterThanOrEqual,
+					Literal: ">=",
+				},
+				{
+					Type: token.EOF,
+				},
+			},
+		},
+		{
+			name:  "Parenthesis",
+			input: "(\n)",
+			match: TokenTypeMatch | TokenLocationMatch,
+			want: []token.Token{
+				{
+					Type: token.LParen,
+					Location: token.Location{
+						Line:   1,
+						Column: 1,
+					},
+				},
+				{
+					Type: token.RParen,
+					Location: token.Location{
+						Line:   2,
+						Column: 1,
+					},
+				},
+				{
+					Type: token.EOF,
+					Location: token.Location{
+						Line:   2,
+						Column: 2,
+					},
+				},
+			},
+		},
+		{
+			name:  "Keywords",
+			input: "fn true false null if let and or not",
+			match: TokenTypeMatch | TokenLiteralMatch,
+			want: []token.Token{
+				{
+					Type:    token.Fn,
+					Literal: "fn",
+				},
+				{
+					Type:    token.True,
+					Literal: "true",
+				},
+				{
+					Type:    token.False,
+					Literal: "false",
+				},
+				{
+					Type:    token.Null,
+					Literal: "null",
+				},
+				{
+					Type:    token.If,
+					Literal: "if",
+				},
+				{
+					Type:    token.Let,
+					Literal: "let",
+				},
+				{
+					Type:    token.And,
+					Literal: "and",
+				},
+				{
+					Type:    token.Or,
+					Literal: "or",
+				},
+				{
+					Type:    token.Not,
+					Literal: "not",
+				},
+				{
+					Type: token.EOF,
+				},
+			},
+		},
+		{
+			name:  "Identifiers",
+			input: "foo bar baz _underscore123 a b_c d3f trueee",
+			match: TokenTypeMatch | TokenLiteralMatch,
+			want: []token.Token{
+				{
+					Type:    token.Identifier,
+					Literal: "foo",
+				},
+				{
+					Type:    token.Identifier,
+					Literal: "bar",
+				},
+				{
+					Type:    token.Identifier,
+					Literal: "baz",
+				},
+				{
+					Type:    token.Identifier,
+					Literal: "_underscore123",
+				},
+				{
+					Type:    token.Identifier,
+					Literal: "a",
+				},
+				{
+					Type:    token.Identifier,
+					Literal: "b_c",
+				},
+				{
+					Type:    token.Identifier,
+					Literal: "d3f",
+				},
+				{
+					Type:    token.Identifier,
+					Literal: "trueee",
+				},
+				{
+					Type: token.EOF,
+				},
+			},
+		},
+		{
+			name:  "Accessors",
+			input: ".foo.bar[0].baz .baz2 .[1].qux .[2][3] .",
+			match: TokenTypeMatch | TokenLiteralMatch,
+			want: []token.Token{
+				{
+					Type:    token.Accessor,
+					Literal: ".foo.bar[0].baz",
+				},
+				{
+					Type:    token.Accessor,
+					Literal: ".baz2",
+				},
+				{
+					Type:    token.Accessor,
+					Literal: ".[1].qux",
+				},
+				{
+					Type:    token.Accessor,
+					Literal: ".[2][3]",
+				},
+				{
+					Type:    token.Accessor,
+					Literal: ".",
+				},
+				{
+					Type: token.EOF,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
