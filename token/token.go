@@ -4,6 +4,20 @@ import "fmt"
 
 type TokenType uint8
 
+func (t TokenType) String() string {
+	if str, ok := tokenToString[t]; ok {
+		return str
+	}
+	switch t {
+	case String:
+		return "String"
+	case Numeric:
+		return "Numeric"
+	default:
+		return fmt.Sprintf("Unknown(%d)", t)
+	}
+}
+
 const (
 	EOF TokenType = iota
 	Error
