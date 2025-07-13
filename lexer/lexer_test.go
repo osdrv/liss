@@ -318,6 +318,28 @@ func TestNextToken(t *testing.T) {
 			},
 		},
 		{
+			name:  "String literal with escaped newline",
+			input: `"hello\nworld"`,
+			match: TokenTypeMatch | TokenLocationMatch | TokenLiteralMatch,
+			want: []token.Token{
+				{
+					Type:    token.String,
+					Literal: "hello\nworld",
+					Location: token.Location{
+						Line:   1,
+						Column: 1,
+					},
+				},
+				{
+					Type: token.EOF,
+					Location: token.Location{
+						Line:   1,
+						Column: 15,
+					},
+				},
+			},
+		},
+		{
 			name:  "Single character operators",
 			input: "+ - * / % & | =",
 			match: TokenTypeMatch | TokenLiteralMatch,

@@ -6,6 +6,26 @@ import (
 	"strconv"
 )
 
+type NullLiteral struct {
+	Token token.Token
+}
+
+var _ Node = (*NullLiteral)(nil)
+
+func NewNullLiteral(tok token.Token) (*NullLiteral, error) {
+	if tok.Type != token.Null {
+		return nil, fmt.Errorf("expected token type Null, got %s", tok.Type.String())
+	}
+
+	return &NullLiteral{Token: tok}, nil
+}
+
+func (n *NullLiteral) String() string {
+	return "null"
+}
+
+func (n *NullLiteral) expressionNode() {}
+
 type IntegerLiteral struct {
 	Token token.Token
 	Value int64
@@ -28,6 +48,8 @@ func NewIntegerLiteral(tok token.Token) (*IntegerLiteral, error) {
 func (i *IntegerLiteral) String() string {
 	return strconv.FormatInt(i.Value, 10)
 }
+
+func (i *IntegerLiteral) expressionNode() {}
 
 type FloatLiteral struct {
 	Token token.Token
@@ -52,6 +74,8 @@ func (f *FloatLiteral) String() string {
 	return strconv.FormatFloat(f.Value, 'f', -1, 64)
 }
 
+func (f *FloatLiteral) expressionNode() {}
+
 type StringLiteral struct {
 	Token token.Token
 	Value string
@@ -70,6 +94,8 @@ func NewStringLiteral(tok token.Token) (*StringLiteral, error) {
 func (s *StringLiteral) String() string {
 	return s.Value
 }
+
+func (s *StringLiteral) expressionNode() {}
 
 type BooleanLiteral struct {
 	Token token.Token
@@ -92,3 +118,5 @@ func (b *BooleanLiteral) String() string {
 	}
 	return "false"
 }
+
+func (b *BooleanLiteral) expressionNode() {}

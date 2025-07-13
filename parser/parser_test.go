@@ -1,1 +1,170 @@
 package parser
+
+import (
+	"osdrv/liss/ast"
+	"osdrv/liss/lexer"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestParse(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    []ast.Node
+		wantErr error
+	}{
+		{
+			name:  "Empty input",
+			input: "",
+			want:  []ast.Node{},
+		},
+		{
+			name:  "Single null literal",
+			input: "null",
+			want: []ast.Node{
+				&ast.NullLiteral{},
+			},
+		},
+		{
+			name:  "Single true boolean literal",
+			input: "true",
+			want: []ast.Node{
+				&ast.BooleanLiteral{Value: true},
+			},
+		},
+		{
+			name:  "Single false boolean literal",
+			input: "false",
+			want: []ast.Node{
+				&ast.BooleanLiteral{Value: false},
+			},
+		},
+		{
+			name:  "Single integer literal",
+			input: "42",
+			want: []ast.Node{
+				&ast.IntegerLiteral{Value: 42},
+			},
+		},
+		{
+			name:  "Single signed negative integer literal",
+			input: "-42",
+			want: []ast.Node{
+				&ast.IntegerLiteral{Value: -42},
+			},
+		},
+		{
+			name:  "Single signed positive integer literal",
+			input: "+42",
+			want: []ast.Node{
+				&ast.IntegerLiteral{Value: 42},
+			},
+		},
+		{
+			name:  "Single float literal",
+			input: "3.14",
+			want: []ast.Node{
+				&ast.FloatLiteral{Value: 3.14},
+			},
+		},
+		{
+			name:  "Single signed negative float literal",
+			input: "-3.14",
+			want: []ast.Node{
+				&ast.FloatLiteral{Value: -3.14},
+			},
+		},
+		{
+			name:  "Single signed positive float literal",
+			input: "+3.14",
+			want: []ast.Node{
+				&ast.FloatLiteral{Value: 3.14},
+			},
+		},
+		{
+			name:  "Single float literal with scientific notation",
+			input: "1.23e+04",
+			want: []ast.Node{
+				&ast.FloatLiteral{Value: 12300.0},
+			},
+		},
+		{
+			name:  "Single string literal single quotes",
+			input: `'hello world'`,
+			want: []ast.Node{
+				&ast.StringLiteral{Value: "hello world"},
+			},
+		},
+		{
+			name:  "Single string literal double quotes",
+			input: `"hello world"`,
+			want: []ast.Node{
+				&ast.StringLiteral{Value: "hello world"},
+			},
+		},
+		{
+			name:  "Single string literal with escaped quotes",
+			input: `"hello \"world\""`,
+			want: []ast.Node{
+				&ast.StringLiteral{Value: `hello "world"`},
+			},
+		},
+		{
+			name:  "Single string literal with unicode",
+			input: `"おはよう"`,
+			want: []ast.Node{
+				&ast.StringLiteral{Value: "おはよう"},
+			},
+		},
+		// TODO: Uncomment when unicode escape sequences are supported
+		// {
+		// 	name:  "Single string literal with escaped unicode",
+		// 	input: `"hello \u0041\u0042\u0043"`,
+		// 	want: []ast.Node{
+		// 		&ast.StringLiteral{Value: "hello ABC"},
+		// 	},
+		// },
+		{
+			name:  "Single string literal with newline",
+			input: `"hello\nworld"`,
+			want: []ast.Node{
+				&ast.StringLiteral{Value: "hello\nworld"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lex := lexer.NewLexer(tt.input)
+			par := NewParser(lex)
+			prog, err := par.Parse()
+			if err != nil || tt.wantErr != nil {
+				if tt.wantErr != nil {
+					assert.ErrorContains(t, err, tt.wantErr.Error())
+				} else {
+					assert.NoError(t, err, "Unexpected error: %s", err)
+				}
+				return
+			}
+			assert.Equal(t, tt.wantErr, err, "Expected error %v, got %v", tt.wantErr, err)
+			assert.Len(t, prog.Nodes, len(tt.want), "Expected %d nodes, got %d", len(tt.want), len(prog.Nodes))
+
+			for ix := range tt.want {
+				assertNodeEqual(t, tt.want[ix], prog.Nodes[ix])
+			}
+		})
+	}
+}
+
+func assertNodeEqual(t *testing.T, expected, actual ast.Node) {
+	t.Helper()
+	if expected == nil && actual == nil {
+		return
+	}
+	if expected == nil || actual == nil {
+		t.Fatalf("Expected node to be %T, got %T", expected, actual)
+	}
+	assert.Equal(t, expected.String(), actual.String(), "Node strings do not match")
+}

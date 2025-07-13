@@ -106,7 +106,26 @@ func (l *Lexer) emitString() token.Token {
 			l.advance(LexerModeDefault)
 			break
 		}
-		b.WriteByte(ch)
+		if escapeAt == l.pos {
+			switch ch {
+			case 'n':
+				b.WriteByte('\n')
+			case 't':
+				b.WriteByte('\t')
+			case 'r':
+				b.WriteByte('\r')
+			case 'b':
+				b.WriteByte('\b')
+			case 'f':
+				b.WriteByte('\f')
+			case 'v':
+				b.WriteByte('\v')
+			default:
+				b.WriteByte(ch)
+			}
+		} else {
+			b.WriteByte(ch)
+		}
 	}
 	return token.Token{
 		Type:     token.String,

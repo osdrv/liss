@@ -19,7 +19,8 @@ func (t TokenType) String() string {
 }
 
 const (
-	EOF TokenType = iota
+	Void TokenType = iota
+	EOF
 	Error
 
 	LParen
