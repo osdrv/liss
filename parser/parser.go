@@ -105,11 +105,38 @@ func (p *Parser) parseNode() (ast.Node, error) {
 		node, err = ast.NewOperatorExpr(p.curToken)
 	case token.LParen:
 		node, err = p.parseExpression()
+	case token.If:
+		node, err = p.parseIfExpression()
 	default:
 		return nil, fmt.Errorf("unexpected token type: %s", p.curToken.Type.String())
 	}
 	p.advance()
 	return node, err
+}
+
+func (p *Parser) parseIfExpression() (ast.Node, error) {
+	if err := p.consume(token.If); err != nil {
+		return nil, err
+	}
+	cond, err := p.parseNode()
+	if err != nil {
+		return nil, err
+	}
+	th, err := p.parseNode()
+	if err != nil {
+		return nil, err
+	}
+	var el ast.Node
+	if p.curToken.Type != token.RParen {
+		el, err = p.parseNode()
+		if err != nil {
+			return nil, err
+		}
+		if p.curToken.Type != token.RParen {
+			return nil, fmt.Errorf("too many operands for if expression")
+		}
+	}
+	return ast.NewIfExpression(p.curToken, cond, th, el)
 }
 
 func (p *Parser) parseExpression() (ast.Node, error) {

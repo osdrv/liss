@@ -83,3 +83,36 @@ func (e *OperatorExpr) String() string {
 }
 
 func (e *OperatorExpr) expressionNode() {}
+
+type IfExpression struct {
+	Token token.Token
+	Cond  Node
+	Then  Node
+	Else  Node
+}
+
+var _ Node = (*IfExpression)(nil)
+
+func NewIfExpression(tok token.Token, cond Node, th Node, el Node) (*IfExpression, error) {
+	return &IfExpression{
+		Cond:  cond,
+		Token: tok,
+		Then:  th,
+		Else:  el,
+	}, nil
+}
+
+func (e *IfExpression) String() string {
+	var b bytes.Buffer
+
+	b.WriteString("if ")
+	b.WriteString(e.Then.String())
+	if e.Else != nil {
+		b.WriteString(" ")
+		b.WriteString(e.Else.String())
+	}
+
+	return b.String()
+}
+
+func (e *IfExpression) expressionNode() {}

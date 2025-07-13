@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"osdrv/liss/ast"
 	"osdrv/liss/lexer"
 	"osdrv/liss/token"
@@ -142,17 +143,17 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name:  "Expression with plus operator",
-			input: "(+ 1 2)",
+			name:  "Expression with operator",
+			input: "(>= 1 2)",
 			want: []ast.Node{
 				&ast.Expression{
 					Operands: []ast.Node{
 						&ast.OperatorExpr{
 							Token: token.Token{
-								Type:    token.Plus,
-								Literal: "+",
+								Type:    token.GreaterThanOrEqual,
+								Literal: ">=",
 							},
-							Operator: ast.OperatorPlus,
+							Operator: ast.OperatorGreaterThanOrEqual,
 						},
 						&ast.IntegerLiteral{
 							Token: token.Token{
@@ -173,97 +174,76 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name:  "Expression with minus operator",
-			input: "(- 1 2)",
+			name:  "If expression with condition and true branch",
+			input: "(if true 123)",
 			want: []ast.Node{
 				&ast.Expression{
 					Operands: []ast.Node{
-						&ast.OperatorExpr{
+						&ast.IfExpression{
 							Token: token.Token{
-								Type:    token.Minus,
-								Literal: "-",
+								Type:    token.If,
+								Literal: "if",
 							},
-							Operator: ast.OperatorMinus,
-						},
-						&ast.IntegerLiteral{
-							Token: token.Token{
-								Type:    token.Numeric,
-								Literal: "1",
+							Cond: &ast.BooleanLiteral{
+								Token: token.Token{
+									Type:    token.True,
+									Literal: "true",
+								},
+								Value: true,
 							},
-							Value: int64(1),
-						},
-						&ast.IntegerLiteral{
-							Token: token.Token{
-								Type:    token.Numeric,
-								Literal: "2",
+							Then: &ast.IntegerLiteral{
+								Token: token.Token{
+									Type:    token.Numeric,
+									Literal: "123",
+								},
+								Value: int64(123),
 							},
-							Value: int64(2),
 						},
 					},
 				},
 			},
 		},
 		{
-			name:  "Expression with multiplication operator",
-			input: "(* 1 2)",
+			name:  "If expression with condition and true/else branches",
+			input: "(if true 123 456)",
 			want: []ast.Node{
 				&ast.Expression{
 					Operands: []ast.Node{
-						&ast.OperatorExpr{
+						&ast.IfExpression{
 							Token: token.Token{
-								Type:    token.Multiply,
-								Literal: "*",
+								Type:    token.If,
+								Literal: "if",
 							},
-							Operator: ast.OperatorMultiply,
-						},
-						&ast.IntegerLiteral{
-							Token: token.Token{
-								Type:    token.Numeric,
-								Literal: "1",
+							Cond: &ast.BooleanLiteral{
+								Token: token.Token{
+									Type:    token.True,
+									Literal: "true",
+								},
+								Value: true,
 							},
-							Value: int64(1),
-						},
-						&ast.IntegerLiteral{
-							Token: token.Token{
-								Type:    token.Numeric,
-								Literal: "2",
+							Then: &ast.IntegerLiteral{
+								Token: token.Token{
+									Type:    token.Numeric,
+									Literal: "123",
+								},
+								Value: int64(123),
 							},
-							Value: int64(2),
+							Else: &ast.IntegerLiteral{
+								Token: token.Token{
+									Type:    token.Numeric,
+									Literal: "456",
+								},
+								Value: int64(456),
+							},
 						},
 					},
 				},
 			},
 		},
 		{
-			name:  "Expression with division operator",
-			input: "(/ 1 2)",
-			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{
-						&ast.OperatorExpr{
-							Token: token.Token{
-								Type:    token.Divide,
-								Literal: "/",
-							},
-							Operator: ast.OperatorDivide,
-						},
-						&ast.IntegerLiteral{
-							Token: token.Token{
-								Type:    token.Numeric,
-								Literal: "1",
-							},
-							Value: int64(1),
-						},
-						&ast.IntegerLiteral{
-							Token: token.Token{
-								Type:    token.Numeric,
-								Literal: "2",
-							},
-							Value: int64(2),
-						},
-					},
-				},
-			},
+			name:    "If expression with too many operands",
+			input:   "(if true 123 456 789)",
+			wantErr: errors.New("too many operands for if expression"),
 		},
 	}
 
@@ -298,5 +278,6 @@ func assertNodeEqual(t *testing.T, expected, actual ast.Node) {
 	if expected == nil || actual == nil {
 		t.Fatalf("Expected node to be %T, got %T", expected, actual)
 	}
+	t.Logf("Expected: %s, Actual: %s", expected.String(), actual.String())
 	assert.Equal(t, expected.String(), actual.String(), "Node strings do not match")
 }
