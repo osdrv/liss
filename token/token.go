@@ -13,6 +13,8 @@ func (t TokenType) String() string {
 		return "String"
 	case Numeric:
 		return "Numeric"
+	case Identifier:
+		return "Identifier"
 	default:
 		return fmt.Sprintf("Unknown(%d)", t)
 	}

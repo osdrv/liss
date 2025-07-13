@@ -3,6 +3,7 @@ package parser
 import (
 	"osdrv/liss/ast"
 	"osdrv/liss/lexer"
+	"osdrv/liss/token"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -131,6 +132,137 @@ func TestParse(t *testing.T) {
 			input: `"hello\nworld"`,
 			want: []ast.Node{
 				&ast.StringLiteral{Value: "hello\nworld"},
+			},
+		},
+		{
+			name:  "Identifier expression",
+			input: "myVar",
+			want: []ast.Node{
+				&ast.IdentifierExpr{Name: "myVar"},
+			},
+		},
+		{
+			name:  "Expression with plus operator",
+			input: "(+ 1 2)",
+			want: []ast.Node{
+				&ast.Expression{
+					Operands: []ast.Node{
+						&ast.OperatorExpr{
+							Token: token.Token{
+								Type:    token.Plus,
+								Literal: "+",
+							},
+							Operator: ast.OperatorPlus,
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "1",
+							},
+							Value: int64(1),
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "2",
+							},
+							Value: int64(2),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:  "Expression with minus operator",
+			input: "(- 1 2)",
+			want: []ast.Node{
+				&ast.Expression{
+					Operands: []ast.Node{
+						&ast.OperatorExpr{
+							Token: token.Token{
+								Type:    token.Minus,
+								Literal: "-",
+							},
+							Operator: ast.OperatorMinus,
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "1",
+							},
+							Value: int64(1),
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "2",
+							},
+							Value: int64(2),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:  "Expression with multiplication operator",
+			input: "(* 1 2)",
+			want: []ast.Node{
+				&ast.Expression{
+					Operands: []ast.Node{
+						&ast.OperatorExpr{
+							Token: token.Token{
+								Type:    token.Multiply,
+								Literal: "*",
+							},
+							Operator: ast.OperatorMultiply,
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "1",
+							},
+							Value: int64(1),
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "2",
+							},
+							Value: int64(2),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:  "Expression with division operator",
+			input: "(/ 1 2)",
+			want: []ast.Node{
+				&ast.Expression{
+					Operands: []ast.Node{
+						&ast.OperatorExpr{
+							Token: token.Token{
+								Type:    token.Divide,
+								Literal: "/",
+							},
+							Operator: ast.OperatorDivide,
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "1",
+							},
+							Value: int64(1),
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "2",
+							},
+							Value: int64(2),
+						},
+					},
+				},
 			},
 		},
 	}

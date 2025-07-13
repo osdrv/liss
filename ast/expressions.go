@@ -57,3 +57,29 @@ func (e *IdentifierExpr) String() string {
 }
 
 func (e *IdentifierExpr) expressionNode() {}
+
+type OperatorExpr struct {
+	Token    token.Token
+	Operator Operator
+}
+
+var _ Node = (*OperatorExpr)(nil)
+
+func NewOperatorExpr(tok token.Token) (*OperatorExpr, error) {
+	if op, ok := tokenToOperator[tok.Type]; ok {
+		return &OperatorExpr{
+			Token:    tok,
+			Operator: op,
+		}, nil
+	}
+	return nil, fmt.Errorf("unexpected token type: %s", tok.Type.String())
+}
+
+func (e *OperatorExpr) String() string {
+	if s, ok := operatorToString[e.Operator]; ok {
+		return s
+	}
+	return fmt.Sprintf("Operator(%d)", e.Operator)
+}
+
+func (e *OperatorExpr) expressionNode() {}

@@ -57,6 +57,23 @@ func (p *Parser) advance() error {
 	return nil
 }
 
+func (p *Parser) consume(expected token.TokenType) error {
+	if p.curToken.Type != expected {
+		return fmt.Errorf("expected token type %s, got %s", expected, p.curToken.Type)
+	}
+	if err := p.advance(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *Parser) peek() token.Token {
+	if p.isEOF {
+		return token.Token{Type: token.EOF}
+	}
+	return p.nextToken
+}
+
 func (p *Parser) parseNode() (ast.Node, error) {
 	var node ast.Node
 	var err error
@@ -69,11 +86,53 @@ func (p *Parser) parseNode() (ast.Node, error) {
 		node, err = p.parseNumericLiteral(p.curToken)
 	case token.String:
 		node, err = ast.NewStringLiteral(p.curToken)
+	case token.Identifier:
+		node, err = ast.NewIdentifierExpr(p.curToken)
+	case token.Plus,
+		token.Minus,
+		token.Multiply,
+		token.Divide,
+		token.Modulus,
+		token.Equal,
+		token.NotEqual,
+		token.LessThan,
+		token.LessThanOrEqual,
+		token.GreaterThan,
+		token.GreaterThanOrEqual,
+		token.And,
+		token.Or,
+		token.Not:
+		node, err = ast.NewOperatorExpr(p.curToken)
+	case token.LParen:
+		node, err = p.parseExpression()
 	default:
-		return nil, fmt.Errorf("unexpected token type: %s", p.curToken.Type)
+		return nil, fmt.Errorf("unexpected token type: %s", p.curToken.Type.String())
 	}
 	p.advance()
 	return node, err
+}
+
+func (p *Parser) parseExpression() (ast.Node, error) {
+	if err := p.consume(token.LParen); err != nil {
+		return nil, err
+	}
+	nodes := make([]ast.Node, 0, 1)
+	for !p.isEOF {
+		if p.curToken.Type == token.RParen {
+			if err := p.advance(); err != nil {
+				return nil, err
+			}
+			break
+		}
+		node, err := p.parseNode()
+		if err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, node)
+	}
+
+	node := ast.NewExpression(nodes)
+	return node, nil
 }
 
 func (p *Parser) parseNumericLiteral(tok token.Token) (ast.Node, error) {
