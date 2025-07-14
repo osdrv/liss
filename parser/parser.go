@@ -79,15 +79,15 @@ func (p *Parser) parseNode() (ast.Node, error) {
 	var err error
 	switch p.curToken.Type {
 	case token.True, token.False:
-		node, err = ast.NewBooleanLiteral(p.curToken)
+		node, err = p.parseBooleanLiteral()
 	case token.Null:
-		node, err = ast.NewNullLiteral(p.curToken)
+		node, err = p.parseNullLiteral()
 	case token.Numeric:
-		node, err = p.parseNumericLiteral(p.curToken)
+		node, err = p.parseNumericLiteral()
 	case token.String:
-		node, err = ast.NewStringLiteral(p.curToken)
+		node, err = p.parseStringLiteral()
 	case token.Identifier:
-		node, err = ast.NewIdentifierExpr(p.curToken)
+		node, err = p.parseIdentifierExpr()
 	case token.Plus,
 		token.Minus,
 		token.Multiply,
@@ -102,16 +102,82 @@ func (p *Parser) parseNode() (ast.Node, error) {
 		token.And,
 		token.Or,
 		token.Not:
-		node, err = ast.NewOperatorExpr(p.curToken)
+		node, err = p.parseOperatorExpression()
 	case token.LParen:
 		node, err = p.parseExpression()
 	case token.If:
 		node, err = p.parseIfExpression()
+	case token.Let:
+		node, err = p.parseLetExpression()
+	case token.Fn:
+		node, err = p.parseFunctionExpression()
 	default:
 		return nil, fmt.Errorf("unexpected token type: %s", p.curToken.Type.String())
 	}
-	p.advance()
 	return node, err
+}
+
+func (p *Parser) parseFunctionExpression() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.consume(token.Fn); err != nil {
+		return nil, err
+	}
+	var name *ast.IdentifierExpr
+	if p.curToken.Type == token.Identifier {
+		nn, err := p.parseIdentifierExpr()
+		if err != nil {
+			return nil, err
+		}
+		name = nn.(*ast.IdentifierExpr)
+	}
+	if err := p.consume(token.LBraket); err != nil {
+		return nil, err
+	}
+	args := make([]*ast.IdentifierExpr, 0)
+	for p.curToken.Type != token.RBraket {
+		arg, err := p.parseIdentifierExpr()
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, arg.(*ast.IdentifierExpr))
+	}
+	if err := p.consume(token.RBraket); err != nil {
+		return nil, err
+	}
+	body := make([]ast.Node, 0)
+	for !p.isEOF && p.curToken.Type != token.RParen {
+		node, err := p.parseNode()
+		if err != nil {
+			return nil, err
+		}
+		body = append(body, node)
+	}
+	return ast.NewFunctionExpression(tok, name, args, body)
+}
+
+func (p *Parser) parseIdentifierExpr() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.advance(); err != nil {
+		return nil, err
+	}
+	return ast.NewIdentifierExpr(tok)
+}
+
+func (p *Parser) parseLetExpression() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.consume(token.Let); err != nil {
+		return nil, err
+	}
+	id, err := p.parseIdentifierExpr()
+	if err != nil {
+		return nil, err
+	}
+	val, err := p.parseNode()
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.NewLetExpression(tok, id.(*ast.IdentifierExpr), val)
 }
 
 func (p *Parser) parseIfExpression() (ast.Node, error) {
@@ -146,9 +212,6 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 	nodes := make([]ast.Node, 0, 1)
 	for !p.isEOF {
 		if p.curToken.Type == token.RParen {
-			if err := p.advance(); err != nil {
-				return nil, err
-			}
 			break
 		}
 		node, err := p.parseNode()
@@ -157,19 +220,55 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 		}
 		nodes = append(nodes, node)
 	}
+	if err := p.consume(token.RParen); err != nil {
+		return nil, err
+	}
 
 	node := ast.NewExpression(nodes)
 	return node, nil
 }
 
-func (p *Parser) parseNumericLiteral(tok token.Token) (ast.Node, error) {
-	if tok.Type != token.Numeric {
-		return nil, fmt.Errorf("expected token type Numeric, got %s", tok.Type.String())
+func (p *Parser) parseStringLiteral() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.advance(); err != nil {
+		return nil, err
+	}
+	return ast.NewStringLiteral(tok)
+}
+
+func (p *Parser) parseNumericLiteral() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.advance(); err != nil {
+		return nil, err
 	}
 	if looksLikeInteger(tok) {
 		return ast.NewIntegerLiteral(tok)
 	}
 	return ast.NewFloatLiteral(tok)
+}
+
+func (p *Parser) parseOperatorExpression() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.advance(); err != nil {
+		return nil, err
+	}
+	return ast.NewOperatorExpr(tok)
+}
+
+func (p *Parser) parseNullLiteral() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.advance(); err != nil {
+		return nil, err
+	}
+	return ast.NewNullLiteral(tok)
+}
+
+func (p *Parser) parseBooleanLiteral() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.advance(); err != nil {
+		return nil, err
+	}
+	return ast.NewBooleanLiteral(tok)
 }
 
 func looksLikeInteger(tok token.Token) bool {

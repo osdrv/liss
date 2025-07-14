@@ -245,6 +245,72 @@ func TestParse(t *testing.T) {
 			input:   "(if true 123 456 789)",
 			wantErr: errors.New("too many operands for if expression"),
 		},
+		{
+			name:  "Function expression with a name and args",
+			input: "(fn add [a b] (+ a b))",
+			want: []ast.Node{
+				&ast.Expression{
+					Operands: []ast.Node{
+						&ast.FunctionExpression{
+							Token: token.Token{
+								Type:    token.Fn,
+								Literal: "fn",
+							},
+							Name: &ast.IdentifierExpr{
+								Token: token.Token{
+									Type:    token.Identifier,
+									Literal: "add",
+								},
+								Name: "add",
+							},
+							Args: []*ast.IdentifierExpr{
+								&ast.IdentifierExpr{
+									Token: token.Token{
+										Type:    token.Identifier,
+										Literal: "a",
+									},
+									Name: "a",
+								},
+								&ast.IdentifierExpr{
+									Token: token.Token{
+										Type:    token.Identifier,
+										Literal: "b",
+									},
+									Name: "b",
+								},
+							},
+							Body: []ast.Node{
+								&ast.Expression{
+									Operands: []ast.Node{
+										&ast.OperatorExpr{
+											Token: token.Token{
+												Type:    token.Plus,
+												Literal: "+",
+											},
+											Operator: ast.OperatorPlus,
+										},
+										&ast.IdentifierExpr{
+											Token: token.Token{
+												Type:    token.Identifier,
+												Literal: "a",
+											},
+											Name: "a",
+										},
+										&ast.IdentifierExpr{
+											Token: token.Token{
+												Type:    token.Identifier,
+												Literal: "b",
+											},
+											Name: "b",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

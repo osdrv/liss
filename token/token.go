@@ -105,6 +105,11 @@ var (
 		"and":   And,
 		"or":    Or,
 		"not":   Not,
+		"plus":  Plus,
+		"minus": Minus,
+		"mult":  Multiply,
+		"div":   Divide,
+		"mod":   Modulus,
 	}
 )
 

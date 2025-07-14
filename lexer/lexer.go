@@ -245,8 +245,12 @@ func (l *Lexer) emitParenthesis() token.Token {
 		typ = token.LParen
 	case ')':
 		typ = token.RParen
+	case '[':
+		typ = token.LBraket
+	case ']':
+		typ = token.RBraket
 	default:
-		return l.emitError("Unknown parenthesis `" + string(l.Source[l.pos]) + "`")
+		return l.emitError("Syntax error at: `" + string(l.Source[l.pos]) + "`")
 	}
 	tok.Type = typ
 	tok.Literal = string(l.Source[l.pos])
@@ -359,7 +363,14 @@ func (l *Lexer) isOperator() bool {
 }
 
 func (l *Lexer) isParenthesis() bool {
-	return !l.isEOF() && (l.Source[l.pos] == '(' || l.Source[l.pos] == ')')
+	return !l.isEOF() && (l.Source[l.pos] == '(' ||
+		l.Source[l.pos] == ')' ||
+		l.Source[l.pos] == '[' ||
+		l.Source[l.pos] == ']')
+}
+
+func (l *Lexer) isBracket() bool {
+	return !l.isEOF() && (l.Source[l.pos] == '[' || l.Source[l.pos] == ']')
 }
 
 func (l *Lexer) isKWOrIdentifier() bool {

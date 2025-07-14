@@ -116,3 +116,78 @@ func (e *IfExpression) String() string {
 }
 
 func (e *IfExpression) expressionNode() {}
+
+type LetExpression struct {
+	Token      token.Token
+	Identifier *IdentifierExpr
+	Value      Node
+}
+
+var _ Node = (*LetExpression)(nil)
+
+func NewLetExpression(tok token.Token, id *IdentifierExpr, value Node) (*LetExpression, error) {
+	return &LetExpression{
+		Token:      tok,
+		Identifier: id,
+		Value:      value,
+	}, nil
+}
+
+func (e *LetExpression) String() string {
+	var b bytes.Buffer
+
+	b.WriteString("let ")
+	b.WriteString(e.Identifier.String())
+	b.WriteString(" = ")
+	b.WriteString(e.Value.String())
+
+	return b.String()
+}
+
+func (e *LetExpression) expressionNode() {}
+
+type FunctionExpression struct {
+	Token token.Token
+	Name  *IdentifierExpr // Optional, can be nil
+	Args  []*IdentifierExpr
+	Body  []Node
+}
+
+var _ Node = (*FunctionExpression)(nil)
+
+func NewFunctionExpression(tok token.Token, name *IdentifierExpr, args []*IdentifierExpr, body []Node) (*FunctionExpression, error) {
+	return &FunctionExpression{
+		Token: tok,
+		Name:  name,
+		Args:  args,
+		Body:  body,
+	}, nil
+}
+
+func (e *FunctionExpression) String() string {
+	var b bytes.Buffer
+
+	b.WriteString("fn ")
+	if e.Name != nil {
+		b.WriteString(e.Name.String())
+		b.WriteByte(' ')
+	}
+	b.WriteByte('[')
+	for i, arg := range e.Args {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteString(arg.String())
+	}
+	b.WriteByte(']')
+	b.WriteByte('\n')
+	for _, expr := range e.Body {
+		b.WriteString("  ")
+		b.WriteString(expr.String())
+		b.WriteByte('\n')
+	}
+
+	return b.String()
+}
+
+func (e *FunctionExpression) expressionNode() {}
