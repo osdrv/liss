@@ -6,6 +6,8 @@ type Program struct {
 	Nodes []Node
 }
 
+var _ Node = (*Program)(nil)
+
 func NewProgram(nodes []Node) *Program {
 	return &Program{
 		Nodes: nodes,
@@ -22,3 +24,5 @@ func (p *Program) String() string {
 
 	return b.String()
 }
+
+func (p *Program) expressionNode() {}
