@@ -16,7 +16,7 @@ type VM struct {
 	instrs code.Instructions
 
 	stack []object.Object
-	ip    int // instruction pointer
+	pc    int // program counter
 }
 
 func New(bc *compiler.Bytecode) *VM {
@@ -24,15 +24,15 @@ func New(bc *compiler.Bytecode) *VM {
 		consts: bc.Consts,
 		instrs: bc.Instrs,
 		stack:  make([]object.Object, StackSize),
-		ip:     0,
+		pc:     0,
 	}
 }
 
 func (vm *VM) StackTop() object.Object {
-	if vm.ip == 0 {
+	if vm.pc == 0 {
 		return nil
 	}
-	return vm.stack[vm.ip-1]
+	return vm.stack[vm.pc-1]
 }
 
 func (vm *VM) Run() error {
@@ -62,17 +62,17 @@ func (vm *VM) Run() error {
 }
 
 func (vm *VM) push(obj object.Object) error {
-	if vm.ip >= StackSize {
+	if vm.pc >= StackSize {
 		return ErrStackOverflow
 	}
-	vm.stack[vm.ip] = obj
-	vm.ip++
+	vm.stack[vm.pc] = obj
+	vm.pc++
 
 	return nil
 }
 
 func (vm *VM) pop() object.Object {
-	obj := vm.stack[vm.ip-1]
-	vm.ip--
+	obj := vm.stack[vm.pc-1]
+	vm.pc--
 	return obj
 }
