@@ -1,6 +1,7 @@
 package code
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 )
@@ -12,6 +13,8 @@ type OpCode = byte
 const (
 	OpConst OpCode = iota
 	OpAdd
+
+	OpPop
 )
 
 type Definition struct {
@@ -22,6 +25,7 @@ type Definition struct {
 var definitions = map[OpCode]*Definition{
 	OpConst: {"OpConst", []int{2}},
 	OpAdd:   {"OpAdd", []int{2}},
+	OpPop:   {"OpPop", []int{}},
 }
 
 func Lookup(op OpCode) (*Definition, error) {
@@ -72,4 +76,37 @@ func ReadOperands(def *Definition, ins Instructions) ([]int, int) {
 
 func ReadUint16(ins Instructions) uint16 {
 	return binary.BigEndian.Uint16(ins)
+}
+
+func PrintInstr(instr Instructions) string {
+	var b bytes.Buffer
+
+	off := 0
+	for off < len(instr) {
+		def, err := Lookup(OpCode(instr[off]))
+		if err != nil {
+			b.WriteString(fmt.Sprintf("ERROR: %s\n", err))
+			continue
+		}
+		ops, size := ReadOperands(def, instr[off+1:])
+		b.WriteString(fmt.Sprintf("%04d %s\n", off, fmtInstr(def, ops)))
+		off += 1 + size
+	}
+
+	return b.String()
+}
+
+func fmtInstr(def *Definition, ops []int) string {
+	opscnt := len(def.OperandWidths)
+	if len(ops) != opscnt {
+		return fmt.Sprintf("ERROR: expected %d operands, got %d", opscnt, len(ops))
+	}
+	switch opscnt {
+	case 0:
+		return def.Name
+	case 1:
+		return fmt.Sprintf("%s %d", def.Name, ops[0])
+	}
+
+	return fmt.Sprintf("ERROR: unhandled operand count for %s", def.Name)
 }

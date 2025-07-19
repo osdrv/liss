@@ -27,19 +27,22 @@ func Run(in io.Reader, out io.Writer) {
 
 		prog, err := par.Parse()
 		if err != nil {
+			fmt.Printf("Failed to parse program: %s\n", err)
 			fmt.Fprintf(out, "Failed to parse program: %s\n", err)
 		}
 		comp := compiler.New()
 		if err := comp.Compile(prog); err != nil {
+			fmt.Printf("failed to compile program: %s", err)
 			fmt.Fprintf(out, "Failed to compile program: %s\n", err)
 			continue
 		}
 		vm := vm.New(comp.Bytecode())
 		if err := vm.Run(); err != nil {
+			fmt.Printf("Failed to run program: %s\n", err)
 			fmt.Fprintf(out, "Failed to run program: %s\n", err)
 			continue
 		}
-		st := vm.StackTop()
+		st := vm.LastPopped()
 		io.WriteString(out, st.String())
 		io.WriteString(out, "\n")
 	}

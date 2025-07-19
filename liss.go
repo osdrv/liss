@@ -20,7 +20,7 @@ func Run(bc *compiler.Bytecode) (Result, error) {
 	if err := vm.Run(); err != nil {
 		return nil, fmt.Errorf("failed to run bytecode: %w", err)
 	}
-	top := vm.StackTop()
+	top := vm.LastPopped()
 	return top, nil
 }
 

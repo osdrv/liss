@@ -6,6 +6,8 @@ import (
 	"osdrv/liss/object"
 )
 
+const NOARGC = -1 // No argument count, used for expressions without operands
+
 type Compiler struct {
 	instrs code.Instructions
 	consts []object.Object
@@ -18,11 +20,11 @@ func New() *Compiler {
 	}
 }
 
-func (c *Compiler) Compile(node ast.Node) error {
+func (c *Compiler) compileStep(node ast.Node, argc int) error {
 	switch n := node.(type) {
 	case *ast.Program:
-		for _, nn := range n.Nodes {
-			if err := c.Compile(nn); err != nil {
+		for _, expr := range n.Exprs {
+			if err := c.compileStep(expr, NOARGC); err != nil {
 				return err
 			}
 		}
@@ -33,25 +35,34 @@ func (c *Compiler) Compile(node ast.Node) error {
 		// emit the instruction for the operator
 		// emit the length of the args
 		for i := 1; i < len(n.Operands); i++ {
-			if err := c.Compile(n.Operands[i]); err != nil {
+			if err := c.compileStep(n.Operands[i], NOARGC); err != nil {
 				return err
 			}
 		}
 
 		argc := len(n.Operands) - 1
+		if err := c.compileStep(n.Operands[0], argc); err != nil {
+			return err
+		}
+		c.emit(code.OpPop)
 
-		switch op := n.Operands[0].(type) {
-		case *ast.OperatorExpr:
-			switch op.Operator {
-			case ast.OperatorPlus:
-				c.emit(code.OpAdd, argc)
-			}
+	case *ast.OperatorExpr:
+		switch n.Operator {
+		case ast.OperatorPlus:
+			c.emit(code.OpAdd, argc)
 		}
 	case *ast.IntegerLiteral:
 		integer := object.NewInteger(n.Value)
 		c.emit(code.OpConst, c.addConst(integer))
 	}
 
+	return nil
+}
+
+func (c *Compiler) Compile(prog *ast.Program) error {
+	if err := c.compileStep(prog, NOARGC); err != nil {
+		return err
+	}
 	return nil
 }
 

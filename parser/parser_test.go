@@ -26,98 +26,126 @@ func TestParse(t *testing.T) {
 			name:  "Single null literal",
 			input: "null",
 			want: []ast.Node{
-				&ast.NullLiteral{},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.NullLiteral{}},
+				},
 			},
 		},
 		{
 			name:  "Single true boolean literal",
 			input: "true",
 			want: []ast.Node{
-				&ast.BooleanLiteral{Value: true},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.BooleanLiteral{Value: true}},
+				},
 			},
 		},
 		{
 			name:  "Single false boolean literal",
 			input: "false",
 			want: []ast.Node{
-				&ast.BooleanLiteral{Value: false},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.BooleanLiteral{Value: false}},
+				},
 			},
 		},
 		{
 			name:  "Single integer literal",
 			input: "42",
 			want: []ast.Node{
-				&ast.IntegerLiteral{Value: 42},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.IntegerLiteral{Value: 42}},
+				},
 			},
 		},
 		{
 			name:  "Single signed negative integer literal",
 			input: "-42",
 			want: []ast.Node{
-				&ast.IntegerLiteral{Value: -42},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.IntegerLiteral{Value: -42}},
+				},
 			},
 		},
 		{
 			name:  "Single signed positive integer literal",
 			input: "+42",
 			want: []ast.Node{
-				&ast.IntegerLiteral{Value: 42},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.IntegerLiteral{Value: 42}},
+				},
 			},
 		},
 		{
 			name:  "Single float literal",
 			input: "3.14",
 			want: []ast.Node{
-				&ast.FloatLiteral{Value: 3.14},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.FloatLiteral{Value: 3.14}},
+				},
 			},
 		},
 		{
 			name:  "Single signed negative float literal",
 			input: "-3.14",
 			want: []ast.Node{
-				&ast.FloatLiteral{Value: -3.14},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.FloatLiteral{Value: -3.14}},
+				},
 			},
 		},
 		{
 			name:  "Single signed positive float literal",
 			input: "+3.14",
 			want: []ast.Node{
-				&ast.FloatLiteral{Value: 3.14},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.FloatLiteral{Value: 3.14}},
+				},
 			},
 		},
 		{
 			name:  "Single float literal with scientific notation",
 			input: "1.23e+04",
 			want: []ast.Node{
-				&ast.FloatLiteral{Value: 12300.0},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.FloatLiteral{Value: 12300.0}},
+				},
 			},
 		},
 		{
 			name:  "Single string literal single quotes",
 			input: `'hello world'`,
 			want: []ast.Node{
-				&ast.StringLiteral{Value: "hello world"},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.StringLiteral{Value: "hello world"}},
+				},
 			},
 		},
 		{
 			name:  "Single string literal double quotes",
 			input: `"hello world"`,
 			want: []ast.Node{
-				&ast.StringLiteral{Value: "hello world"},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.StringLiteral{Value: "hello world"}},
+				},
 			},
 		},
 		{
 			name:  "Single string literal with escaped quotes",
 			input: `"hello \"world\""`,
 			want: []ast.Node{
-				&ast.StringLiteral{Value: `hello "world"`},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.StringLiteral{Value: `hello "world"`}},
+				},
 			},
 		},
 		{
 			name:  "Single string literal with unicode",
 			input: `"おはよう"`,
 			want: []ast.Node{
-				&ast.StringLiteral{Value: "おはよう"},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.StringLiteral{Value: "おはよう"}},
+				},
 			},
 		},
 		// TODO: Uncomment when unicode escape sequences are supported
@@ -132,14 +160,18 @@ func TestParse(t *testing.T) {
 			name:  "Single string literal with newline",
 			input: `"hello\nworld"`,
 			want: []ast.Node{
-				&ast.StringLiteral{Value: "hello\nworld"},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.StringLiteral{Value: "hello\nworld"}},
+				},
 			},
 		},
 		{
 			name:  "Identifier expression",
 			input: "myVar",
 			want: []ast.Node{
-				&ast.IdentifierExpr{Name: "myVar"},
+				&ast.Expression{
+					Operands: []ast.Node{&ast.IdentifierExpr{Name: "myVar"}},
+				},
 			},
 		},
 		{
@@ -327,10 +359,10 @@ func TestParse(t *testing.T) {
 				return
 			}
 			assert.Equal(t, tt.wantErr, err, "Expected error %v, got %v", tt.wantErr, err)
-			assert.Len(t, prog.Nodes, len(tt.want), "Expected %d nodes, got %d", len(tt.want), len(prog.Nodes))
+			assert.Len(t, prog.Exprs, len(tt.want), "Expected %d nodes, got %d", len(tt.want), len(prog.Exprs))
 
 			for ix := range tt.want {
-				assertNodeEqual(t, tt.want[ix], prog.Nodes[ix])
+				assertNodeEqual(t, tt.want[ix], prog.Exprs[ix])
 			}
 		})
 	}

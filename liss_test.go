@@ -265,7 +265,7 @@ func TestExecute(t *testing.T) {
 				return
 			}
 			assert.Equal(t, tt.wantErr, err, "Expected error %v, got %v", tt.wantErr, err)
-			assert.Equal(t, Result(tt.want), res, "Expected result %v, got %v", tt.want, res)
+			assert.Equal(t, tt.want, res, "Expected result %v, got %v", tt.want, res)
 		})
 	}
 }

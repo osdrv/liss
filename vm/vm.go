@@ -55,10 +55,16 @@ func (vm *VM) Run() error {
 				sum += int64(vm.pop().(*object.Integer).Value)
 			}
 			vm.push(object.NewInteger(sum))
+		case code.OpPop:
+			vm.pop()
 		}
 	}
 
 	return nil
+}
+
+func (vm *VM) LastPopped() object.Object {
+	return vm.stack[vm.pc]
 }
 
 func (vm *VM) push(obj object.Object) error {
@@ -72,6 +78,9 @@ func (vm *VM) push(obj object.Object) error {
 }
 
 func (vm *VM) pop() object.Object {
+	if vm.pc == 0 {
+		return nil
+	}
 	obj := vm.stack[vm.pc-1]
 	vm.pc--
 	return obj

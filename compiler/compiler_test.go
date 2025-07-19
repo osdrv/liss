@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"osdrv/liss/ast"
 	"osdrv/liss/code"
 	"osdrv/liss/lexer"
@@ -20,6 +21,15 @@ func TestCompile(t *testing.T) {
 		wantErr    error
 	}{
 		{
+			name:       "single atom",
+			input:      "42",
+			wantConsts: []any{int64(42)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
 			name:       "simple arithmetic",
 			input:      "(+ 1 2 3)",
 			wantConsts: []any{1, 2, 3},
@@ -28,6 +38,23 @@ func TestCompile(t *testing.T) {
 				code.Make(code.OpConst, 1),
 				code.Make(code.OpConst, 2),
 				code.Make(code.OpAdd, 3),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "emit stack pop",
+			input:      "(+ 1 2 5)(+ 3 4)",
+			wantConsts: []any{1, 2, 5, 3, 4},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpAdd, 3),
+				code.Make(code.OpPop),
+				code.Make(code.OpConst, 3),
+				code.Make(code.OpConst, 4),
+				code.Make(code.OpAdd, 2),
+				code.Make(code.OpPop),
 			},
 		},
 	}
@@ -47,8 +74,11 @@ func TestCompile(t *testing.T) {
 	}
 }
 
-func assertInstrs(t *testing.T, want []code.Instructions, got code.Instructions) {
-	assert.Equal(t, concatArr(want), got, "Expected instructions do not match")
+func assertInstrs(t *testing.T, wants []code.Instructions, got code.Instructions) {
+	want := concatArr(wants)
+	assert.Equal(t, want, got,
+		fmt.Sprintf("Expected instructions do not match:\nwant:\n%s\n\ngot:\n%s",
+			code.PrintInstr(want), code.PrintInstr(got)))
 }
 
 func assertConsts(t *testing.T, want []any, got []object.Object) {

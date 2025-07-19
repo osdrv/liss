@@ -24,6 +24,11 @@ func TestRun(t *testing.T) {
 			want:  int64(42),
 		},
 		{
+			name:  "expression with an integer literal",
+			input: "(1)",
+			want:  int64(1),
+		},
+		{
 			name:  "Negative integer literal",
 			input: "-42",
 			want:  int64(-42),
@@ -32,6 +37,11 @@ func TestRun(t *testing.T) {
 			name:  "basic arithmetic",
 			input: "(+ 1 2 3)",
 			want:  int64(6),
+		},
+		{
+			name:  "multiple literals",
+			input: "1 2 3 4 5",
+			want:  int64(5), // Last value should be returned
 		},
 	}
 
@@ -43,13 +53,17 @@ func TestRun(t *testing.T) {
 			assert.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
 			vm := New(comp.Bytecode())
 			assert.NoError(t, vm.Run(), "Failed to run program: %s", tt.input)
-			st := vm.StackTop()
+			st := vm.LastPopped()
 			assertObjectEql(t, st, tt.want)
 		})
 	}
 }
 
 func assertObjectEql(t *testing.T, got object.Object, want any) {
+	if got == nil || want == nil {
+		assert.Equal(t, want, got, "Expected object to be %v, got %v", want, got)
+		return
+	}
 	switch obj := got.(type) {
 	case *object.Integer:
 		assert.Equal(t, want, obj.Value, "Expected integer value %v, got %v", want, obj.Value)
