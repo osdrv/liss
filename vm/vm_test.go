@@ -34,14 +34,34 @@ func TestRun(t *testing.T) {
 			want:  int64(-42),
 		},
 		{
-			name:  "basic arithmetic",
+			name:  "basic arithmetic: integer addition",
 			input: "(+ 1 2 3)",
 			want:  int64(6),
+		},
+		{
+			name:  "basic arithmetic: integer subtraction",
+			input: "(- 5 2)",
+			want:  int64(3),
+		},
+		{
+			name:  "basic arithmetic: integer multiplication",
+			input: "(* 2 3 4)",
+			want:  int64(24),
+		},
+		{
+			name:  "basic arithmetic: integer division",
+			input: "(/ 8 2)",
+			want:  int64(4),
 		},
 		{
 			name:  "multiple literals",
 			input: "1 2 3 4 5",
 			want:  int64(5), // Last value should be returned
+		},
+		{
+			name:  "nested expressions",
+			input: "(+ (* 2 3) (- 5 1))",
+			want:  int64(10), // (6 + 4)
 		},
 	}
 

@@ -4,9 +4,16 @@ import (
 	"osdrv/liss/ast"
 	"osdrv/liss/code"
 	"osdrv/liss/object"
+	"reflect"
 )
 
 const NOARGC = -1 // No argument count, used for expressions without operands
+
+var OwnerTypes = map[reflect.Type]bool{
+	reflect.TypeOf(&ast.OperatorExpr{}):       true,
+	reflect.TypeOf(&ast.LetExpression{}):      true,
+	reflect.TypeOf(&ast.FunctionExpression{}): true,
+}
 
 type Compiler struct {
 	instrs code.Instructions
@@ -20,11 +27,11 @@ func New() *Compiler {
 	}
 }
 
-func (c *Compiler) compileStep(node ast.Node, argc int) error {
+func (c *Compiler) compileStep(node ast.Node, argc int, owned bool) error {
 	switch n := node.(type) {
 	case *ast.Program:
-		for _, expr := range n.Exprs {
-			if err := c.compileStep(expr, NOARGC); err != nil {
+		for _, node := range n.Nodes {
+			if err := c.compileStep(node, NOARGC, owned); err != nil {
 				return err
 			}
 		}
@@ -34,33 +41,56 @@ func (c *Compiler) compileStep(node ast.Node, argc int) error {
 		// emit the instructions for the remaining operands
 		// emit the instruction for the operator
 		// emit the length of the args
-		for i := 1; i < len(n.Operands); i++ {
-			if err := c.compileStep(n.Operands[i], NOARGC); err != nil {
+		if len(n.Operands) == 0 {
+			return nil // No operands, nothing to compile
+		}
+		if _, ok := OwnerTypes[reflect.TypeOf(n.Operands[0])]; ok {
+			// The first operand is an owner type. Compile it last. It will manage
+			// the stack.
+			for i := 1; i < len(n.Operands); i++ {
+				// The first operand is responsible for managing the stack.
+				if err := c.compileStep(n.Operands[i], NOARGC, true); err != nil {
+					return err
+				}
+			}
+			argc := len(n.Operands) - 1
+			if err := c.compileStep(n.Operands[0], argc, owned); err != nil {
 				return err
 			}
+			c.emit(code.OpPop)
+		} else {
+			for i := range len(n.Operands) {
+				if err := c.compileStep(n.Operands[i], NOARGC, owned); err != nil {
+					return err
+				}
+				c.emit(code.OpPop)
+			}
 		}
-
-		argc := len(n.Operands) - 1
-		if err := c.compileStep(n.Operands[0], argc); err != nil {
-			return err
-		}
-		c.emit(code.OpPop)
 
 	case *ast.OperatorExpr:
 		switch n.Operator {
 		case ast.OperatorPlus:
 			c.emit(code.OpAdd, argc)
+		case ast.OperatorMinus:
+			c.emit(code.OpSub)
+		case ast.OperatorMultiply:
+			c.emit(code.OpMul, argc)
+		case ast.OperatorDivide:
+			c.emit(code.OpDiv)
 		}
 	case *ast.IntegerLiteral:
 		integer := object.NewInteger(n.Value)
 		c.emit(code.OpConst, c.addConst(integer))
+		if !owned {
+			c.emit(code.OpPop)
+		}
 	}
 
 	return nil
 }
 
 func (c *Compiler) Compile(prog *ast.Program) error {
-	if err := c.compileStep(prog, NOARGC); err != nil {
+	if err := c.compileStep(prog, NOARGC, false); err != nil {
 		return err
 	}
 	return nil

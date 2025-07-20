@@ -359,10 +359,10 @@ func TestParse(t *testing.T) {
 				return
 			}
 			assert.Equal(t, tt.wantErr, err, "Expected error %v, got %v", tt.wantErr, err)
-			assert.Len(t, prog.Exprs, len(tt.want), "Expected %d nodes, got %d", len(tt.want), len(prog.Exprs))
+			assert.Len(t, prog.Nodes, len(tt.want), "Expected %d nodes, got %d", len(tt.want), len(prog.Nodes))
 
 			for ix := range tt.want {
-				assertNodeEqual(t, tt.want[ix], prog.Exprs[ix])
+				assertNodeEqual(t, tt.want[ix], prog.Nodes[ix])
 			}
 		})
 	}
