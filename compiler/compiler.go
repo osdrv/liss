@@ -9,7 +9,7 @@ import (
 
 const NOARGC = -1 // No argument count, used for expressions without operands
 
-var OwnerTypes = map[reflect.Type]bool{
+var ManagerTypes = map[reflect.Type]bool{
 	reflect.TypeOf(&ast.OperatorExpr{}):       true,
 	reflect.TypeOf(&ast.LetExpression{}):      true,
 	reflect.TypeOf(&ast.FunctionExpression{}): true,
@@ -27,11 +27,11 @@ func New() *Compiler {
 	}
 }
 
-func (c *Compiler) compileStep(node ast.Node, argc int, owned bool) error {
+func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 	switch n := node.(type) {
 	case *ast.Program:
 		for _, node := range n.Nodes {
-			if err := c.compileStep(node, NOARGC, owned); err != nil {
+			if err := c.compileStep(node, NOARGC, managed); err != nil {
 				return err
 			}
 		}
@@ -44,7 +44,7 @@ func (c *Compiler) compileStep(node ast.Node, argc int, owned bool) error {
 		if len(n.Operands) == 0 {
 			return nil // No operands, nothing to compile
 		}
-		if _, ok := OwnerTypes[reflect.TypeOf(n.Operands[0])]; ok {
+		if _, ok := ManagerTypes[reflect.TypeOf(n.Operands[0])]; ok {
 			// The first operand is an owner type. Compile it last. It will manage
 			// the stack.
 			for i := 1; i < len(n.Operands); i++ {
@@ -54,13 +54,15 @@ func (c *Compiler) compileStep(node ast.Node, argc int, owned bool) error {
 				}
 			}
 			argc := len(n.Operands) - 1
-			if err := c.compileStep(n.Operands[0], argc, owned); err != nil {
+			if err := c.compileStep(n.Operands[0], argc, managed); err != nil {
 				return err
 			}
-			c.emit(code.OpPop)
+			if !managed {
+				c.emit(code.OpPop)
+			}
 		} else {
 			for i := range len(n.Operands) {
-				if err := c.compileStep(n.Operands[i], NOARGC, owned); err != nil {
+				if err := c.compileStep(n.Operands[i], NOARGC, managed); err != nil {
 					return err
 				}
 				c.emit(code.OpPop)
@@ -81,7 +83,7 @@ func (c *Compiler) compileStep(node ast.Node, argc int, owned bool) error {
 	case *ast.IntegerLiteral:
 		integer := object.NewInteger(n.Value)
 		c.emit(code.OpConst, c.addConst(integer))
-		if !owned {
+		if !managed {
 			c.emit(code.OpPop)
 		}
 	}
