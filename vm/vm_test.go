@@ -49,6 +49,11 @@ func TestRun(t *testing.T) {
 			want:  "Hello, world!",
 		},
 		{
+			name:  "string repetition",
+			input: `(* 3 "Hello")`,
+			want:  "HelloHelloHello",
+		},
+		{
 			name:  "basic arithmetic: integer subtraction",
 			input: "(- 5 2)",
 			want:  int64(3),
@@ -72,6 +77,16 @@ func TestRun(t *testing.T) {
 			name:  "nested expressions",
 			input: "(+ (* 2 3) (- 5 1))",
 			want:  int64(10), // (6 + 4)
+		},
+		{
+			name:  "boolean true",
+			input: "true",
+			want:  true,
+		},
+		{
+			name:  "boolean false",
+			input: "false",
+			want:  false,
 		},
 	}
 

@@ -12,6 +12,9 @@ const StackSize = 2048
 
 var ErrStackOverflow = errors.New("stack overflow")
 
+var True = object.NewBool(true)
+var False = object.NewBool(false)
+
 type VM struct {
 	consts []object.Object
 	instrs code.Instructions
@@ -69,9 +72,13 @@ func (vm *VM) Run() error {
 				vm.push(object.NewFloat(sum))
 			case object.StringType:
 				var b strings.Builder
+				strs := make([]*object.String, 0, argc)
 				for range argc {
 					str := vm.pop().(*object.String)
-					b.WriteString(str.Value)
+					strs = append(strs, str)
+				}
+				for i := len(strs) - 1; i >= 0; i-- {
+					b.WriteString(strs[i].Value)
 				}
 				vm.push(object.NewString(b.String()))
 			default:
@@ -79,26 +86,55 @@ func (vm *VM) Run() error {
 				return errors.New("invalid type for addition")
 			}
 		case code.OpSub:
-			a := vm.pop()
 			b := vm.pop()
+			a := vm.pop()
 			res := int64(a.(*object.Integer).Value) - int64(b.(*object.Integer).Value)
 			vm.push(object.NewInteger(res))
 		case code.OpMul:
 			argc := code.ReadUint16(vm.instrs[ip+1:])
 			ip += 2
-			product := int64(1)
-			for range argc {
-				product *= int64(vm.pop().(*object.Integer).Value)
+
+			elem := vm.peek()
+			switch elem.Type() {
+			case object.IntegerType:
+				product := int64(1)
+				for range argc {
+					product *= int64(vm.pop().(*object.Integer).Value)
+				}
+				vm.push(object.NewInteger(product))
+			case object.FloatType:
+				product := float64(1.0)
+				for range argc {
+					product *= float64(vm.pop().(*object.Float).Value)
+				}
+				vm.push(object.NewFloat(product))
+			case object.StringType:
+				if argc != 2 {
+					return errors.New("string multiplication requires exactly two arguments")
+				}
+				var b strings.Builder
+				str := vm.pop().(*object.String).Value
+				reps := vm.pop()
+				if reps.Type() != object.IntegerType {
+					return errors.New("invalid argument type for string multiplication")
+				}
+				for i := int64(0); i < int64(reps.(*object.Integer).Value); i++ {
+					b.WriteString(str)
+				}
+				vm.push(object.NewString(b.String()))
 			}
-			vm.push(object.NewInteger(product))
 		case code.OpDiv:
-			a := vm.pop()
 			b := vm.pop()
+			a := vm.pop()
 			if b.(*object.Integer).Value == 0 {
 				return errors.New("division by zero")
 			}
 			res := int64(a.(*object.Integer).Value) / int64(b.(*object.Integer).Value)
 			vm.push(object.NewInteger(res))
+		case code.OpTrue:
+			vm.push(True)
+		case code.OpFalse:
+			vm.push(False)
 		case code.OpPop:
 			vm.pop()
 		}

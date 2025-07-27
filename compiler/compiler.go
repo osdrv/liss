@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"osdrv/liss/ast"
 	"osdrv/liss/code"
 	"osdrv/liss/object"
@@ -13,6 +14,18 @@ var ManagerTypes = map[reflect.Type]bool{
 	reflect.TypeOf(&ast.OperatorExpr{}):       true,
 	reflect.TypeOf(&ast.LetExpression{}):      true,
 	reflect.TypeOf(&ast.FunctionExpression{}): true,
+}
+
+var AssertOperatorArgc = map[ast.Operator]int{
+	ast.OperatorMinus:              2,
+	ast.OperatorDivide:             2,
+	ast.OperatorEqual:              2,
+	ast.OperatorNotEqual:           2,
+	ast.OperatorGreaterThan:        2,
+	ast.OperatorGreaterThanOrEqual: 2,
+	ast.OperatorLessThan:           2,
+	ast.OperatorLessThanOrEqual:    2,
+	ast.OperatorNot:                1,
 }
 
 type Compiler struct {
@@ -47,8 +60,7 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		if _, ok := ManagerTypes[reflect.TypeOf(n.Operands[0])]; ok {
 			// The first operand is an owner type. Compile it last. It will manage
 			// the stack.
-			// Reverse the order of the operands so that the first one is compiled last.
-			for i := len(n.Operands) - 1; i > 0; i-- {
+			for i := 1; i < len(n.Operands); i++ {
 				// The first operand is responsible for managing the stack.
 				if err := c.compileStep(n.Operands[i], NOARGC, true); err != nil {
 					return err
@@ -69,8 +81,12 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 				c.emit(code.OpPop)
 			}
 		}
-
 	case *ast.OperatorExpr:
+		if n, ok := AssertOperatorArgc[n.Operator]; ok {
+			if argc != n {
+				return fmt.Errorf("expected %d arguments for operator %s, got %d", n, node.String(), argc)
+			}
+		}
 		switch n.Operator {
 		case ast.OperatorPlus:
 			c.emit(code.OpAdd, argc)
@@ -80,6 +96,20 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 			c.emit(code.OpMul, argc)
 		case ast.OperatorDivide:
 			c.emit(code.OpDiv)
+		case ast.OperatorEqual:
+			c.emit(code.OpEql)
+		case ast.OperatorNotEqual:
+			c.emit(code.OpNotEql)
+		case ast.OperatorGreaterThan:
+			c.emit(code.OpGreaterThan)
+		case ast.OperatorGreaterThanOrEqual:
+			c.emit(code.OpGreaterEqual)
+		case ast.OperatorLessThan:
+			c.emit(code.OpLessThan)
+		case ast.OperatorLessThanOrEqual:
+			c.emit(code.OpLessEqual)
+		case ast.OperatorNot:
+			c.emit(code.OpNot)
 		}
 	case *ast.IntegerLiteral:
 		integer := object.NewInteger(n.Value)
@@ -100,8 +130,11 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 			c.emit(code.OpPop)
 		}
 	case *ast.BooleanLiteral:
-		b := object.NewBool(n.Value)
-		c.emit(code.OpConst, c.addConst(b))
+		if n.Value {
+			c.emit(code.OpTrue)
+		} else {
+			c.emit(code.OpFalse)
+		}
 		if !managed {
 			c.emit(code.OpPop)
 		}
