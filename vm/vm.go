@@ -2,6 +2,7 @@ package vm
 
 import (
 	"errors"
+	"fmt"
 	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/object"
@@ -131,6 +132,19 @@ func (vm *VM) Run() error {
 			}
 			res := int64(a.(*object.Integer).Value) / int64(b.(*object.Integer).Value)
 			vm.push(object.NewInteger(res))
+		case code.OpEql,
+			code.OpNotEql,
+			code.OpGreaterThan,
+			code.OpGreaterEqual,
+			code.OpLessThan,
+			code.OpLessEqual:
+			b := vm.pop()
+			a := vm.pop()
+			cmp, err := compare(a, b, op)
+			if err != nil {
+				return err
+			}
+			vm.push(object.NewBool(cmp))
 		case code.OpTrue:
 			vm.push(True)
 		case code.OpFalse:
@@ -186,4 +200,57 @@ func (vm *VM) pop() object.Object {
 	obj := vm.stack[vm.pc-1]
 	vm.pc--
 	return obj
+}
+
+func compare(a, b object.Object, cmp code.OpCode) (bool, error) {
+	ac, bc := castTypes(a, b, cmp)
+	if ac.Type() != bc.Type() {
+		return false, NewTypeMismatchError(
+			fmt.Sprintf("%s Vs %s", ac.Type().String(), bc.Type().String()))
+	}
+	switch cmp {
+	case code.OpEql:
+		switch ac.Type() {
+		case object.IntegerType:
+			return ac.(*object.Integer).Value == bc.(*object.Integer).Value, nil
+		case object.FloatType:
+			return ac.(*object.Float).Value == bc.(*object.Float).Value, nil
+		case object.StringType:
+			return ac.(*object.String).Value == bc.(*object.String).Value, nil
+		case object.BoolType:
+			return ac.(*object.Bool).Value == bc.(*object.Bool).Value, nil
+		default:
+			return false, NewUnsupportedOpTypeError("invalid type for equality comparison")
+		}
+	case code.OpNotEql:
+		switch ac.Type() {
+		case object.IntegerType:
+			return ac.(*object.Integer).Value != bc.(*object.Integer).Value, nil
+		case object.FloatType:
+			return ac.(*object.Float).Value != bc.(*object.Float).Value, nil
+		case object.StringType:
+			return ac.(*object.String).Value != bc.(*object.String).Value, nil
+		case object.BoolType:
+			return ac.(*object.Bool).Value != bc.(*object.Bool).Value, nil
+		default:
+			return false, NewUnsupportedOpTypeError("invalid type for inequality comparison")
+		}
+	}
+	return false, NewUnsupportedOpTypeError(
+		fmt.Sprintf("unsupported operation %v for types %s and %s", cmp, ac.Type().String(), bc.Type().String()))
+}
+
+func castTypes(a, b object.Object, cmp code.OpCode) (object.Object, object.Object) {
+	if a.Type() == b.Type() {
+		return a, b
+	}
+
+	if a.IsNumeric() && b.IsNumeric() {
+		af := a.(object.Numeric).Float64()
+		bf := b.(object.Numeric).Float64()
+		// TODO: we only need to cast one of them, but we do both for simplicity
+		return object.NewFloat(af), object.NewFloat(bf)
+	}
+
+	return a, b
 }

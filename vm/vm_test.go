@@ -88,6 +88,66 @@ func TestRun(t *testing.T) {
 			input: "false",
 			want:  false,
 		},
+		{
+			name:  "comparison: equal integers",
+			input: "(= 42 42)",
+			want:  true,
+		},
+		{
+			name:  "comparison: equal floats",
+			input: "(= 3.14 3.14)",
+			want:  true,
+		},
+		{
+			name:  "comparison: equal strings",
+			input: `(= "hello" "hello")`,
+			want:  true,
+		},
+		{
+			name:  "comparison: equal bools",
+			input: "(= true true)",
+			want:  true,
+		},
+		{
+			name:  "comparison with type casting: int + float",
+			input: "(= 42 42.0)",
+			want:  true,
+		},
+		{
+			name:    "comparison with incompatible types",
+			input:   "(= 42 true)",
+			wantErr: NewTypeMismatchError("Integer Vs Bool"),
+		},
+		{
+			name:  "comparison: unequal ints",
+			input: "(!= 42 43)",
+			want:  true,
+		},
+		{
+			name:  "comparison: unequal floats",
+			input: "(!= 3.14 2.71)",
+			want:  true,
+		},
+		{
+			name:  "comparison: unequal strings",
+			input: `(!= "hello" "world")`,
+			want:  true,
+		},
+		{
+			name:  "comparison: unequal bools",
+			input: "(!= true false)",
+			want:  true,
+		},
+		{
+			name:  "comparison: unequal with type casting: int + float",
+			input: "(!= 42 42.0)",
+			want:  false,
+		},
+		{
+			name:    "comparison with incompatible types: int + bool",
+			input:   "(!= 42 true)",
+			wantErr: NewTypeMismatchError("Integer Vs Bool"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -97,7 +157,15 @@ func TestRun(t *testing.T) {
 			comp := compiler.New()
 			assert.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
 			vm := New(comp.Bytecode())
-			assert.NoError(t, vm.Run(), "Failed to run program: %s", tt.input)
+
+			err = vm.Run()
+			if tt.wantErr != nil {
+				assert.Error(t, err, "Expected error for input: %s", tt.input)
+				assert.EqualError(t, err, tt.wantErr.Error(), "Error message does not match")
+				return
+			}
+
+			assert.NoError(t, err, "Failed to run program: %s", tt.input)
 			st := vm.LastPopped()
 			assertObjectEql(t, st, tt.want)
 		})
