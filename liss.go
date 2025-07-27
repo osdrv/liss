@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -15,12 +16,15 @@ type Result interface {
 	String() string
 }
 
-func Run(bc *compiler.Bytecode) (Result, error) {
+func Run(bc *compiler.Bytecode, opts repl.Options) (Result, error) {
 	vm := vm.New(bc)
 	if err := vm.Run(); err != nil {
 		return nil, fmt.Errorf("failed to run bytecode: %w", err)
 	}
 	top := vm.LastPopped()
+	if opts.Debug {
+		fmt.Printf("VM stack: %s\n", vm.PrintStack())
+	}
 	return top, nil
 }
 
@@ -38,34 +42,43 @@ func Compile(src string) (*compiler.Bytecode, error) {
 	return c.Bytecode(), nil
 }
 
-func Execute(src string) (Result, error) {
+func Execute(src string, opts repl.Options) (Result, error) {
 	bytecode, err := Compile(src)
 	if err != nil {
 		return nil, err
 	}
-	return Run(bytecode)
+	return Run(bytecode, opts)
 }
 
 func main() {
-	args := os.Args[1:]
 	out := os.Stdout
 	er := os.Stderr
 	defer out.Close()
 	defer er.Close()
 
-	if len(args) == 0 {
+	debug := flag.Bool("debug", false, "Enables debug mode with stack dumps and traces")
+	src := flag.String("src", "", "Source file to execute")
+	flag.Parse()
+	opts := repl.Options{
+		Debug: *debug,
+	}
+	if opts.Debug {
+		fmt.Printf("Runtime flags: %+v\n", opts)
+	}
+
+	if *src == "" {
 		in := os.Stdin
 		defer in.Close()
-		repl.Run(in, out)
+		repl.Run(in, out, opts)
 		os.Exit(0)
 	}
-	src := args[0]
-	data, err := os.ReadFile(src)
+
+	data, err := os.ReadFile(*src)
 	if err != nil {
 		fmt.Fprintf(er, "Error reading file %s: %v\n", src, err)
 		os.Exit(1)
 	}
-	result, err := Execute(string(data))
+	result, err := Execute(string(data), opts)
 	if err != nil {
 		fmt.Fprintf(er, "Error executing file %s: %v\n", src, err)
 		os.Exit(1)

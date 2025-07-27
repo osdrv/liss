@@ -86,6 +86,24 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		if !managed {
 			c.emit(code.OpPop)
 		}
+	case *ast.FloatLiteral:
+		float := object.NewFloat(n.Value)
+		c.emit(code.OpConst, c.addConst(float))
+		if !managed {
+			c.emit(code.OpPop)
+		}
+	case *ast.StringLiteral:
+		str := object.NewString(n.Value)
+		c.emit(code.OpConst, c.addConst(str))
+		if !managed {
+			c.emit(code.OpPop)
+		}
+	case *ast.BooleanLiteral:
+		b := object.NewBool(n.Value)
+		c.emit(code.OpConst, c.addConst(b))
+		if !managed {
+			c.emit(code.OpPop)
+		}
 	}
 
 	return nil

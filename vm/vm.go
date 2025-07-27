@@ -5,6 +5,7 @@ import (
 	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/object"
+	"strings"
 )
 
 const StackSize = 2048
@@ -49,12 +50,34 @@ func (vm *VM) Run() error {
 		case code.OpAdd:
 			argc := code.ReadUint16(vm.instrs[ip+1:])
 			ip += 2
-			// TODO: handle different types
-			sum := int64(0)
-			for range argc {
-				sum += int64(vm.pop().(*object.Integer).Value)
+			elem := vm.peek()
+			if elem == nil {
+				return errors.New("stack underflow")
 			}
-			vm.push(object.NewInteger(sum))
+			switch elem.Type() {
+			case object.IntegerType:
+				sum := int64(0)
+				for range argc {
+					sum += int64(vm.pop().(*object.Integer).Value)
+				}
+				vm.push(object.NewInteger(sum))
+			case object.FloatType:
+				sum := float64(0.0)
+				for range argc {
+					sum += float64(vm.pop().(*object.Float).Value)
+				}
+				vm.push(object.NewFloat(sum))
+			case object.StringType:
+				var b strings.Builder
+				for range argc {
+					str := vm.pop().(*object.String)
+					b.WriteString(str.Value)
+				}
+				vm.push(object.NewString(b.String()))
+			default:
+				// TODO: it is compiler's job to ensure that the types are correct
+				return errors.New("invalid type for addition")
+			}
 		case code.OpSub:
 			b := vm.pop()
 			a := vm.pop()
@@ -84,6 +107,21 @@ func (vm *VM) Run() error {
 	return nil
 }
 
+func (vm *VM) PrintStack() string {
+	var b strings.Builder
+	for i := range vm.pc {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		if vm.stack[i] != nil {
+			b.WriteString(vm.stack[i].String())
+		} else {
+			b.WriteString("nil")
+		}
+	}
+	return b.String()
+}
+
 func (vm *VM) LastPopped() object.Object {
 	return vm.stack[vm.pc]
 }
@@ -96,6 +134,13 @@ func (vm *VM) push(obj object.Object) error {
 	vm.pc++
 
 	return nil
+}
+
+func (vm *VM) peek() object.Object {
+	if vm.pc == 0 {
+		return nil
+	}
+	return vm.stack[vm.pc-1]
 }
 
 func (vm *VM) pop() object.Object {

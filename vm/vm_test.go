@@ -39,6 +39,11 @@ func TestRun(t *testing.T) {
 			want:  int64(6),
 		},
 		{
+			name:  "basic arithmetics: float addition",
+			input: "(+ 1.5 2.5)",
+			want:  float64(4.0),
+		},
+		{
 			name:  "basic arithmetic: integer subtraction",
 			input: "(- 5 2)",
 			want:  int64(3),

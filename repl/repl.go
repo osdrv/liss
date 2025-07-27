@@ -10,9 +10,13 @@ import (
 	"osdrv/liss/vm"
 )
 
+type Options struct {
+	Debug bool
+}
+
 const Prompt = "liss> "
 
-func Run(in io.Reader, out io.Writer) {
+func Run(in io.Reader, out io.Writer, opts Options) {
 	scanner := bufio.NewScanner(in)
 
 	for {
@@ -42,6 +46,11 @@ func Run(in io.Reader, out io.Writer) {
 			fmt.Fprintf(out, "Failed to run program: %s\n", err)
 			continue
 		}
+
+		if opts.Debug {
+			fmt.Printf("VM stack: %s\n", vm.PrintStack())
+		}
+
 		st := vm.LastPopped()
 		io.WriteString(out, st.String())
 		io.WriteString(out, "\n")
