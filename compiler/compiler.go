@@ -47,7 +47,8 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		if _, ok := ManagerTypes[reflect.TypeOf(n.Operands[0])]; ok {
 			// The first operand is an owner type. Compile it last. It will manage
 			// the stack.
-			for i := 1; i < len(n.Operands); i++ {
+			// Reverse the order of the operands so that the first one is compiled last.
+			for i := len(n.Operands) - 1; i > 0; i-- {
 				// The first operand is responsible for managing the stack.
 				if err := c.compileStep(n.Operands[i], NOARGC, true); err != nil {
 					return err

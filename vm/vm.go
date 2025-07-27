@@ -79,8 +79,8 @@ func (vm *VM) Run() error {
 				return errors.New("invalid type for addition")
 			}
 		case code.OpSub:
-			b := vm.pop()
 			a := vm.pop()
+			b := vm.pop()
 			res := int64(a.(*object.Integer).Value) - int64(b.(*object.Integer).Value)
 			vm.push(object.NewInteger(res))
 		case code.OpMul:
@@ -92,8 +92,8 @@ func (vm *VM) Run() error {
 			}
 			vm.push(object.NewInteger(product))
 		case code.OpDiv:
-			b := vm.pop()
 			a := vm.pop()
+			b := vm.pop()
 			if b.(*object.Integer).Value == 0 {
 				return errors.New("division by zero")
 			}

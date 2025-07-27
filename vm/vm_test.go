@@ -44,6 +44,11 @@ func TestRun(t *testing.T) {
 			want:  float64(4.0),
 		},
 		{
+			name:  "string concatenation",
+			input: `(+ "Hello" ", " "world!")`,
+			want:  "Hello, world!",
+		},
+		{
 			name:  "basic arithmetic: integer subtraction",
 			input: "(- 5 2)",
 			want:  int64(3),
@@ -92,6 +97,10 @@ func assertObjectEql(t *testing.T, got object.Object, want any) {
 	switch obj := got.(type) {
 	case *object.Integer:
 		assert.Equal(t, want, obj.Value, "Expected integer value %v, got %v", want, obj.Value)
+	case *object.Float:
+		assert.Equal(t, want, obj.Value, "Expected float value %v, got %v", want, obj.Value)
+	case *object.String:
+		assert.Equal(t, want, obj.Value, "Expected string value %v, got %v", want, obj.Value)
 	default:
 		t.Logf("Unimplemented object type: %d", obj.Type())
 	}
