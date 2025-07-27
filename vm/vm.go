@@ -145,6 +145,13 @@ func (vm *VM) Run() error {
 				return err
 			}
 			vm.push(object.NewBool(cmp))
+		case code.OpNot:
+			a := vm.pop()
+			if a.Type() != object.BoolType {
+				return NewTypeMismatchError(
+					fmt.Sprintf("expected boolean type, got %s", a.Type().String()))
+			}
+			vm.push(object.NewBool(!a.(*object.Bool).Value))
 		case code.OpTrue:
 			vm.push(True)
 		case code.OpFalse:

@@ -148,6 +148,21 @@ func TestRun(t *testing.T) {
 			input:   "(!= 42 true)",
 			wantErr: NewTypeMismatchError("Integer Vs Bool"),
 		},
+		{
+			name:  "not: negate true",
+			input: "(not true)",
+			want:  false,
+		},
+		{
+			name:  "not: negate false",
+			input: "(not false)",
+			want:  true,
+		},
+		{
+			name:    "not: negate with type mismatch",
+			input:   "(not 42)",
+			wantErr: NewTypeMismatchError("expected boolean type, got Integer"),
+		},
 	}
 
 	for _, tt := range tests {
