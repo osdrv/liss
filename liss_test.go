@@ -1,6 +1,7 @@
 package main
 
 import (
+	"osdrv/liss/repl"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -255,7 +256,7 @@ func TestExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := Execute(tt.source)
+			res, err := Execute(tt.source, repl.Options{})
 			if err != nil || tt.wantErr != nil {
 				if tt.wantErr != nil {
 					assert.ErrorContains(t, err, tt.wantErr.Error())

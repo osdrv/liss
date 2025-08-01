@@ -193,6 +193,86 @@ func TestRun(t *testing.T) {
 			input:   "(< false true)",
 			wantErr: NewUnsupportedOpTypeError("unsupported operation OpLessThan for type Bool"),
 		},
+		{
+			name:  "less with mixed types: int and float",
+			input: "(< 1 1.5)",
+			want:  true,
+		},
+		{
+			name:  "less or equal with int operands",
+			input: "(<= 1 1)",
+			want:  true,
+		},
+		{
+			name:  "less or equal with float operands",
+			input: "(<= 1.5 1.5)",
+			want:  true,
+		},
+		{
+			name:  "less or equal with string operands",
+			input: `(<="apple" "banana")`,
+			want:  true,
+		},
+		{
+			name:    "less or equal with bool operands",
+			input:   "(<= false true)",
+			wantErr: NewUnsupportedOpTypeError("unsupported operation OpLessEqual for type Bool"),
+		},
+		{
+			name:  "less or equal with mixed types: int and float",
+			input: "(<= 1 1.5)",
+			want:  true,
+		},
+		{
+			name:  "greather with int operands",
+			input: "(> 2 1)",
+			want:  true,
+		},
+		{
+			name:  "greater with float operands",
+			input: "(> 2.5 1.5)",
+			want:  true,
+		},
+		{
+			name:  "greater with string operands",
+			input: `(> "banana" "apple")`,
+			want:  true,
+		},
+		{
+			name:    "greater with bool operands",
+			input:   "(> true false)",
+			wantErr: NewUnsupportedOpTypeError("unsupported operation OpGreaterThan for type Bool"),
+		},
+		{
+			name:  "greater with mixed types: int and float",
+			input: "(> 1.5 1)",
+			want:  true,
+		},
+		{
+			name:  "greater or equal with int operands",
+			input: "(>= 2 2)",
+			want:  true,
+		},
+		{
+			name:  "greater or equal with float operands",
+			input: "(>= 2.5 2.5)",
+			want:  true,
+		},
+		{
+			name:  "greater or equal with string operands",
+			input: `(>="banana" "apple")`,
+			want:  true,
+		},
+		{
+			name:    "greater or equal with bool operands",
+			input:   "(>= true false)",
+			wantErr: NewUnsupportedOpTypeError("unsupported operation OpGreaterEqual for type Bool"),
+		},
+		{
+			name:  "greater or equal with mixed types: int and float",
+			input: "(>= 1.5 1)",
+			want:  true,
+		},
 	}
 
 	for _, tt := range tests {

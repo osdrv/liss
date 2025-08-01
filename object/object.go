@@ -37,6 +37,13 @@ type Object interface {
 	Type() ObjectType
 	String() string
 	IsNumeric() bool
+	IsNull() bool
+}
+
+type nonNull struct{}
+
+func (n *nonNull) IsNull() bool {
+	return false
 }
 
 type Numeric interface {
@@ -58,6 +65,7 @@ func (n *nonNumeric) IsNumeric() bool {
 
 type Integer struct {
 	numeric
+	nonNull
 	Value int64
 }
 
@@ -86,6 +94,7 @@ func (i *Integer) Float64() float64 {
 
 type Float struct {
 	numeric
+	nonNull
 	Value float64
 }
 
@@ -114,6 +123,7 @@ func (f *Float) Float64() float64 {
 
 type Bool struct {
 	nonNumeric
+	nonNull
 	Value bool
 }
 
@@ -133,6 +143,7 @@ func (b *Bool) String() string {
 
 type String struct {
 	nonNumeric
+	nonNull
 	Value string
 }
 
@@ -148,4 +159,26 @@ func (s *String) Type() ObjectType {
 
 func (s *String) String() string {
 	return s.Value
+}
+
+type Null struct {
+	nonNumeric
+}
+
+var _ Object = (*Null)(nil)
+
+func NewNull() *Null {
+	return &Null{}
+}
+
+func (n *Null) Type() ObjectType {
+	return NullType
+}
+
+func (n *Null) String() string {
+	return "null"
+}
+
+func (n *Null) IsNull() bool {
+	return true
 }
