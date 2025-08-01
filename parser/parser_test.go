@@ -177,28 +177,24 @@ func TestParse(t *testing.T) {
 			name:  "Cond expression with condition and true branch",
 			input: "(cond true 123)",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{
-						&ast.IfExpression{
-							Token: token.Token{
-								Type:    token.Cond,
-								Literal: "cond",
-							},
-							Cond: &ast.BooleanLiteral{
-								Token: token.Token{
-									Type:    token.True,
-									Literal: "true",
-								},
-								Value: true,
-							},
-							Then: &ast.IntegerLiteral{
-								Token: token.Token{
-									Type:    token.Numeric,
-									Literal: "123",
-								},
-								Value: int64(123),
-							},
+				&ast.CondExpression{
+					Token: token.Token{
+						Type:    token.Cond,
+						Literal: "cond",
+					},
+					Cond: &ast.BooleanLiteral{
+						Token: token.Token{
+							Type:    token.True,
+							Literal: "true",
 						},
+						Value: true,
+					},
+					Then: &ast.IntegerLiteral{
+						Token: token.Token{
+							Type:    token.Numeric,
+							Literal: "123",
+						},
+						Value: int64(123),
 					},
 				},
 			},
@@ -207,35 +203,31 @@ func TestParse(t *testing.T) {
 			name:  "Cond expression with condition and true/else branches",
 			input: "(cond true 123 456)",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{
-						&ast.IfExpression{
-							Token: token.Token{
-								Type:    token.Cond,
-								Literal: "cond",
-							},
-							Cond: &ast.BooleanLiteral{
-								Token: token.Token{
-									Type:    token.True,
-									Literal: "true",
-								},
-								Value: true,
-							},
-							Then: &ast.IntegerLiteral{
-								Token: token.Token{
-									Type:    token.Numeric,
-									Literal: "123",
-								},
-								Value: int64(123),
-							},
-							Else: &ast.IntegerLiteral{
-								Token: token.Token{
-									Type:    token.Numeric,
-									Literal: "456",
-								},
-								Value: int64(456),
-							},
+				&ast.CondExpression{
+					Token: token.Token{
+						Type:    token.Cond,
+						Literal: "cond",
+					},
+					Cond: &ast.BooleanLiteral{
+						Token: token.Token{
+							Type:    token.True,
+							Literal: "true",
 						},
+						Value: true,
+					},
+					Then: &ast.IntegerLiteral{
+						Token: token.Token{
+							Type:    token.Numeric,
+							Literal: "123",
+						},
+						Value: int64(123),
+					},
+					Else: &ast.IntegerLiteral{
+						Token: token.Token{
+							Type:    token.Numeric,
+							Literal: "456",
+						},
+						Value: int64(456),
 					},
 				},
 			},
@@ -249,21 +241,44 @@ func TestParse(t *testing.T) {
 			name:  "Function expression with a name and args",
 			input: "(fn add [a b] (+ a b))",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{
-						&ast.FunctionExpression{
+				&ast.FunctionExpression{
+					Token: token.Token{
+						Type:    token.Fn,
+						Literal: "fn",
+					},
+					Name: &ast.IdentifierExpr{
+						Token: token.Token{
+							Type:    token.Identifier,
+							Literal: "add",
+						},
+						Name: "add",
+					},
+					Args: []*ast.IdentifierExpr{
+						&ast.IdentifierExpr{
 							Token: token.Token{
-								Type:    token.Fn,
-								Literal: "fn",
+								Type:    token.Identifier,
+								Literal: "a",
 							},
-							Name: &ast.IdentifierExpr{
-								Token: token.Token{
-									Type:    token.Identifier,
-									Literal: "add",
+							Name: "a",
+						},
+						&ast.IdentifierExpr{
+							Token: token.Token{
+								Type:    token.Identifier,
+								Literal: "b",
+							},
+							Name: "b",
+						},
+					},
+					Body: []ast.Node{
+						&ast.Expression{
+							Operands: []ast.Node{
+								&ast.OperatorExpr{
+									Token: token.Token{
+										Type:    token.Plus,
+										Literal: "+",
+									},
+									Operator: ast.OperatorPlus,
 								},
-								Name: "add",
-							},
-							Args: []*ast.IdentifierExpr{
 								&ast.IdentifierExpr{
 									Token: token.Token{
 										Type:    token.Identifier,
@@ -277,33 +292,6 @@ func TestParse(t *testing.T) {
 										Literal: "b",
 									},
 									Name: "b",
-								},
-							},
-							Body: []ast.Node{
-								&ast.Expression{
-									Operands: []ast.Node{
-										&ast.OperatorExpr{
-											Token: token.Token{
-												Type:    token.Plus,
-												Literal: "+",
-											},
-											Operator: ast.OperatorPlus,
-										},
-										&ast.IdentifierExpr{
-											Token: token.Token{
-												Type:    token.Identifier,
-												Literal: "a",
-											},
-											Name: "a",
-										},
-										&ast.IdentifierExpr{
-											Token: token.Token{
-												Type:    token.Identifier,
-												Literal: "b",
-											},
-											Name: "b",
-										},
-									},
 								},
 							},
 						},

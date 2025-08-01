@@ -30,6 +30,15 @@ func TestCompile(t *testing.T) {
 			},
 		},
 		{
+			name:       "null",
+			input:      "null",
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpNull),
+				code.Make(code.OpPop),
+			},
+		},
+		{
 			name:       "multiple atoms",
 			input:      "1 2 3 4 5",
 			wantConsts: []any{int64(1), int64(2), int64(3), int64(4), int64(5)},
@@ -260,6 +269,59 @@ func TestComparison(t *testing.T) {
 			bc := c.Bytecode()
 			assertInstrs(t, tt.wantInstrs, bc.Instrs)
 			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
+}
+
+func TestCond(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantInstrs []code.Instructions
+		wantErr    error
+	}{
+		{
+			name:  "cond with then condition",
+			input: `(cond true 123)`,
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpJumpIfFalse, 11),
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpJump, 13),
+				code.Make(code.OpNull),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:  "cond with an else branch",
+			input: `(cond true 123 456)`,
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpJumpIfFalse, 11),
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpJump, 15),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpPop),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New()
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
 		})
 	}
 }

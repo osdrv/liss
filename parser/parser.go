@@ -105,12 +105,9 @@ func (p *Parser) parseNode() (ast.Node, error) {
 		node, err = p.parseOperatorExpression()
 	case token.LParen:
 		node, err = p.parseExpression()
-	case token.Cond:
-		node, err = p.parseCondExpression()
 	case token.Let:
+		// TODO: move to parseExpression()
 		node, err = p.parseLetExpression()
-	case token.Fn:
-		node, err = p.parseFunctionExpression()
 	default:
 		return nil, fmt.Errorf("unexpected token type: %s", p.curToken.Type.String())
 	}
@@ -181,6 +178,7 @@ func (p *Parser) parseLetExpression() (ast.Node, error) {
 }
 
 func (p *Parser) parseCondExpression() (ast.Node, error) {
+	tok := p.curToken
 	if err := p.consume(token.Cond); err != nil {
 		return nil, err
 	}
@@ -198,34 +196,48 @@ func (p *Parser) parseCondExpression() (ast.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		if p.curToken.Type != token.RParen {
-			return nil, fmt.Errorf("too many operands for cond expression")
-		}
 	}
-	return ast.NewIfExpression(p.curToken, cond, th, el)
+	if p.curToken.Type != token.RParen {
+		return nil, fmt.Errorf("too many operands for cond expression")
+	}
+	return ast.NewCondExpression(tok, cond, th, el)
 }
 
 func (p *Parser) parseExpression() (ast.Node, error) {
 	if err := p.consume(token.LParen); err != nil {
 		return nil, err
 	}
-	nodes := make([]ast.Node, 0, 1)
-	for !p.isEOF {
-		if p.curToken.Type == token.RParen {
-			break
+
+	var node ast.Node
+	var err error
+
+	switch p.curToken.Type {
+	case token.Cond:
+		node, err = p.parseCondExpression()
+	case token.Fn:
+		node, err = p.parseFunctionExpression()
+	default:
+		nodes := make([]ast.Node, 0, 1)
+		for !p.isEOF {
+			if p.curToken.Type == token.RParen {
+				break
+			}
+			node, err := p.parseNode()
+			if err != nil {
+				return nil, err
+			}
+			nodes = append(nodes, node)
 		}
-		node, err := p.parseNode()
-		if err != nil {
-			return nil, err
-		}
-		nodes = append(nodes, node)
+		node = ast.NewExpression(nodes)
+	}
+
+	if err != nil {
+		return nil, err
 	}
 	if err := p.consume(token.RParen); err != nil {
 		return nil, err
 	}
-
-	node := ast.NewExpression(nodes)
-	return node, nil
+	return node, err
 }
 
 func (p *Parser) parseStringLiteral() (ast.Node, error) {

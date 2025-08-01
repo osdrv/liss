@@ -138,6 +138,34 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		if !managed {
 			c.emit(code.OpPop)
 		}
+	case *ast.NullLiteral:
+		c.emit(code.OpNull)
+		if !managed {
+			c.emit(code.OpPop)
+		}
+	case *ast.CondExpression:
+		if err := c.compileStep(n.Cond, NOARGC, true); err != nil {
+			return err
+		}
+		jmp1 := c.emit(code.OpJumpIfFalse, 9999)
+		if err := c.compileStep(n.Then, NOARGC, managed); err != nil {
+			return err
+		}
+		jmp2 := c.emit(code.OpJump, 9999)
+		jmpTo := len(c.instrs)
+		c.updateArgs(jmp1, jmpTo)
+		if n.Else != nil {
+			if err := c.compileStep(n.Else, NOARGC, managed); err != nil {
+				return err
+			}
+		} else {
+			c.emit(code.OpNull)
+			if !managed {
+				c.emit(code.OpPop)
+			}
+		}
+		jmpTo = len(c.instrs)
+		c.updateArgs(jmp2, jmpTo)
 	}
 
 	return nil
@@ -172,6 +200,11 @@ func (c *Compiler) emit(op code.OpCode, operands ...int) int {
 	instr := code.Make(op, operands...)
 	off := c.addInstr(instr)
 	return off
+}
+
+func (c *Compiler) updateArgs(ip int, operands ...int) {
+	upd := code.Make(c.instrs[ip], operands...)
+	copy(c.instrs[ip:], upd)
 }
 
 type Bytecode struct {

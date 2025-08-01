@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/lexer"
 	"osdrv/liss/parser"
@@ -41,8 +42,12 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 			continue
 		}
 		vm := vm.New(comp.Bytecode())
+
+		if opts.Debug {
+			fmt.Printf("VM instructions:\n%s\n", code.PrintInstr(comp.Bytecode().Instrs))
+		}
+
 		if err := vm.Run(); err != nil {
-			fmt.Printf("Failed to run program: %s\n", err)
 			fmt.Fprintf(out, "Failed to run program: %s\n", err)
 			continue
 		}

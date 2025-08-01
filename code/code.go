@@ -14,6 +14,7 @@ const (
 	OpConst OpCode = iota
 	OpTrue
 	OpFalse
+	OpNull
 
 	OpAdd
 	OpSub
@@ -29,6 +30,8 @@ const (
 	OpNot
 
 	OpPop
+	OpJump
+	OpJumpIfFalse
 )
 
 type Definition struct {
@@ -40,6 +43,7 @@ var definitions = map[OpCode]*Definition{
 	OpConst: {"OpConst", []int{2}},
 	OpTrue:  {"OpTrue", []int{}},
 	OpFalse: {"OpFalse", []int{}},
+	OpNull:  {"OpNull", []int{}},
 
 	OpAdd: {"OpAdd", []int{2}},
 	OpSub: {"OpSub", []int{}},
@@ -54,7 +58,9 @@ var definitions = map[OpCode]*Definition{
 	OpLessEqual:    {"OpLessEqual", []int{}},
 	OpNot:          {"OpNot", []int{}},
 
-	OpPop: {"OpPop", []int{}},
+	OpPop:         {"OpPop", []int{}},
+	OpJump:        {"OpJump", []int{2}},
+	OpJumpIfFalse: {"OpJumpIfFalse", []int{2}},
 }
 
 func Lookup(op OpCode) (*Definition, error) {

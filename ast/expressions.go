@@ -84,17 +84,17 @@ func (e *OperatorExpr) String() string {
 
 func (e *OperatorExpr) expressionNode() {}
 
-type IfExpression struct {
+type CondExpression struct {
 	Token token.Token
 	Cond  Node
 	Then  Node
 	Else  Node
 }
 
-var _ Node = (*IfExpression)(nil)
+var _ Node = (*CondExpression)(nil)
 
-func NewIfExpression(tok token.Token, cond Node, th Node, el Node) (*IfExpression, error) {
-	return &IfExpression{
+func NewCondExpression(tok token.Token, cond Node, th Node, el Node) (*CondExpression, error) {
+	return &CondExpression{
 		Cond:  cond,
 		Token: tok,
 		Then:  th,
@@ -102,10 +102,10 @@ func NewIfExpression(tok token.Token, cond Node, th Node, el Node) (*IfExpressio
 	}, nil
 }
 
-func (e *IfExpression) String() string {
+func (e *CondExpression) String() string {
 	var b bytes.Buffer
 
-	b.WriteString("if ")
+	b.WriteString("cond ")
 	b.WriteString(e.Then.String())
 	if e.Else != nil {
 		b.WriteString(" ")
@@ -115,7 +115,7 @@ func (e *IfExpression) String() string {
 	return b.String()
 }
 
-func (e *IfExpression) expressionNode() {}
+func (e *CondExpression) expressionNode() {}
 
 type LetExpression struct {
 	Token      token.Token
