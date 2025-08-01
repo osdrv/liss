@@ -55,7 +55,7 @@ const (
 	True
 	False
 	Null
-	If
+	Cond
 	Let
 )
 
@@ -89,7 +89,7 @@ var (
 		True:  "true",
 		False: "false",
 		Null:  "null",
-		If:    "if",
+		Cond:  "cond",
 		Let:   "let",
 	}
 )
@@ -100,7 +100,7 @@ var (
 		"true":  True,
 		"false": False,
 		"null":  Null,
-		"if":    If,
+		"cond":  Cond,
 		"let":   Let,
 		"and":   And,
 		"or":    Or,

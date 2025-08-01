@@ -105,8 +105,8 @@ func (p *Parser) parseNode() (ast.Node, error) {
 		node, err = p.parseOperatorExpression()
 	case token.LParen:
 		node, err = p.parseExpression()
-	case token.If:
-		node, err = p.parseIfExpression()
+	case token.Cond:
+		node, err = p.parseCondExpression()
 	case token.Let:
 		node, err = p.parseLetExpression()
 	case token.Fn:
@@ -180,8 +180,8 @@ func (p *Parser) parseLetExpression() (ast.Node, error) {
 	return ast.NewLetExpression(tok, id.(*ast.IdentifierExpr), val)
 }
 
-func (p *Parser) parseIfExpression() (ast.Node, error) {
-	if err := p.consume(token.If); err != nil {
+func (p *Parser) parseCondExpression() (ast.Node, error) {
+	if err := p.consume(token.Cond); err != nil {
 		return nil, err
 	}
 	cond, err := p.parseNode()
@@ -199,7 +199,7 @@ func (p *Parser) parseIfExpression() (ast.Node, error) {
 			return nil, err
 		}
 		if p.curToken.Type != token.RParen {
-			return nil, fmt.Errorf("too many operands for if expression")
+			return nil, fmt.Errorf("too many operands for cond expression")
 		}
 	}
 	return ast.NewIfExpression(p.curToken, cond, th, el)

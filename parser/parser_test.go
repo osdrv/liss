@@ -26,126 +26,98 @@ func TestParse(t *testing.T) {
 			name:  "Single null literal",
 			input: "null",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.NullLiteral{}},
-				},
+				&ast.NullLiteral{},
 			},
 		},
 		{
 			name:  "Single true boolean literal",
 			input: "true",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.BooleanLiteral{Value: true}},
-				},
+				&ast.BooleanLiteral{Value: true},
 			},
 		},
 		{
 			name:  "Single false boolean literal",
 			input: "false",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.BooleanLiteral{Value: false}},
-				},
+				&ast.BooleanLiteral{Value: false},
 			},
 		},
 		{
 			name:  "Single integer literal",
 			input: "42",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.IntegerLiteral{Value: 42}},
-				},
+				&ast.IntegerLiteral{Value: 42},
 			},
 		},
 		{
 			name:  "Single signed negative integer literal",
 			input: "-42",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.IntegerLiteral{Value: -42}},
-				},
+				&ast.IntegerLiteral{Value: -42},
 			},
 		},
 		{
 			name:  "Single signed positive integer literal",
 			input: "+42",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.IntegerLiteral{Value: 42}},
-				},
+				&ast.IntegerLiteral{Value: 42},
 			},
 		},
 		{
 			name:  "Single float literal",
 			input: "3.14",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.FloatLiteral{Value: 3.14}},
-				},
+				&ast.FloatLiteral{Value: 3.14},
 			},
 		},
 		{
 			name:  "Single signed negative float literal",
 			input: "-3.14",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.FloatLiteral{Value: -3.14}},
-				},
+				&ast.FloatLiteral{Value: -3.14},
 			},
 		},
 		{
 			name:  "Single signed positive float literal",
 			input: "+3.14",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.FloatLiteral{Value: 3.14}},
-				},
+				&ast.FloatLiteral{Value: 3.14},
 			},
 		},
 		{
 			name:  "Single float literal with scientific notation",
 			input: "1.23e+04",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.FloatLiteral{Value: 12300.0}},
-				},
+				&ast.FloatLiteral{Value: 12300.0},
 			},
 		},
 		{
 			name:  "Single string literal single quotes",
 			input: `'hello world'`,
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.StringLiteral{Value: "hello world"}},
-				},
+				&ast.StringLiteral{Value: "hello world"},
 			},
 		},
 		{
 			name:  "Single string literal double quotes",
 			input: `"hello world"`,
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.StringLiteral{Value: "hello world"}},
-				},
+				&ast.StringLiteral{Value: "hello world"},
 			},
 		},
 		{
 			name:  "Single string literal with escaped quotes",
 			input: `"hello \"world\""`,
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.StringLiteral{Value: `hello "world"`}},
-				},
+				&ast.StringLiteral{Value: `hello "world"`},
 			},
 		},
 		{
 			name:  "Single string literal with unicode",
 			input: `"おはよう"`,
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.StringLiteral{Value: "おはよう"}},
-				},
+				&ast.StringLiteral{Value: "おはよう"},
 			},
 		},
 		// TODO: Uncomment when unicode escape sequences are supported
@@ -160,18 +132,14 @@ func TestParse(t *testing.T) {
 			name:  "Single string literal with newline",
 			input: `"hello\nworld"`,
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.StringLiteral{Value: "hello\nworld"}},
-				},
+				&ast.StringLiteral{Value: "hello\nworld"},
 			},
 		},
 		{
 			name:  "Identifier expression",
 			input: "myVar",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{&ast.IdentifierExpr{Name: "myVar"}},
-				},
+				&ast.IdentifierExpr{Name: "myVar"},
 			},
 		},
 		{
@@ -206,15 +174,15 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name:  "If expression with condition and true branch",
-			input: "(if true 123)",
+			name:  "Cond expression with condition and true branch",
+			input: "(cond true 123)",
 			want: []ast.Node{
 				&ast.Expression{
 					Operands: []ast.Node{
 						&ast.IfExpression{
 							Token: token.Token{
-								Type:    token.If,
-								Literal: "if",
+								Type:    token.Cond,
+								Literal: "cond",
 							},
 							Cond: &ast.BooleanLiteral{
 								Token: token.Token{
@@ -236,15 +204,15 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name:  "If expression with condition and true/else branches",
-			input: "(if true 123 456)",
+			name:  "Cond expression with condition and true/else branches",
+			input: "(cond true 123 456)",
 			want: []ast.Node{
 				&ast.Expression{
 					Operands: []ast.Node{
 						&ast.IfExpression{
 							Token: token.Token{
-								Type:    token.If,
-								Literal: "if",
+								Type:    token.Cond,
+								Literal: "cond",
 							},
 							Cond: &ast.BooleanLiteral{
 								Token: token.Token{
@@ -273,9 +241,9 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name:    "If expression with too many operands",
-			input:   "(if true 123 456 789)",
-			wantErr: errors.New("too many operands for if expression"),
+			name:    "Cond expression with too many operands",
+			input:   "(cond true 123 456 789)",
+			wantErr: errors.New("too many operands for cond expression"),
 		},
 		{
 			name:  "Function expression with a name and args",

@@ -433,7 +433,7 @@ func TestNextToken(t *testing.T) {
 		},
 		{
 			name:  "Keywords",
-			input: "fn true false null if let and or not",
+			input: "fn true false null cond let and or not",
 			match: TokenTypeMatch | TokenLiteralMatch,
 			want: []token.Token{
 				{
@@ -453,8 +453,8 @@ func TestNextToken(t *testing.T) {
 					Literal: "null",
 				},
 				{
-					Type:    token.If,
-					Literal: "if",
+					Type:    token.Cond,
+					Literal: "cond",
 				},
 				{
 					Type:    token.Let,
