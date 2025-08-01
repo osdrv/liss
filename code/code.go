@@ -125,6 +125,13 @@ func PrintInstr(instr Instructions) string {
 	return b.String()
 }
 
+func PrintOpCode(op OpCode) string {
+	if def, ok := definitions[op]; ok {
+		return def.Name
+	}
+	return fmt.Sprintf("UNKNOWN(%d)", op)
+}
+
 func fmtInstr(def *Definition, ops []int) string {
 	opscnt := len(def.OperandWidths)
 	if len(ops) != opscnt {

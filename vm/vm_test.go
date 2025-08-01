@@ -159,9 +159,39 @@ func TestRun(t *testing.T) {
 			want:  true,
 		},
 		{
+			name:  "not: negate true with bang symbol",
+			input: "(! true)",
+			want:  false,
+		},
+		{
+			name:  "not: negate false with bang symbol",
+			input: "(! false)",
+			want:  true,
+		},
+		{
 			name:    "not: negate with type mismatch",
 			input:   "(not 42)",
 			wantErr: NewTypeMismatchError("expected boolean type, got Integer"),
+		},
+		{
+			name:  "less with int operands",
+			input: "(< 1 2)",
+			want:  true,
+		},
+		{
+			name:  "less with float operands",
+			input: "(< 1.5 2.5)",
+			want:  true,
+		},
+		{
+			name:  "less with string operands",
+			input: `(< "apple" "banana")`,
+			want:  true,
+		},
+		{
+			name:    "less with bool operands",
+			input:   "(< false true)",
+			wantErr: NewUnsupportedOpTypeError("unsupported operation OpLessThan for type Bool"),
 		},
 	}
 

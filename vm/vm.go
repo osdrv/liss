@@ -215,36 +215,40 @@ func compare(a, b object.Object, cmp code.OpCode) (bool, error) {
 		return false, NewTypeMismatchError(
 			fmt.Sprintf("%s Vs %s", ac.Type().String(), bc.Type().String()))
 	}
-	switch cmp {
-	case code.OpEql:
-		switch ac.Type() {
-		case object.IntegerType:
-			return ac.(*object.Integer).Value == bc.(*object.Integer).Value, nil
-		case object.FloatType:
-			return ac.(*object.Float).Value == bc.(*object.Float).Value, nil
-		case object.StringType:
-			return ac.(*object.String).Value == bc.(*object.String).Value, nil
-		case object.BoolType:
-			return ac.(*object.Bool).Value == bc.(*object.Bool).Value, nil
-		default:
-			return false, NewUnsupportedOpTypeError("invalid type for equality comparison")
+
+	switch ac.Type() {
+	case object.IntegerType:
+		cmpfn, ok := m_int64[cmp]
+		if !ok {
+			return false, NewUnsupportedOpTypeError(
+				fmt.Sprintf("unsupported operation %s for type %s", code.PrintOpCode(cmp), ac.Type().String()))
 		}
-	case code.OpNotEql:
-		switch ac.Type() {
-		case object.IntegerType:
-			return ac.(*object.Integer).Value != bc.(*object.Integer).Value, nil
-		case object.FloatType:
-			return ac.(*object.Float).Value != bc.(*object.Float).Value, nil
-		case object.StringType:
-			return ac.(*object.String).Value != bc.(*object.String).Value, nil
-		case object.BoolType:
-			return ac.(*object.Bool).Value != bc.(*object.Bool).Value, nil
-		default:
-			return false, NewUnsupportedOpTypeError("invalid type for inequality comparison")
+		return cmpfn(ac.(*object.Integer).Int64(), bc.(*object.Integer).Int64()), nil
+	case object.FloatType:
+		cmpfn, ok := m_float64[cmp]
+		if !ok {
+			return false, NewUnsupportedOpTypeError(
+				fmt.Sprintf("unsupported operation %v for type %s", code.PrintOpCode(cmp), ac.Type().String()))
 		}
+		return cmpfn(ac.(*object.Float).Float64(), bc.(*object.Float).Float64()), nil
+	case object.StringType:
+		cmpfn, ok := m_string[cmp]
+		if !ok {
+			return false, NewUnsupportedOpTypeError(
+				fmt.Sprintf("unsupported operation %v for type %s", code.PrintOpCode(cmp), ac.Type().String()))
+		}
+		return cmpfn(ac.(*object.String).Value, bc.(*object.String).Value), nil
+	case object.BoolType:
+		cmpfn, ok := m_bool[cmp]
+		if !ok {
+			return false, NewUnsupportedOpTypeError(
+				fmt.Sprintf("unsupported operation %v for type %s", code.PrintOpCode(cmp), ac.Type().String()))
+		}
+		return cmpfn(ac.(*object.Bool).Value, bc.(*object.Bool).Value), nil
+	default:
+		return false, NewUnsupportedOpTypeError(
+			fmt.Sprintf("unsupported type %s for comparison", ac.Type().String()))
 	}
-	return false, NewUnsupportedOpTypeError(
-		fmt.Sprintf("unsupported operation %v for types %s and %s", cmp, ac.Type().String(), bc.Type().String()))
 }
 
 func castTypes(a, b object.Object, cmp code.OpCode) (object.Object, object.Object) {
