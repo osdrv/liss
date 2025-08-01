@@ -161,6 +161,16 @@ func (vm *VM) Run() error {
 			vm.push(Null)
 		case code.OpPop:
 			vm.pop()
+		case code.OpJump:
+			pos := code.ReadUint16(vm.instrs[ip+1:])
+			ip = int(pos) - 1
+		case code.OpJumpIfFalse:
+			pos := code.ReadUint16(vm.instrs[ip+1:])
+			ip += 2
+			cond := vm.pop()
+			if cond.IsNull() || (cond.Type() == object.BoolType && !cond.(*object.Bool).Value) {
+				ip = int(pos) - 1 // -1 because we will increment ip at the end of the loop
+			}
 		default:
 			return fmt.Errorf("unknown opcode %s at position %d", code.PrintOpCode(op), ip)
 		}

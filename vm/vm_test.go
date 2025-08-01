@@ -273,6 +273,26 @@ func TestRun(t *testing.T) {
 			input: "(>= 1.5 1)",
 			want:  true,
 		},
+		{
+			name:  "conditional with matching then branch and undefined else branch",
+			input: `(cond true 123)`,
+			want:  int64(123),
+		},
+		{
+			name:  "conditional with non-matching then branch",
+			input: `(cond false 123)`,
+			want:  nil,
+		},
+		{
+			name:  "conditional with matching else branch",
+			input: `(cond false 123 456)`,
+			want:  int64(456),
+		},
+		{
+			name:  "conditional with no matching then and defined else branch",
+			input: `(cond true 123 456)`,
+			want:  int64(123),
+		},
 	}
 
 	for _, tt := range tests {
@@ -298,7 +318,7 @@ func TestRun(t *testing.T) {
 }
 
 func assertObjectEql(t *testing.T, got object.Object, want any) {
-	if got == nil || want == nil {
+	if got == nil {
 		assert.Equal(t, want, got, "Expected object to be %v, got %v", want, got)
 		return
 	}
@@ -309,6 +329,8 @@ func assertObjectEql(t *testing.T, got object.Object, want any) {
 		assert.Equal(t, want, obj.Value, "Expected float value %v, got %v", want, obj.Value)
 	case *object.String:
 		assert.Equal(t, want, obj.Value, "Expected string value %v, got %v", want, obj.Value)
+	case *object.Null:
+		assert.Equal(t, want, nil, "Expected null object, got %v", obj)
 	default:
 		t.Logf("Unimplemented object type: %d", obj.Type())
 	}
