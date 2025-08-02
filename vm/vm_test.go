@@ -119,6 +119,21 @@ func TestRun(t *testing.T) {
 			want:  false,
 		},
 		{
+			name:  "comparison null vs string",
+			input: `(= null "hello")`,
+			want:  false,
+		},
+		{
+			name:  "comparison null vs bool",
+			input: "(= null true)",
+			want:  false,
+		},
+		{
+			name:  "comparison null vs null",
+			input: "(= null null)",
+			want:  true,
+		},
+		{
 			name:    "comparison with incompatible types",
 			input:   "(= 42 true)",
 			wantErr: NewTypeMismatchError("Integer Vs Bool"),
@@ -154,6 +169,26 @@ func TestRun(t *testing.T) {
 			wantErr: NewTypeMismatchError("Integer Vs Bool"),
 		},
 		{
+			name:  "comparison: unequal null vs int",
+			input: "(!= null 42)",
+			want:  true,
+		},
+		{
+			name:  "comparison: unequal null vs string",
+			input: `(!= null "hello")`,
+			want:  true,
+		},
+		{
+			name:  "comparison: unequal null vs bool",
+			input: "(!= null true)",
+			want:  true,
+		},
+		{
+			name:  "comparison: unequal null vs null",
+			input: "(!= null null)",
+			want:  false,
+		},
+		{
 			name:  "not: negate true",
 			input: "(not true)",
 			want:  false,
@@ -172,6 +207,11 @@ func TestRun(t *testing.T) {
 			name:  "not: negate false with bang symbol",
 			input: "(! false)",
 			want:  true,
+		},
+		{
+			name:    "not: negate a null",
+			input:   "(! null)",
+			wantErr: NewTypeMismatchError("expected boolean type, got Null"),
 		},
 		{
 			name:    "not: negate with type mismatch",
