@@ -338,6 +338,21 @@ func TestRun(t *testing.T) {
 			input: `(cond true 123 456)`,
 			want:  int64(123),
 		},
+		{
+			name:  "let expression",
+			input: `(let x 42)`,
+			want:  int64(42),
+		},
+		{
+			name:  "let expression with a resolve",
+			input: `(let x 42) x`,
+			want:  int64(42),
+		},
+		{
+			name:  "let expression with a nested reference",
+			input: `(let y (let x 42))`,
+			want:  int64(42),
+		},
 	}
 
 	for _, tt := range tests {

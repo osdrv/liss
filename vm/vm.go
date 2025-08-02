@@ -10,6 +10,7 @@ import (
 )
 
 const StackSize = 2048
+const GlobalsSize = 65536
 
 var ErrStackOverflow = errors.New("stack overflow")
 
@@ -21,17 +22,25 @@ type VM struct {
 	consts []object.Object
 	instrs code.Instructions
 
-	stack []object.Object
-	pc    int // program counter
+	stack   []object.Object
+	globals []object.Object
+	pc      int // program counter
 }
 
 func New(bc *compiler.Bytecode) *VM {
 	return &VM{
-		consts: bc.Consts,
-		instrs: bc.Instrs,
-		stack:  make([]object.Object, StackSize),
-		pc:     0,
+		consts:  bc.Consts,
+		instrs:  bc.Instrs,
+		stack:   make([]object.Object, StackSize),
+		globals: make([]object.Object, GlobalsSize),
+		pc:      0,
 	}
+}
+
+func NewWithGlobals(bc *compiler.Bytecode, globals []object.Object) *VM {
+	vm := New(bc)
+	vm.globals = globals
+	return vm
 }
 
 func (vm *VM) StackTop() object.Object {
@@ -170,6 +179,17 @@ func (vm *VM) Run() error {
 			cond := vm.pop()
 			if cond.IsNull() || (cond.Type() == object.BoolType && !cond.(*object.Bool).Value) {
 				ip = int(pos) - 1 // -1 because we will increment ip at the end of the loop
+			}
+		case code.OpSetGlobal:
+			gix := code.ReadUint16(vm.instrs[ip+1:])
+			ip += 2
+			vm.globals[gix] = vm.pop()
+		case code.OpGetGlobal:
+			gix := code.ReadUint16(vm.instrs[ip+1:])
+			ip += 2
+			err := vm.push(vm.globals[gix])
+			if err != nil {
+				return err
 			}
 		default:
 			return fmt.Errorf("unknown opcode %s at position %d", code.PrintOpCode(op), ip)

@@ -7,6 +7,7 @@ import (
 	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/lexer"
+	"osdrv/liss/object"
 	"osdrv/liss/parser"
 	"osdrv/liss/vm"
 )
@@ -19,6 +20,9 @@ const Prompt = "liss> "
 
 func Run(in io.Reader, out io.Writer, opts Options) {
 	scanner := bufio.NewScanner(in)
+	consts := []object.Object{}
+	globs := make([]object.Object, vm.GlobalsSize)
+	symbols := compiler.NewSymbolTable()
 
 	for {
 		fmt.Printf(Prompt)
@@ -32,16 +36,14 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 
 		prog, err := par.Parse()
 		if err != nil {
-			fmt.Printf("Failed to parse program: %s\n", err)
 			fmt.Fprintf(out, "Failed to parse program: %s\n", err)
 		}
-		comp := compiler.New()
+		comp := compiler.NewWithState(symbols, consts)
 		if err := comp.Compile(prog); err != nil {
-			fmt.Printf("failed to compile program: %s", err)
 			fmt.Fprintf(out, "Failed to compile program: %s\n", err)
 			continue
 		}
-		vm := vm.New(comp.Bytecode())
+		vm := vm.NewWithGlobals(comp.Bytecode(), globs)
 
 		if opts.Debug {
 			fmt.Printf("VM instructions:\n%s\n", code.PrintInstr(comp.Bytecode().Instrs))
