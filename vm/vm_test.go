@@ -114,6 +114,11 @@ func TestRun(t *testing.T) {
 			want:  true,
 		},
 		{
+			name:  "comparison null vs int",
+			input: "(= null 42)",
+			want:  false,
+		},
+		{
 			name:    "comparison with incompatible types",
 			input:   "(= 42 true)",
 			wantErr: NewTypeMismatchError("Integer Vs Bool"),
@@ -331,6 +336,8 @@ func assertObjectEql(t *testing.T, got object.Object, want any) {
 		assert.Equal(t, want, obj.Value, "Expected string value %v, got %v", want, obj.Value)
 	case *object.Null:
 		assert.Equal(t, want, nil, "Expected null object, got %v", obj)
+	case *object.Bool:
+		assert.Equal(t, want, obj.Value, "Expected boolean value %v, got %v", want, obj.Value)
 	default:
 		t.Logf("Unimplemented object type: %d", obj.Type())
 	}

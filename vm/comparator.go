@@ -65,6 +65,18 @@ func CompareGte[T cmp.Ordered](a, b T) bool {
 
 func compare(a, b object.Object, cmp code.OpCode) (bool, error) {
 	ac, bc := castTypes(a, b, cmp)
+
+	if ac.IsNull() || bc.IsNull() {
+		if cmp == code.OpEql {
+			return ac.IsNull() && bc.IsNull(), nil
+		}
+		if cmp == code.OpNotEql {
+			return !ac.IsNull() || !bc.IsNull(), nil
+		}
+		return false, NewUnsupportedOpTypeError(
+			fmt.Sprintf("unsupported operation %s for null type", code.PrintOpCode(cmp)))
+	}
+
 	if ac.Type() != bc.Type() {
 		return false, NewTypeMismatchError(
 			fmt.Sprintf("%s Vs %s", ac.Type().String(), bc.Type().String()))
