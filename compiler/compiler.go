@@ -29,14 +29,16 @@ var AssertOperatorArgc = map[ast.Operator]int{
 }
 
 type Compiler struct {
-	instrs code.Instructions
-	consts []object.Object
+	instrs  code.Instructions
+	consts  []object.Object
+	symbols *SymbolTable
 }
 
 func New() *Compiler {
 	return &Compiler{
-		instrs: make(code.Instructions, 0),
-		consts: make([]object.Object, 0),
+		instrs:  make(code.Instructions, 0),
+		consts:  make([]object.Object, 0),
+		symbols: NewSymbolTable(),
 	}
 }
 
@@ -166,6 +168,24 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		}
 		jmpTo = len(c.instrs)
 		c.updateArgs(jmp2, jmpTo)
+	case *ast.LetExpression:
+		if err := c.compileStep(n.Value, NOARGC, true); err != nil {
+			return err
+		}
+		sym, err := c.symbols.Define(n.Identifier.Name)
+		if err != nil {
+			return err
+		}
+		c.emit(code.OpSetGlobal, sym.Index)
+	case *ast.IdentifierExpr:
+		sym, ok := c.symbols.Resolve(n.Name)
+		if !ok {
+			return fmt.Errorf("undefined variable: %s", n.Name)
+		}
+		c.emit(code.OpGetGlobal, sym.Index)
+		if !managed {
+			c.emit(code.OpPop)
+		}
 	}
 
 	return nil

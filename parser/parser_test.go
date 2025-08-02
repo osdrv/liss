@@ -299,6 +299,76 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "Simple let expression",
+			input: "(let x 42)",
+			want: []ast.Node{
+				&ast.LetExpression{
+					Token: token.Token{
+						Type:    token.Let,
+						Literal: "let",
+					},
+					Identifier: &ast.IdentifierExpr{
+						Token: token.Token{
+							Type:    token.Identifier,
+							Literal: "x",
+						},
+						Name: "x",
+					},
+					Value: &ast.IntegerLiteral{
+						Token: token.Token{
+							Type:    token.Numeric,
+							Literal: "42",
+						},
+						Value: int64(42),
+					},
+				},
+			},
+		},
+		{
+			name:  "Let expression with sub-expression",
+			input: "(let x (+ 1 2))",
+			want: []ast.Node{
+				&ast.LetExpression{
+					Token: token.Token{
+						Type:    token.Let,
+						Literal: "let",
+					},
+					Identifier: &ast.IdentifierExpr{
+						Token: token.Token{
+							Type:    token.Identifier,
+							Literal: "x",
+						},
+						Name: "x",
+					},
+					Value: &ast.Expression{
+						Operands: []ast.Node{
+							&ast.OperatorExpr{
+								Token: token.Token{
+									Type:    token.Plus,
+									Literal: "+",
+								},
+								Operator: ast.OperatorPlus,
+							},
+							&ast.IntegerLiteral{
+								Token: token.Token{
+									Type:    token.Numeric,
+									Literal: "1",
+								},
+								Value: int64(1),
+							},
+							&ast.IntegerLiteral{
+								Token: token.Token{
+									Type:    token.Numeric,
+									Literal: "2",
+								},
+								Value: int64(2),
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

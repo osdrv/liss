@@ -105,9 +105,6 @@ func (p *Parser) parseNode() (ast.Node, error) {
 		node, err = p.parseOperatorExpression()
 	case token.LParen:
 		node, err = p.parseExpression()
-	case token.Let:
-		// TODO: move to parseExpression()
-		node, err = p.parseLetExpression()
 	default:
 		return nil, fmt.Errorf("unexpected token type: %s", p.curToken.Type.String())
 	}
@@ -216,6 +213,8 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 		node, err = p.parseCondExpression()
 	case token.Fn:
 		node, err = p.parseFunctionExpression()
+	case token.Let:
+		node, err = p.parseLetExpression()
 	default:
 		nodes := make([]ast.Node, 0, 1)
 		for !p.isEOF {

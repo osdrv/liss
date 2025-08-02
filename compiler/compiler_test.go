@@ -326,6 +326,54 @@ func TestCond(t *testing.T) {
 	}
 }
 
+func TestLetExpr(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantInstrs []code.Instructions
+		wantConsts []any
+		wantErr    error
+	}{
+		{
+			name:       "let with single binding",
+			input:      `(let x 42)`,
+			wantConsts: []any{int64(42)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpSetGlobal, 0),
+			},
+		},
+		{
+			name:       "let with single binding and resolve",
+			input:      `(let x 42) x`,
+			wantConsts: []any{int64(42)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpPop),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New()
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+		})
+	}
+}
+
 func assertInstrs(t *testing.T, wants []code.Instructions, got code.Instructions) {
 	want := concatArr(wants)
 	assert.Equal(t, want, got,

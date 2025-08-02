@@ -32,6 +32,8 @@ const (
 	OpPop
 	OpJump
 	OpJumpIfFalse
+	OpGetGlobal
+	OpSetGlobal
 )
 
 type Definition struct {
@@ -61,6 +63,8 @@ var definitions = map[OpCode]*Definition{
 	OpPop:         {"OpPop", []int{}},
 	OpJump:        {"OpJump", []int{2}},
 	OpJumpIfFalse: {"OpJumpIfFalse", []int{2}},
+	OpGetGlobal:   {"OpGetGlobal", []int{2}},
+	OpSetGlobal:   {"OpSetGlobal", []int{2}},
 }
 
 func Lookup(op OpCode) (*Definition, error) {
