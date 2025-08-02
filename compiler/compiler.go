@@ -177,6 +177,10 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 			return err
 		}
 		c.emit(code.OpSetGlobal, sym.Index)
+		c.emit(code.OpGetGlobal, sym.Index)
+		if !managed {
+			c.emit(code.OpPop)
+		}
 	case *ast.IdentifierExpr:
 		sym, ok := c.symbols.Resolve(n.Name)
 		if !ok {

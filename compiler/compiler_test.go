@@ -341,6 +341,8 @@ func TestLetExpr(t *testing.T) {
 			wantInstrs: []code.Instructions{
 				code.Make(code.OpConst, 0),
 				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpPop),
 			},
 		},
 		{
@@ -351,6 +353,21 @@ func TestLetExpr(t *testing.T) {
 				code.Make(code.OpConst, 0),
 				code.Make(code.OpSetGlobal, 0),
 				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "let with a reference to another let",
+			input:      `(let y (let x 42))`,
+			wantConsts: []any{int64(42)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpSetGlobal, 1),
+				code.Make(code.OpGetGlobal, 1),
 				code.Make(code.OpPop),
 			},
 		},
