@@ -2,7 +2,7 @@ package object
 
 import (
 	"bytes"
-	"osdrv/liss/ast"
+	"osdrv/liss/code"
 	"strconv"
 )
 
@@ -352,18 +352,18 @@ func (d *Dictionary) IsDictionary() bool {
 
 type Function struct {
 	defaultObject
-	Name    string
-	Args    []string
-	Program *ast.Program
+	Name   string
+	Args   []string
+	Instrs code.Instructions
 }
 
 var _ Object = (*Function)(nil)
 
-func NewFunction(name string, args []string, program *ast.Program) *Function {
+func NewFunction(name string, args []string, instrs code.Instructions) *Function {
 	return &Function{
-		Name:    name,
-		Args:    args,
-		Program: program,
+		Name:   name,
+		Args:   args,
+		Instrs: instrs,
 	}
 }
 
@@ -385,8 +385,6 @@ func (f *Function) String() string {
 	}
 
 	b.WriteByte(')')
-	b.WriteByte('\n')
-	b.WriteString(f.Program.String())
 
 	return b.String()
 }

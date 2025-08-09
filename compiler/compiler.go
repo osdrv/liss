@@ -28,17 +28,42 @@ var AssertOperatorArgc = map[ast.Operator]int{
 	ast.OperatorNot:                1,
 }
 
+type Bytecode struct {
+	Instrs code.Instructions
+	Consts []object.Object
+}
+
+type EmittedInstruction struct {
+	OpCode   code.OpCode
+	Position int
+}
+
+type CompilationScope struct {
+	instrs code.Instructions
+	last   EmittedInstruction
+	prev   EmittedInstruction
+}
+
 type Compiler struct {
-	instrs  code.Instructions
 	consts  []object.Object
 	symbols *SymbolTable
+
+	scopes  []CompilationScope
+	scopeix int
 }
 
 func New() *Compiler {
+	s0 := CompilationScope{
+		instrs: make(code.Instructions, 0),
+		last:   EmittedInstruction{},
+		prev:   EmittedInstruction{},
+	}
+
 	return &Compiler{
-		instrs:  make(code.Instructions, 0),
 		consts:  make([]object.Object, 0),
 		symbols: NewSymbolTable(),
+		scopes:  []CompilationScope{s0},
+		scopeix: 0,
 	}
 }
 
@@ -161,8 +186,8 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 			return err
 		}
 		jmp2 := c.emit(code.OpJump, 9999)
-		jmpTo := len(c.instrs)
-		c.updateArgs(jmp1, jmpTo)
+		jmpTo := len(c.currentInstrs())
+		c.updOperand(jmp1, jmpTo)
 		if n.Else != nil {
 			if err := c.compileStep(n.Else, NOARGC, managed); err != nil {
 				return err
@@ -173,8 +198,8 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 				c.emit(code.OpPop)
 			}
 		}
-		jmpTo = len(c.instrs)
-		c.updateArgs(jmp2, jmpTo)
+		jmpTo = len(c.currentInstrs())
+		c.updOperand(jmp2, jmpTo)
 	case *ast.LetExpression:
 		if err := c.compileStep(n.Value, NOARGC, true); err != nil {
 			return err
@@ -197,6 +222,29 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		if !managed {
 			c.emit(code.OpPop)
 		}
+	case *ast.FunctionExpression:
+		c.enterScope()
+		// We compile the function body and we mark it as a managed scope.
+		err := c.compileStep(ast.NewProgram(n.Body), NOARGC, true)
+		if err != nil {
+			return err
+		}
+		// Liss functions always return a value, so we emit a return instruction.
+		c.emit(code.OpReturn)
+		instrs := c.leaveScope()
+		var name string
+		if n.Name != nil {
+			name = n.Name.Name
+		}
+		args := make([]string, 0, len(n.Args))
+		for _, arg := range n.Args {
+			args = append(args, arg.Name)
+		}
+		fn := object.NewFunction(name, args, instrs)
+		c.emit(code.OpConst, c.addConst(fn))
+		if !managed {
+			c.emit(code.OpPop)
+		}
 	}
 
 	return nil
@@ -211,9 +259,27 @@ func (c *Compiler) Compile(prog *ast.Program) error {
 
 func (c *Compiler) Bytecode() *Bytecode {
 	return &Bytecode{
-		Instrs: c.instrs,
+		Instrs: c.currentInstrs(),
 		Consts: c.consts,
 	}
+}
+
+func (c *Compiler) currentInstrs() code.Instructions {
+	return c.scopes[c.scopeix].instrs
+}
+
+func (c *Compiler) addInstr(i []byte) int {
+	pos := len(c.currentInstrs())
+	upd := append(c.currentInstrs(), i...)
+	c.scopes[c.scopeix].instrs = upd
+	return pos
+}
+
+func (c *Compiler) setLastInstr(op code.OpCode, pos int) {
+	prev := c.scopes[c.scopeix].last
+	last := EmittedInstruction{OpCode: op, Position: pos}
+	c.scopes[c.scopeix].prev = prev
+	c.scopes[c.scopeix].last = last
 }
 
 func (c *Compiler) addConst(obj object.Object) int {
@@ -221,24 +287,39 @@ func (c *Compiler) addConst(obj object.Object) int {
 	return len(c.consts) - 1
 }
 
-func (c *Compiler) addInstr(instr code.Instructions) int {
-	off := len(c.instrs)
-	c.instrs = append(c.instrs, instr...)
-	return off
-}
-
 func (c *Compiler) emit(op code.OpCode, operands ...int) int {
 	instr := code.Make(op, operands...)
 	off := c.addInstr(instr)
+	c.setLastInstr(op, off)
 	return off
 }
 
-func (c *Compiler) updateArgs(ip int, operands ...int) {
-	upd := code.Make(c.instrs[ip], operands...)
-	copy(c.instrs[ip:], upd)
+func (c *Compiler) replaceInstr(pos int, newinstr []byte) {
+	instrs := c.currentInstrs()
+	for i := range len(newinstr) {
+		instrs[pos+i] = newinstr[i]
+	}
 }
 
-type Bytecode struct {
-	Instrs code.Instructions
-	Consts []object.Object
+func (c *Compiler) updOperand(pos int, operand int) {
+	op := code.OpCode(c.currentInstrs()[pos])
+	newinstrs := code.Make(op, operand)
+	c.replaceInstr(pos, newinstrs)
+}
+
+func (c *Compiler) enterScope() {
+	scope := CompilationScope{
+		instrs: make(code.Instructions, 0),
+		last:   EmittedInstruction{},
+		prev:   EmittedInstruction{},
+	}
+	c.scopes = append(c.scopes, scope)
+	c.scopeix++
+}
+
+func (c *Compiler) leaveScope() code.Instructions {
+	instrs := c.currentInstrs()
+	c.scopes = c.scopes[:len(c.scopes)-1]
+	c.scopeix--
+	return instrs
 }

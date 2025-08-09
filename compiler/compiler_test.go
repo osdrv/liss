@@ -12,6 +12,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestComplilerScopes(t *testing.T) {
+	c := New()
+	assert.Equal(t, 0, c.scopeix, "Initial scope index should be 0")
+
+	c.emit(code.OpTrue)
+	c.enterScope()
+	assert.Equal(t, 1, c.scopeix, "Scope index should be incremented after entering a scope")
+
+	c.emit(code.OpFalse)
+
+	assert.Len(t, c.scopes[c.scopeix].instrs, 1, "The outer scope should contain exactly one instruction")
+	last := c.scopes[c.scopeix].last
+	assert.Equal(t, code.OpFalse, last.OpCode, "Last instruction in the outer scope should be an OpFalse")
+
+	c.leaveScope()
+	assert.Equal(t, 0, c.scopeix, "Scope index should be decremented after leaving a scope")
+
+	c.emit(code.OpNull)
+	assert.Len(t, c.scopes[c.scopeix].instrs, 2, "The inner scope should now contain two instructions")
+	assert.Equal(t, code.OpNull, c.scopes[c.scopeix].last.OpCode, "Last instruction in the outer scope should be an OpNull")
+	assert.Equal(t, code.OpTrue, c.scopes[c.scopeix].prev.OpCode, "Previous instruction in the outer scope should be an OpTrue")
+
+}
+
 func TestCompile(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -387,6 +411,54 @@ func TestLetExpr(t *testing.T) {
 
 			bc := c.Bytecode()
 			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
+}
+
+func TestFunctionExpr(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantInstrs []code.Instructions
+		wantConsts []any
+		wantErr    error
+	}{
+		{
+			name:  "simple function no args",
+			input: `(fn [] (+ 2 3))`,
+			wantConsts: []any{
+				int64(2),
+				int64(3),
+				[]code.Instructions{
+					code.Make(code.OpConst, 0),
+					code.Make(code.OpConst, 1),
+					code.Make(code.OpAdd, 2),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpPop),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New()
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
 		})
 	}
 }
@@ -401,6 +473,10 @@ func assertInstrs(t *testing.T, wants []code.Instructions, got code.Instructions
 func assertConsts(t *testing.T, want []any, got []object.Object) {
 	assert.Len(t, got, len(want), "Expected number of constants do not match")
 	for i, w := range want {
+		if i >= len(got) {
+			t.Errorf("Index %d out of bounds for constants", i)
+			continue
+		}
 		switch v := got[i].(type) {
 		case *object.Integer:
 			assert.Equal(t, w, v.Value, "Expected constant at index %d to match", i)
@@ -408,6 +484,9 @@ func assertConsts(t *testing.T, want []any, got []object.Object) {
 			assert.Equal(t, w, v.Value, "Expected constant at index %d to match", i)
 		case *object.String:
 			assert.Equal(t, w, v.Value, "Expected constant at index %d to match", i)
+		case *object.Function:
+			winstr := w.([]code.Instructions)
+			assertInstrs(t, winstr, v.Instrs)
 		default:
 			t.Errorf("Unexpected constant type at index %d: %T", i, got[i])
 		}
