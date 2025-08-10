@@ -442,6 +442,104 @@ func TestFunctionExpr(t *testing.T) {
 				code.Make(code.OpPop),
 			},
 		},
+		{
+			name:  "simple function no args check managed scope",
+			input: `(fn [] (1 2 3))`,
+			wantConsts: []any{
+				int64(1),
+				int64(2),
+				int64(3),
+				[]code.Instructions{
+					code.Make(code.OpConst, 0),
+					code.Make(code.OpPop),
+					code.Make(code.OpConst, 1),
+					code.Make(code.OpPop),
+					code.Make(code.OpConst, 2),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 3),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:  "null-function",
+			input: `(fn [] null)`,
+			wantConsts: []any{
+				[]code.Instructions{
+					code.Make(code.OpNull),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:  "const-function",
+			input: `(fn [] 42)`,
+			wantConsts: []any{
+				int64(42),
+				[]code.Instructions{
+					code.Make(code.OpConst, 0),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpPop),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New()
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
+}
+
+func TestFunctionCall(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantInstrs []code.Instructions
+		wantConsts []any
+		wantErr    error
+	}{
+		{
+			name:  "simple function call",
+			input: `((fn [] (+ 2 3)))`,
+			wantConsts: []any{
+				int64(2),
+				int64(3),
+				[]code.Instructions{
+					code.Make(code.OpConst, 0),
+					code.Make(code.OpConst, 1),
+					code.Make(code.OpAdd, 2),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpCall),
+				code.Make(code.OpPop),
+			},
+		},
 	}
 
 	for _, tt := range tests {

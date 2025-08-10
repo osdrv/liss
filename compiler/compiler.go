@@ -82,6 +82,7 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 				return err
 			}
 		}
+		return nil
 	case *ast.Expression:
 		// pop the first operand (the operator)
 		// compute the size of the remaining operands (args)
@@ -104,9 +105,6 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 			if err := c.compileStep(n.Operands[0], argc, managed); err != nil {
 				return err
 			}
-			if !managed {
-				c.emit(code.OpPop)
-			}
 		} else {
 			for i := range len(n.Operands) {
 				if err := c.compileStep(n.Operands[i], NOARGC, managed); err != nil {
@@ -114,6 +112,20 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 				}
 				c.emit(code.OpPop)
 			}
+		}
+		switch n.Operands[0].(type) {
+		case *ast.FunctionExpression:
+			// Looks like a function call
+			c.removeLastInstr()
+			c.emit(code.OpCall)
+			// case *ast.IdentifierExpr:
+			// 	// Could be a function call if the identifier is a function.
+			// 	name := n.Operands[0].(*ast.IdentifierExpr).Name
+			// 	sym, ok := c.symbols.Resolve(name)
+			// 	if !ok {
+		}
+		if !managed {
+			c.emit(code.OpPop)
 		}
 	case *ast.OperatorExpr:
 		if n, ok := AssertOperatorArgc[n.Operator]; ok {
@@ -229,7 +241,9 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		if err != nil {
 			return err
 		}
-		// Liss functions always return a value, so we emit a return instruction.
+		if c.lastInstrIs(code.OpPop) {
+			c.removeLastInstr()
+		}
 		c.emit(code.OpReturn)
 		instrs := c.leaveScope()
 		var name string
@@ -322,4 +336,22 @@ func (c *Compiler) leaveScope() code.Instructions {
 	c.scopes = c.scopes[:len(c.scopes)-1]
 	c.scopeix--
 	return instrs
+}
+
+func (c *Compiler) lastInstrIs(op code.OpCode) bool {
+	instrs := c.currentInstrs()
+	if len(instrs) == 0 {
+		return false
+	}
+	return code.OpCode(instrs[len(instrs)-1]) == op
+}
+
+func (c *Compiler) removeLastInstr() {
+	instrs := c.currentInstrs()
+	if len(instrs) == 0 {
+		return
+	}
+	instrs = instrs[:len(instrs)-1]
+	c.scopes[c.scopeix].instrs = instrs
+	c.scopes[c.scopeix].last = c.scopes[c.scopeix].prev
 }
