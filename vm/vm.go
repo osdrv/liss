@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+const MaxFrames = 1024
 const StackSize = 2048
 const GlobalsSize = 65536
 
@@ -20,20 +21,36 @@ var Null = object.NewNull()
 
 type VM struct {
 	consts []object.Object
-	instrs code.Instructions
+	//instrs code.Instructions
 
-	stack   []object.Object
+	stack []object.Object
+	sp    int // program counter
+
 	globals []object.Object
-	pc      int // program counter
+
+	frames   []*Frame
+	framesix int
 }
 
 func New(bc *compiler.Bytecode) *VM {
+
+	mainfn := &object.Function{
+		Instrs: bc.Instrs,
+	}
+	mframe := NewFrame(mainfn)
+	frames := make([]*Frame, MaxFrames)
+	frames[0] = mframe
+
 	return &VM{
-		consts:  bc.Consts,
-		instrs:  bc.Instrs,
-		stack:   make([]object.Object, StackSize),
+		consts: bc.Consts,
+		//instrs:  bc.Instrs,
+		stack: make([]object.Object, StackSize),
+		sp:    0,
+
 		globals: make([]object.Object, GlobalsSize),
-		pc:      0,
+
+		frames:   frames,
+		framesix: 1,
 	}
 }
 
@@ -44,26 +61,35 @@ func NewWithGlobals(bc *compiler.Bytecode, globals []object.Object) *VM {
 }
 
 func (vm *VM) StackTop() object.Object {
-	if vm.pc == 0 {
+	if vm.sp == 0 {
 		return nil
 	}
-	return vm.stack[vm.pc-1]
+	return vm.stack[vm.sp-1]
 }
 
 func (vm *VM) Run() error {
-	for ip := 0; ip < len(vm.instrs); ip++ {
-		op := vm.instrs[ip]
+	var ip int
+	var instrs code.Instructions
+	var op code.OpCode
+
+	for vm.currentFrame().ip < len(vm.currentFrame().Instructions())-1 {
+		vm.currentFrame().ip++
+
+		ip = vm.currentFrame().ip
+		instrs = vm.currentFrame().Instructions()
+		op = code.OpCode(instrs[ip])
+
 		switch op {
 		case code.OpConst:
-			ix := code.ReadUint16(vm.instrs[ip+1:])
-			ip += 2
+			ix := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame().ip += 2
 			err := vm.push(vm.consts[ix])
 			if err != nil {
 				return err
 			}
 		case code.OpAdd:
-			argc := code.ReadUint16(vm.instrs[ip+1:])
-			ip += 2
+			argc := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame().ip += 2
 			elem := vm.peek()
 			if elem == nil {
 				return errors.New("stack underflow")
@@ -102,8 +128,8 @@ func (vm *VM) Run() error {
 			res := int64(a.(*object.Integer).Value) - int64(b.(*object.Integer).Value)
 			vm.push(object.NewInteger(res))
 		case code.OpMul:
-			argc := code.ReadUint16(vm.instrs[ip+1:])
-			ip += 2
+			argc := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame().ip += 2
 
 			elem := vm.peek()
 			switch elem.Type() {
@@ -171,23 +197,38 @@ func (vm *VM) Run() error {
 		case code.OpPop:
 			vm.pop()
 		case code.OpJump:
-			pos := code.ReadUint16(vm.instrs[ip+1:])
-			ip = int(pos) - 1
+			pos := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame().ip = int(pos) - 1
 		case code.OpJumpIfFalse:
-			pos := code.ReadUint16(vm.instrs[ip+1:])
-			ip += 2
+			pos := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame().ip += 2
 			cond := vm.pop()
 			if cond.IsNull() || (cond.Type() == object.BoolType && !cond.(*object.Bool).Value) {
-				ip = int(pos) - 1 // -1 because we will increment ip at the end of the loop
+				vm.currentFrame().ip = int(pos) - 1 // -1 because we will increment ip at the end of the loop
 			}
 		case code.OpSetGlobal:
-			gix := code.ReadUint16(vm.instrs[ip+1:])
-			ip += 2
+			gix := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame().ip += 2
 			vm.globals[gix] = vm.pop()
 		case code.OpGetGlobal:
-			gix := code.ReadUint16(vm.instrs[ip+1:])
-			ip += 2
+			gix := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame().ip += 2
 			err := vm.push(vm.globals[gix])
+			if err != nil {
+				return err
+			}
+		case code.OpCall:
+			fn, ok := vm.stack[vm.sp-1].(*object.Function)
+			if !ok {
+				return fmt.Errorf("Object %s is not a function", vm.stack[vm.sp-1].String())
+			}
+			frame := NewFrame(fn)
+			vm.pushFrame(frame)
+		case code.OpReturn:
+			ret := vm.pop()
+			vm.popFrame()
+			vm.pop()
+			err := vm.push(ret)
 			if err != nil {
 				return err
 			}
@@ -201,7 +242,7 @@ func (vm *VM) Run() error {
 
 func (vm *VM) PrintStack() string {
 	var b strings.Builder
-	for i := range vm.pc {
+	for i := range vm.sp {
 		if i > 0 {
 			b.WriteString("\n")
 		}
@@ -215,33 +256,46 @@ func (vm *VM) PrintStack() string {
 }
 
 func (vm *VM) LastPopped() object.Object {
-	return vm.stack[vm.pc]
+	return vm.stack[vm.sp]
 }
 
 func (vm *VM) push(obj object.Object) error {
-	if vm.pc >= StackSize {
+	if vm.sp >= StackSize {
 		return ErrStackOverflow
 	}
-	vm.stack[vm.pc] = obj
-	vm.pc++
+	vm.stack[vm.sp] = obj
+	vm.sp++
 
 	return nil
 }
 
 func (vm *VM) peek() object.Object {
-	if vm.pc == 0 {
+	if vm.sp == 0 {
 		return nil
 	}
-	return vm.stack[vm.pc-1]
+	return vm.stack[vm.sp-1]
 }
 
 func (vm *VM) pop() object.Object {
-	if vm.pc == 0 {
+	if vm.sp == 0 {
 		return nil
 	}
-	obj := vm.stack[vm.pc-1]
-	vm.pc--
+	obj := vm.stack[vm.sp-1]
+	vm.sp--
 	return obj
+}
+
+func (vm *VM) currentFrame() *Frame {
+	return vm.frames[vm.framesix-1]
+}
+
+func (vm *VM) pushFrame(f *Frame) {
+	vm.frames[vm.framesix] = f
+	vm.framesix++
+}
+func (vm *VM) popFrame() *Frame {
+	vm.framesix--
+	return vm.frames[vm.framesix]
 }
 
 func castTypes(a, b object.Object, cmp code.OpCode) (object.Object, object.Object) {

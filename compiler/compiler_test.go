@@ -540,6 +540,63 @@ func TestFunctionCall(t *testing.T) {
 				code.Make(code.OpPop),
 			},
 		},
+		{
+			name: "named function call",
+			input: `
+			(fn foo [] (+ 2 3))
+			(foo)`,
+			wantConsts: []any{
+				int64(2),
+				int64(3),
+				[]code.Instructions{
+					code.Make(code.OpConst, 0),
+					code.Make(code.OpConst, 1),
+					code.Make(code.OpAdd, 2),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpCall),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "function call chain",
+			input: `
+			(fn foo [] (+ 2 3))
+			(fn bar [] (foo))
+			(bar)`,
+			wantConsts: []any{
+				int64(2),
+				int64(3),
+				[]code.Instructions{
+					code.Make(code.OpConst, 0),
+					code.Make(code.OpConst, 1),
+					code.Make(code.OpAdd, 2),
+					code.Make(code.OpReturn),
+				},
+				[]code.Instructions{
+					code.Make(code.OpGetGlobal, 0),
+					code.Make(code.OpCall),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpConst, 3),
+				code.Make(code.OpSetGlobal, 1),
+				code.Make(code.OpPop),
+				code.Make(code.OpGetGlobal, 1),
+				code.Make(code.OpCall),
+				code.Make(code.OpPop),
+			},
+		},
 	}
 
 	for _, tt := range tests {

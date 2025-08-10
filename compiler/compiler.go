@@ -14,6 +14,7 @@ var ManagerTypes = map[reflect.Type]bool{
 	reflect.TypeOf(&ast.OperatorExpr{}):       true,
 	reflect.TypeOf(&ast.LetExpression{}):      true,
 	reflect.TypeOf(&ast.FunctionExpression{}): true,
+	reflect.TypeOf(&ast.IdentifierExpr{}):     true,
 }
 
 var AssertOperatorArgc = map[ast.Operator]int{
@@ -118,11 +119,16 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 			// Looks like a function call
 			c.removeLastInstr()
 			c.emit(code.OpCall)
-			// case *ast.IdentifierExpr:
-			// 	// Could be a function call if the identifier is a function.
-			// 	name := n.Operands[0].(*ast.IdentifierExpr).Name
-			// 	sym, ok := c.symbols.Resolve(name)
-			// 	if !ok {
+		case *ast.IdentifierExpr:
+			// Could be a function call if the identifier is a function.
+			name := n.Operands[0].(*ast.IdentifierExpr).Name
+			if _, ok := c.symbols.Resolve(name); !ok {
+				return fmt.Errorf("undefined identifier: %s", name)
+			}
+			if c.lastInstrIs(code.OpPop) {
+				c.removeLastInstr()
+			}
+			c.emit(code.OpCall)
 		}
 		if !managed {
 			c.emit(code.OpPop)
@@ -256,6 +262,13 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		}
 		fn := object.NewFunction(name, args, instrs)
 		c.emit(code.OpConst, c.addConst(fn))
+		if len(name) > 0 {
+			sym, err := c.symbols.Define(name)
+			if err != nil {
+				return err
+			}
+			c.emit(code.OpSetGlobal, sym.Index)
+		}
 		if !managed {
 			c.emit(code.OpPop)
 		}

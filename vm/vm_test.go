@@ -377,6 +377,62 @@ func TestRun(t *testing.T) {
 	}
 }
 
+func TestFunctionCall(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    any
+		wantErr error
+	}{
+		{
+			name:  "inline function call with basic arithmetic",
+			input: "((fn [] (+ 2 3)))",
+			want:  int64(5),
+		},
+		{
+			name:  "inline function call with simple const return",
+			input: "((fn [] 42))",
+			want:  int64(42),
+		},
+		{
+			name: "named function call",
+			input: `
+			(fn foo [] (+ 2 3))
+			(foo)`,
+			want: int64(5),
+		},
+		{
+			name: "named function call chain",
+			input: `
+			(fn foo [] (+ 2 3))
+			(fn bar [] (foo))
+			(bar)`,
+			want: int64(5),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Failed to parse input: %s", tt.input)
+			comp := compiler.New()
+			assert.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
+			vm := New(comp.Bytecode())
+
+			err = vm.Run()
+			if tt.wantErr != nil {
+				assert.Error(t, err, "Expected error for input: %s", tt.input)
+				assert.EqualError(t, err, tt.wantErr.Error(), "Error message does not match")
+				return
+			}
+
+			assert.NoError(t, err, "Failed to run program: %s", tt.input)
+			st := vm.LastPopped()
+			assertObjectEql(t, st, tt.want)
+		})
+	}
+}
+
 func assertObjectEql(t *testing.T, got object.Object, want any) {
 	if got == nil {
 		assert.Equal(t, want, got, "Expected object to be %v, got %v", want, got)
