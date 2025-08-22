@@ -146,15 +146,13 @@ func TestParse(t *testing.T) {
 			name:  "Expression with operator",
 			input: "(>= 1 2)",
 			want: []ast.Node{
-				&ast.Expression{
-					Operands: []ast.Node{
-						&ast.OperatorExpr{
-							Token: token.Token{
-								Type:    token.GreaterThanOrEqual,
-								Literal: ">=",
-							},
-							Operator: ast.OperatorGreaterThanOrEqual,
-						},
+				&ast.OperatorExpr{
+					Token: token.Token{
+						Type:    token.GreaterThanOrEqual,
+						Literal: ">=",
+					},
+					Operator: ast.OperatorGreaterThanOrEqual,
+					Args: []ast.Node{
 						&ast.IntegerLiteral{
 							Token: token.Token{
 								Type:    token.Numeric,
@@ -270,15 +268,13 @@ func TestParse(t *testing.T) {
 						},
 					},
 					Body: []ast.Node{
-						&ast.Expression{
-							Operands: []ast.Node{
-								&ast.OperatorExpr{
-									Token: token.Token{
-										Type:    token.Plus,
-										Literal: "+",
-									},
-									Operator: ast.OperatorPlus,
-								},
+						&ast.OperatorExpr{
+							Token: token.Token{
+								Type:    token.Plus,
+								Literal: "+",
+							},
+							Operator: ast.OperatorPlus,
+							Args: []ast.Node{
 								&ast.IdentifierExpr{
 									Token: token.Token{
 										Type:    token.Identifier,
@@ -341,15 +337,13 @@ func TestParse(t *testing.T) {
 						},
 						Name: "x",
 					},
-					Value: &ast.Expression{
-						Operands: []ast.Node{
-							&ast.OperatorExpr{
-								Token: token.Token{
-									Type:    token.Plus,
-									Literal: "+",
-								},
-								Operator: ast.OperatorPlus,
-							},
+					Value: &ast.OperatorExpr{
+						Token: token.Token{
+							Type:    token.Plus,
+							Literal: "+",
+						},
+						Operator: ast.OperatorPlus,
+						Args: []ast.Node{
 							&ast.IntegerLiteral{
 								Token: token.Token{
 									Type:    token.Numeric,

@@ -88,21 +88,6 @@ func (p *Parser) parseNode() (ast.Node, error) {
 		node, err = p.parseStringLiteral()
 	case token.Identifier:
 		node, err = p.parseIdentifierExpr()
-	case token.Plus,
-		token.Minus,
-		token.Multiply,
-		token.Divide,
-		token.Modulus,
-		token.Equal,
-		token.NotEqual,
-		token.LessThan,
-		token.LessThanOrEqual,
-		token.GreaterThan,
-		token.GreaterThanOrEqual,
-		token.And,
-		token.Or,
-		token.Not:
-		node, err = p.parseOperatorExpression()
 	case token.LParen:
 		node, err = p.parseExpression()
 	default:
@@ -215,6 +200,21 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 		node, err = p.parseFunctionExpression()
 	case token.Let:
 		node, err = p.parseLetExpression()
+	case token.Plus,
+		token.Minus,
+		token.Multiply,
+		token.Divide,
+		token.Modulus,
+		token.Equal,
+		token.NotEqual,
+		token.LessThan,
+		token.LessThanOrEqual,
+		token.GreaterThan,
+		token.GreaterThanOrEqual,
+		token.And,
+		token.Or,
+		token.Not:
+		node, err = p.parseOperatorExpression()
 	default:
 		nodes := make([]ast.Node, 0, 1)
 		for !p.isEOF {
@@ -263,7 +263,15 @@ func (p *Parser) parseOperatorExpression() (ast.Node, error) {
 	if err := p.advance(); err != nil {
 		return nil, err
 	}
-	return ast.NewOperatorExpr(tok)
+	args := make([]ast.Node, 0)
+	for p.curToken.Type != token.RParen {
+		arg, err := p.parseNode()
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, arg)
+	}
+	return ast.NewOperatorExpr(tok, args)
 }
 
 func (p *Parser) parseNullLiteral() (ast.Node, error) {
