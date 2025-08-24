@@ -385,6 +385,11 @@ func TestFunctionCall(t *testing.T) {
 		wantErr error
 	}{
 		{
+			name:  "zero-function",
+			input: "((fn []))",
+			want:  nil,
+		},
+		{
 			name:  "inline function call with basic arithmetic",
 			input: "((fn [] (+ 2 3)))",
 			want:  int64(5),
@@ -407,6 +412,24 @@ func TestFunctionCall(t *testing.T) {
 			(fn foo [] (+ 2 3))
 			(fn bar [] (foo))
 			(bar)`,
+			want: int64(5),
+		},
+		{
+			name: "arithmetic with results of function calls",
+			input: `
+			(fn ret2 [] 2)
+			(fn ret3 [] 3)
+			(fn add [] (+ (ret2) (ret3)))
+			(add)`,
+			want: int64(5),
+		},
+		{
+			name: "arithmetic with chain function calls",
+			input: `
+			(fn take_one [] 1)
+			(fn mutl_by_2 [] (* (take_one) 2))
+			(fn add_3 [] (+ (mutl_by_2) 3))
+			(add_3)`,
 			want: int64(5),
 		},
 	}
@@ -454,7 +477,7 @@ func assertObjectEql(t *testing.T, got object.Object, want any) {
 	}
 }
 
-func parse(source string) (*ast.Program, error) {
+func parse(source string) (ast.Node, error) {
 	lex := lexer.NewLexer(source)
 	par := parser.NewParser(lex)
 	return par.Parse()

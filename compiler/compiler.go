@@ -5,17 +5,7 @@ import (
 	"osdrv/liss/ast"
 	"osdrv/liss/code"
 	"osdrv/liss/object"
-	"reflect"
 )
-
-const NOARGC = -1 // No argument count, used for expressions without operands
-
-var ManagerTypes = map[reflect.Type]bool{
-	reflect.TypeOf(&ast.OperatorExpr{}):       true,
-	reflect.TypeOf(&ast.LetExpression{}):      true,
-	reflect.TypeOf(&ast.FunctionExpression{}): true,
-	reflect.TypeOf(&ast.IdentifierExpr{}):     true,
-}
 
 var AssertOperatorArgc = map[ast.Operator]int{
 	ast.OperatorMinus:              2,
@@ -75,68 +65,30 @@ func NewWithState(symbols *SymbolTable, consts []object.Object) *Compiler {
 	return c
 }
 
-func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
+func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 	switch n := node.(type) {
-	case *ast.Program:
-		for _, node := range n.Nodes {
-			if err := c.compileStep(node, NOARGC, managed); err != nil {
+	case *ast.BlockExpression:
+		for ix, expr := range n.Nodes {
+			m := ix >= len(n.Nodes)-1 && managed
+			if err := c.compileStep(expr, m); err != nil {
 				return err
 			}
 		}
-		return nil
-	case *ast.Expression:
-		// pop the first operand (the operator)
-		// compute the size of the remaining operands (args)
-		// emit the instructions for the remaining operands
-		// emit the instruction for the operator
-		// emit the length of the args
-		if len(n.Operands) == 0 {
-			return nil // No operands, nothing to compile
-		}
-		if _, ok := ManagerTypes[reflect.TypeOf(n.Operands[0])]; ok {
-			// The first operand is an owner type. Compile it last. It will manage
-			// the stack.
-			for i := 1; i < len(n.Operands); i++ {
-				// The first operand is responsible for managing the stack.
-				if err := c.compileStep(n.Operands[i], NOARGC, true); err != nil {
-					return err
-				}
-			}
-			argc := len(n.Operands) - 1
-			if err := c.compileStep(n.Operands[0], argc, managed); err != nil {
-				return err
-			}
-		} else {
-			for i := range len(n.Operands) {
-				if err := c.compileStep(n.Operands[i], NOARGC, managed); err != nil {
-					return err
-				}
+		if !managed && len(n.Nodes) > 0 {
+			if !c.lastInstrIs(code.OpPop) {
 				c.emit(code.OpPop)
 			}
 		}
-		switch n.Operands[0].(type) {
-		case *ast.FunctionExpression:
-			// Looks like a function call
-			c.removeLastInstr()
-			c.emit(code.OpCall)
-		case *ast.IdentifierExpr:
-			// Could be a function call if the identifier is a function.
-			name := n.Operands[0].(*ast.IdentifierExpr).Name
-			if _, ok := c.symbols.Resolve(name); !ok {
-				return fmt.Errorf("undefined identifier: %s", name)
-			}
-			if c.lastInstrIs(code.OpPop) {
-				c.removeLastInstr()
-			}
-			c.emit(code.OpCall)
-		}
-		if !managed {
-			c.emit(code.OpPop)
-		}
 	case *ast.OperatorExpr:
-		if n, ok := AssertOperatorArgc[n.Operator]; ok {
-			if argc != n {
-				return fmt.Errorf("expected %d arguments for operator %s, got %d", n, node.String(), argc)
+		argc := len(n.Operands)
+		if nop, ok := AssertOperatorArgc[n.Operator]; ok {
+			if argc != nop {
+				return fmt.Errorf("expected %d arguments for operator %s, got %d", nop, n.Operator, argc)
+			}
+		}
+		for i := range len(n.Operands) {
+			if err := c.compileStep(n.Operands[i], true); err != nil {
+				return err
 			}
 		}
 		switch n.Operator {
@@ -163,6 +115,32 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		case ast.OperatorNot:
 			c.emit(code.OpNot)
 		}
+		if !managed {
+			c.emit(code.OpPop)
+		}
+	case *ast.CondExpression:
+		if err := c.compileStep(n.Cond, true); err != nil {
+			return err
+		}
+		jmp1 := c.emit(code.OpJumpIfFalse, 9999)
+		if err := c.compileStep(n.Then, managed); err != nil {
+			return err
+		}
+		jmp2 := c.emit(code.OpJump, 9999)
+		jmpTo := len(c.currentInstrs())
+		c.updOperand(jmp1, jmpTo)
+		if n.Else != nil {
+			if err := c.compileStep(n.Else, managed); err != nil {
+				return err
+			}
+		} else {
+			c.emit(code.OpNull)
+			if !managed {
+				c.emit(code.OpPop)
+			}
+		}
+		jmpTo = len(c.currentInstrs())
+		c.updOperand(jmp2, jmpTo)
 	case *ast.IntegerLiteral:
 		integer := object.NewInteger(n.Value)
 		c.emit(code.OpConst, c.addConst(integer))
@@ -195,31 +173,8 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		if !managed {
 			c.emit(code.OpPop)
 		}
-	case *ast.CondExpression:
-		if err := c.compileStep(n.Cond, NOARGC, true); err != nil {
-			return err
-		}
-		jmp1 := c.emit(code.OpJumpIfFalse, 9999)
-		if err := c.compileStep(n.Then, NOARGC, managed); err != nil {
-			return err
-		}
-		jmp2 := c.emit(code.OpJump, 9999)
-		jmpTo := len(c.currentInstrs())
-		c.updOperand(jmp1, jmpTo)
-		if n.Else != nil {
-			if err := c.compileStep(n.Else, NOARGC, managed); err != nil {
-				return err
-			}
-		} else {
-			c.emit(code.OpNull)
-			if !managed {
-				c.emit(code.OpPop)
-			}
-		}
-		jmpTo = len(c.currentInstrs())
-		c.updOperand(jmp2, jmpTo)
 	case *ast.LetExpression:
-		if err := c.compileStep(n.Value, NOARGC, true); err != nil {
+		if err := c.compileStep(n.Value, true); err != nil {
 			return err
 		}
 		sym, err := c.symbols.Define(n.Identifier.Name)
@@ -243,7 +198,7 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 	case *ast.FunctionExpression:
 		c.enterScope()
 		// We compile the function body and we mark it as a managed scope.
-		err := c.compileStep(ast.NewProgram(n.Body), NOARGC, true)
+		err := c.compileStep(ast.NewBlockExpression(n.Body), true)
 		if err != nil {
 			return err
 		}
@@ -272,13 +227,33 @@ func (c *Compiler) compileStep(node ast.Node, argc int, managed bool) error {
 		if !managed {
 			c.emit(code.OpPop)
 		}
+	case *ast.CallExpression:
+		callee := n.Callee
+		if calleeIdent, ok := callee.(*ast.IdentifierExpr); ok {
+			sym, ok := c.symbols.Resolve(calleeIdent.Name)
+			if !ok {
+				return fmt.Errorf("undefined function: %s", calleeIdent.Name)
+			}
+			c.emit(code.OpGetGlobal, sym.Index)
+		} else if calleeFn, ok := callee.(*ast.FunctionExpression); ok {
+			err := c.compileStep(calleeFn, true)
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("unsupported callee type: %T", callee)
+		}
+		c.emit(code.OpCall)
+		if !managed {
+			c.emit(code.OpPop)
+		}
 	}
 
 	return nil
 }
 
-func (c *Compiler) Compile(prog *ast.Program) error {
-	if err := c.compileStep(prog, NOARGC, false); err != nil {
+func (c *Compiler) Compile(prog ast.Node) error {
+	if err := c.compileStep(prog, false); err != nil {
 		return err
 	}
 	return nil

@@ -1,6 +1,9 @@
 package ast
 
-import "osdrv/liss/token"
+import (
+	"fmt"
+	"osdrv/liss/token"
+)
 
 type Node interface {
 	String() string
@@ -64,4 +67,11 @@ var operatorToString = map[Operator]string{
 	OperatorAnd: "&",
 	OperatorOr:  "|",
 	OperatorNot: "!",
+}
+
+func (op Operator) String() string {
+	if s, ok := operatorToString[op]; ok {
+		return s
+	}
+	return fmt.Sprintf("Operator(%d)", op)
 }

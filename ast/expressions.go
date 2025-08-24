@@ -4,25 +4,26 @@ import (
 	"bytes"
 	"fmt"
 	"osdrv/liss/token"
+	"strings"
 )
 
-type Expression struct {
-	Operands []Node
+type BlockExpression struct {
+	Nodes []Node
 }
 
-var _ Node = (*Expression)(nil)
+var _ Node = (*BlockExpression)(nil)
 
-func NewExpression(operands []Node) *Expression {
-	return &Expression{
-		Operands: operands,
+func NewBlockExpression(nodes []Node) *BlockExpression {
+	return &BlockExpression{
+		Nodes: nodes,
 	}
 }
 
-func (e *Expression) String() string {
+func (e *BlockExpression) String() string {
 	var b bytes.Buffer
 
 	b.WriteByte('(')
-	for i, op := range e.Operands {
+	for i, op := range e.Nodes {
 		if i > 0 {
 			b.WriteByte(' ')
 		}
@@ -33,7 +34,7 @@ func (e *Expression) String() string {
 	return b.String()
 }
 
-func (e *Expression) expressionNode() {}
+func (e *BlockExpression) expressionNode() {}
 
 type IdentifierExpr struct {
 	Token token.Token
@@ -61,25 +62,38 @@ func (e *IdentifierExpr) expressionNode() {}
 type OperatorExpr struct {
 	Token    token.Token
 	Operator Operator
+	Operands []Node
 }
 
 var _ Node = (*OperatorExpr)(nil)
 
-func NewOperatorExpr(tok token.Token) (*OperatorExpr, error) {
+func NewOperatorExpr(tok token.Token, operands []Node) (*OperatorExpr, error) {
 	if op, ok := tokenToOperator[tok.Type]; ok {
 		return &OperatorExpr{
 			Token:    tok,
 			Operator: op,
+			Operands: operands,
 		}, nil
 	}
 	return nil, fmt.Errorf("unexpected token type: %s", tok.Type.String())
 }
 
 func (e *OperatorExpr) String() string {
+	var b strings.Builder
+	b.WriteByte('(')
 	if s, ok := operatorToString[e.Operator]; ok {
-		return s
+		b.WriteString(s)
+	} else {
+		b.WriteString(fmt.Sprintf("Operator(%d)", e.Operator))
 	}
-	return fmt.Sprintf("Operator(%d)", e.Operator)
+	if len(e.Operands) > 0 {
+		for _, arg := range e.Operands {
+			b.WriteByte(' ')
+			b.WriteString(arg.String())
+		}
+	}
+	b.WriteByte(')')
+	return b.String()
 }
 
 func (e *OperatorExpr) expressionNode() {}
@@ -191,3 +205,33 @@ func (e *FunctionExpression) String() string {
 }
 
 func (e *FunctionExpression) expressionNode() {}
+
+type CallExpression struct {
+	Token  token.Token
+	Callee Node
+	Args   []Node
+}
+
+var _ Node = (*CallExpression)(nil)
+
+func NewCallExpression(tok token.Token, callee Node, args []Node) (*CallExpression, error) {
+	return &CallExpression{
+		Token:  tok,
+		Callee: callee,
+		Args:   args,
+	}, nil
+}
+
+func (e *CallExpression) String() string {
+	var b bytes.Buffer
+	b.WriteByte('(')
+	b.WriteString(e.Callee.String())
+	for _, arg := range e.Args {
+		b.WriteByte(' ')
+		b.WriteString(arg.String())
+	}
+	b.WriteByte(')')
+	return b.String()
+}
+
+func (e *CallExpression) expressionNode() {}

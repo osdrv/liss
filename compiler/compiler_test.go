@@ -36,6 +36,421 @@ func TestComplilerScopes(t *testing.T) {
 
 }
 
+func TestCompileStep(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      ast.Node
+		managed    bool
+		consts     []object.Object
+		symbols    *SymbolTable
+		wantInstrs []code.Instructions
+		wantConsts []any
+		wantErr    error
+	}{
+		{
+			name: "unmanaged integer",
+			input: &ast.IntegerLiteral{
+				Value: 42,
+			},
+			managed:    false,
+			wantConsts: []any{int64(42)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "managed integer",
+			input: &ast.IntegerLiteral{
+				Value: 42,
+			},
+			managed:    true,
+			wantConsts: []any{int64(42)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+			},
+		},
+		{
+			name: "unmanaged boolean",
+			input: &ast.BooleanLiteral{
+				Value: true,
+			},
+			managed:    false,
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "managed boolean",
+			input: &ast.BooleanLiteral{
+				Value: false,
+			},
+			managed:    true,
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpFalse),
+			},
+		},
+		{
+			name:       "unmanaged null",
+			input:      &ast.NullLiteral{},
+			managed:    false,
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpNull),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "managed null",
+			input:      &ast.NullLiteral{},
+			managed:    true,
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpNull),
+			},
+		},
+		{
+			name: "unmanaged float",
+			input: &ast.FloatLiteral{
+				Value: 3.14,
+			},
+			managed:    false,
+			wantConsts: []any{3.14},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "managed float",
+			input: &ast.FloatLiteral{
+				Value: 3.14,
+			},
+			managed:    true,
+			wantConsts: []any{3.14},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+			},
+		},
+		{
+			name: "unmanaged string",
+			input: &ast.StringLiteral{
+				Value: "Hello, World!",
+			},
+			managed:    false,
+			wantConsts: []any{"Hello, World!"},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "managed string",
+			input: &ast.StringLiteral{
+				Value: "Hello, World!",
+			},
+			managed:    true,
+			wantConsts: []any{"Hello, World!"},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+			},
+		},
+		{
+			name: "unmanaged + operator + expression",
+			input: &ast.OperatorExpr{
+				Operator: ast.OperatorPlus,
+				Operands: []ast.Node{
+					&ast.IntegerLiteral{Value: 1},
+					&ast.IntegerLiteral{Value: 2},
+				},
+			},
+			managed: false,
+			wantConsts: []any{
+				int64(1), int64(2),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpAdd, 2),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "managed + operator + expression",
+			input: &ast.OperatorExpr{
+				Operator: ast.OperatorPlus,
+				Operands: []ast.Node{
+					&ast.IntegerLiteral{Value: 1},
+					&ast.IntegerLiteral{Value: 2},
+				},
+			},
+			managed: true,
+			wantConsts: []any{
+				int64(1), int64(2),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpAdd, 2),
+			},
+		},
+		{
+			name: "unmanaged block expression",
+			input: &ast.BlockExpression{
+				Nodes: []ast.Node{
+					&ast.IntegerLiteral{Value: 1},
+					&ast.IntegerLiteral{Value: 2},
+					&ast.IntegerLiteral{Value: 3},
+				},
+			},
+			managed: false,
+			wantConsts: []any{
+				int64(1), int64(2), int64(3),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpPop),
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "managed block expression",
+			input: &ast.BlockExpression{
+				Nodes: []ast.Node{
+					&ast.IntegerLiteral{Value: 1},
+					&ast.IntegerLiteral{Value: 2},
+					&ast.IntegerLiteral{Value: 3},
+				},
+			},
+			managed: true,
+			wantConsts: []any{
+				int64(1), int64(2), int64(3),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpPop),
+				code.Make(code.OpConst, 2),
+			},
+		},
+		{
+			name: "unmanaged cond expr",
+			input: &ast.CondExpression{
+				Cond: &ast.BooleanLiteral{Value: true},
+				Then: &ast.IntegerLiteral{Value: 123},
+				Else: &ast.IntegerLiteral{Value: 456},
+			},
+			managed: false,
+			wantConsts: []any{
+				int64(123), int64(456),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpJumpIfFalse, 11),
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpJump, 15),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "managed cond expr",
+			input: &ast.CondExpression{
+				Cond: &ast.BooleanLiteral{Value: true},
+				Then: &ast.IntegerLiteral{Value: 123},
+				Else: &ast.IntegerLiteral{Value: 456},
+			},
+			managed: true,
+			wantConsts: []any{
+				int64(123), int64(456),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpJumpIfFalse, 10),
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpJump, 13),
+				code.Make(code.OpConst, 1),
+			},
+		},
+		{
+			name: "unmanaged let expr",
+			input: &ast.LetExpression{
+				Identifier: &ast.IdentifierExpr{Name: "x"},
+				Value:      &ast.IntegerLiteral{Value: 42},
+			},
+			managed: false,
+			wantConsts: []any{
+				int64(42),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "unmanaged let expr",
+			input: &ast.LetExpression{
+				Identifier: &ast.IdentifierExpr{Name: "x"},
+				Value:      &ast.IntegerLiteral{Value: 42},
+			},
+			managed: true,
+			wantConsts: []any{
+				int64(42),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+			},
+		},
+		{
+			name: "unmanaged cond expr with no else",
+			input: &ast.CondExpression{
+				Cond: &ast.BooleanLiteral{Value: true},
+				Then: &ast.IntegerLiteral{Value: 123},
+			},
+			managed: false,
+			wantConsts: []any{
+				int64(123),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpJumpIfFalse, 11),
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpJump, 13),
+				code.Make(code.OpNull),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "managed cond expr with no else",
+			input: &ast.CondExpression{
+				Cond: &ast.BooleanLiteral{Value: true},
+				Then: &ast.IntegerLiteral{Value: 123},
+			},
+			managed: true,
+			wantConsts: []any{
+				int64(123),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpJumpIfFalse, 10),
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpJump, 11),
+				code.Make(code.OpNull),
+			},
+		},
+		{
+			name: "unmanaged cond expr with else",
+			input: &ast.CondExpression{
+				Cond: &ast.BooleanLiteral{Value: true},
+				Then: &ast.IntegerLiteral{Value: 123},
+				Else: &ast.IntegerLiteral{Value: 456},
+			},
+			managed: false,
+			wantConsts: []any{
+				int64(123), int64(456),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpJumpIfFalse, 11),
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpJump, 15),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "managed cond expr with else",
+			input: &ast.CondExpression{
+				Cond: &ast.BooleanLiteral{Value: true},
+				Then: &ast.IntegerLiteral{Value: 123},
+				Else: &ast.IntegerLiteral{Value: 456},
+			},
+			managed: true,
+			wantConsts: []any{
+				int64(123), int64(456),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpJumpIfFalse, 10),
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpJump, 13),
+				code.Make(code.OpConst, 1),
+			},
+		},
+		{
+			name: "unmanaged identifier expression",
+			input: &ast.IdentifierExpr{
+				Name: "myVar",
+			},
+			symbols: (func() *SymbolTable {
+				s := NewSymbolTable()
+				s.Define("myVar")
+				return s
+			})(),
+			managed:    false,
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "managed identifier expression",
+			input: &ast.IdentifierExpr{
+				Name: "myVar",
+			},
+			symbols: (func() *SymbolTable {
+				s := NewSymbolTable()
+				s.Define("myVar")
+				return s
+			})(),
+			managed:    true,
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpGetGlobal, 0),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			consts := []object.Object{}
+			symbols := NewSymbolTable()
+			if tt.consts != nil {
+				consts = tt.consts
+			}
+			if tt.symbols != nil {
+				symbols = tt.symbols
+			}
+			c := NewWithState(symbols, consts)
+			err := c.compileStep(tt.input, tt.managed)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
+}
+
 func TestCompile(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -174,6 +589,15 @@ func TestCompile(t *testing.T) {
 			name:    "wrong argc",
 			input:   "(>= 1 2 3 4)",
 			wantErr: fmt.Errorf("expected 2 arguments for operator >=, got 4"),
+		},
+		{
+			name:       "expression with an atomic value",
+			input:      `(true)`,
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpPop),
+			},
 		},
 	}
 
@@ -648,7 +1072,7 @@ func assertConsts(t *testing.T, want []any, got []object.Object) {
 	}
 }
 
-func parse(source string) (*ast.Program, error) {
+func parse(source string) (ast.Node, error) {
 	lex := lexer.NewLexer(source)
 	par := parser.NewParser(lex)
 	return par.Parse()

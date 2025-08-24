@@ -100,13 +100,17 @@ func (vm *VM) Run() error {
 				for range argc {
 					sum += int64(vm.pop().(*object.Integer).Value)
 				}
-				vm.push(object.NewInteger(sum))
+				if err := vm.push(object.NewInteger(sum)); err != nil {
+					return err
+				}
 			case object.FloatType:
 				sum := float64(0.0)
 				for range argc {
 					sum += float64(vm.pop().(*object.Float).Value)
 				}
-				vm.push(object.NewFloat(sum))
+				if err := vm.push(object.NewFloat(sum)); err != nil {
+					return err
+				}
 			case object.StringType:
 				var b strings.Builder
 				strs := make([]*object.String, 0, argc)
@@ -117,7 +121,9 @@ func (vm *VM) Run() error {
 				for i := len(strs) - 1; i >= 0; i-- {
 					b.WriteString(strs[i].Value)
 				}
-				vm.push(object.NewString(b.String()))
+				if err := vm.push(object.NewString(b.String())); err != nil {
+					return err
+				}
 			default:
 				// TODO: it is compiler's job to ensure that the types are correct
 				return errors.New("invalid type for addition")
@@ -126,7 +132,9 @@ func (vm *VM) Run() error {
 			b := vm.pop()
 			a := vm.pop()
 			res := int64(a.(*object.Integer).Value) - int64(b.(*object.Integer).Value)
-			vm.push(object.NewInteger(res))
+			if err := vm.push(object.NewInteger(res)); err != nil {
+				return err
+			}
 		case code.OpMul:
 			argc := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
@@ -138,13 +146,17 @@ func (vm *VM) Run() error {
 				for range argc {
 					product *= int64(vm.pop().(*object.Integer).Value)
 				}
-				vm.push(object.NewInteger(product))
+				if err := vm.push(object.NewInteger(product)); err != nil {
+					return err
+				}
 			case object.FloatType:
 				product := float64(1.0)
 				for range argc {
 					product *= float64(vm.pop().(*object.Float).Value)
 				}
-				vm.push(object.NewFloat(product))
+				if err := vm.push(object.NewFloat(product)); err != nil {
+					return err
+				}
 			case object.StringType:
 				if argc != 2 {
 					return errors.New("string multiplication requires exactly two arguments")
@@ -158,7 +170,9 @@ func (vm *VM) Run() error {
 				for i := int64(0); i < int64(reps.(*object.Integer).Value); i++ {
 					b.WriteString(str)
 				}
-				vm.push(object.NewString(b.String()))
+				if err := vm.push(object.NewString(b.String())); err != nil {
+					return nil
+				}
 			}
 		case code.OpDiv:
 			b := vm.pop()
@@ -167,7 +181,9 @@ func (vm *VM) Run() error {
 				return errors.New("division by zero")
 			}
 			res := int64(a.(*object.Integer).Value) / int64(b.(*object.Integer).Value)
-			vm.push(object.NewInteger(res))
+			if err := vm.push(object.NewInteger(res)); err != nil {
+				return err
+			}
 		case code.OpEql,
 			code.OpNotEql,
 			code.OpGreaterThan,
@@ -180,20 +196,30 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
-			vm.push(object.NewBool(cmp))
+			if err := vm.push(object.NewBool(cmp)); err != nil {
+				return err
+			}
 		case code.OpNot:
 			a := vm.pop()
 			if a.Type() != object.BoolType {
 				return NewTypeMismatchError(
 					fmt.Sprintf("expected boolean type, got %s", a.Type().String()))
 			}
-			vm.push(object.NewBool(!a.(*object.Bool).Value))
+			if err := vm.push(object.NewBool(!a.(*object.Bool).Value)); err != nil {
+				return err
+			}
 		case code.OpTrue:
-			vm.push(True)
+			if err := vm.push(True); err != nil {
+				return err
+			}
 		case code.OpFalse:
-			vm.push(False)
+			if err := vm.push(False); err != nil {
+				return err
+			}
 		case code.OpNull:
-			vm.push(Null)
+			if err := vm.push(Null); err != nil {
+				return err
+			}
 		case code.OpPop:
 			vm.pop()
 		case code.OpJump:
@@ -213,8 +239,7 @@ func (vm *VM) Run() error {
 		case code.OpGetGlobal:
 			gix := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
-			err := vm.push(vm.globals[gix])
-			if err != nil {
+			if err := vm.push(vm.globals[gix]); err != nil {
 				return err
 			}
 		case code.OpCall:
@@ -228,8 +253,7 @@ func (vm *VM) Run() error {
 			ret := vm.pop()
 			vm.popFrame()
 			vm.pop()
-			err := vm.push(ret)
-			if err != nil {
+			if err := vm.push(ret); err != nil {
 				return err
 			}
 		default:
@@ -242,6 +266,7 @@ func (vm *VM) Run() error {
 
 func (vm *VM) PrintStack() string {
 	var b strings.Builder
+	b.WriteByte('[')
 	for i := range vm.sp {
 		if i > 0 {
 			b.WriteString("\n")
@@ -252,6 +277,7 @@ func (vm *VM) PrintStack() string {
 			b.WriteString("nil")
 		}
 	}
+	b.WriteByte(']')
 	return b.String()
 }
 

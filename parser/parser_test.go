@@ -152,7 +152,7 @@ func TestParse(t *testing.T) {
 						Literal: ">=",
 					},
 					Operator: ast.OperatorGreaterThanOrEqual,
-					Args: []ast.Node{
+					Operands: []ast.Node{
 						&ast.IntegerLiteral{
 							Token: token.Token{
 								Type:    token.Numeric,
@@ -274,7 +274,7 @@ func TestParse(t *testing.T) {
 								Literal: "+",
 							},
 							Operator: ast.OperatorPlus,
-							Args: []ast.Node{
+							Operands: []ast.Node{
 								&ast.IdentifierExpr{
 									Token: token.Token{
 										Type:    token.Identifier,
@@ -343,7 +343,7 @@ func TestParse(t *testing.T) {
 							Literal: "+",
 						},
 						Operator: ast.OperatorPlus,
-						Args: []ast.Node{
+						Operands: []ast.Node{
 							&ast.IntegerLiteral{
 								Token: token.Token{
 									Type:    token.Numeric,
@@ -358,6 +358,72 @@ func TestParse(t *testing.T) {
 								},
 								Value: int64(2),
 							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:  "Call expression",
+			input: "(add 1 2)",
+			want: []ast.Node{
+				&ast.CallExpression{
+					Token: token.Token{
+						Type:    token.Identifier,
+						Literal: "add",
+					},
+					Callee: &ast.IdentifierExpr{
+						Token: token.Token{
+							Type:    token.Identifier,
+							Literal: "add",
+						},
+						Name: "add",
+					},
+					Args: []ast.Node{
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "1",
+							},
+							Value: int64(1),
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "2",
+							},
+							Value: int64(2),
+						},
+					},
+				},
+			},
+		},
+		{
+			name:  "Block expression",
+			input: "(1 2 3)",
+			want: []ast.Node{
+				&ast.BlockExpression{
+					Nodes: []ast.Node{
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "1",
+							},
+							Value: int64(1),
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "2",
+							},
+							Value: int64(2),
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "3",
+							},
+							Value: int64(3),
 						},
 					},
 				},
@@ -378,11 +444,12 @@ func TestParse(t *testing.T) {
 				}
 				return
 			}
+			nodes := prog.(*ast.BlockExpression).Nodes
 			assert.Equal(t, tt.wantErr, err, "Expected error %v, got %v", tt.wantErr, err)
-			assert.Len(t, prog.Nodes, len(tt.want), "Expected %d nodes, got %d", len(tt.want), len(prog.Nodes))
+			assert.Len(t, nodes, len(tt.want), "Expected %d nodes, got %d", len(tt.want), len(nodes))
 
 			for ix := range tt.want {
-				assertNodeEqual(t, tt.want[ix], prog.Nodes[ix])
+				assertNodeEqual(t, tt.want[ix], nodes[ix])
 			}
 		})
 	}

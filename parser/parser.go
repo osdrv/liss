@@ -22,7 +22,7 @@ func NewParser(lex *lexer.Lexer) *Parser {
 	}
 }
 
-func (p *Parser) Parse() (*ast.Program, error) {
+func (p *Parser) Parse() (ast.Node, error) {
 	nodes := make([]ast.Node, 0)
 
 	// pre-populate the first two tokens
@@ -40,7 +40,7 @@ func (p *Parser) Parse() (*ast.Program, error) {
 		nodes = append(nodes, expr)
 	}
 
-	program := ast.NewProgram(nodes)
+	program := ast.NewBlockExpression(nodes)
 	return program, nil
 }
 
@@ -216,6 +216,7 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 		token.Not:
 		node, err = p.parseOperatorExpression()
 	default:
+		tok := p.curToken
 		nodes := make([]ast.Node, 0, 1)
 		for !p.isEOF {
 			if p.curToken.Type == token.RParen {
@@ -227,7 +228,16 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 			}
 			nodes = append(nodes, node)
 		}
-		node = ast.NewExpression(nodes)
+		if len(nodes) > 0 {
+			switch nodes[0].(type) {
+			case *ast.IdentifierExpr, *ast.FunctionExpression:
+				node, err = ast.NewCallExpression(tok, nodes[0], nodes[1:])
+			default:
+				node = ast.NewBlockExpression(nodes)
+			}
+		} else {
+			node = ast.NewBlockExpression(nodes)
+		}
 	}
 
 	if err != nil {
@@ -289,6 +299,23 @@ func (p *Parser) parseBooleanLiteral() (ast.Node, error) {
 	}
 	return ast.NewBooleanLiteral(tok)
 }
+
+// func (p *Parser) parseCallExpression() (ast.Node, error) {
+// 	tok := p.curToken
+// 	callee, err := p.parseNode()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	args := make([]ast.Node, 0)
+// 	for p.curToken.Type != token.RParen {
+// 		arg, err := p.parseNode()
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		args = append(args, arg)
+// 	}
+// 	return ast.NewCallExpression(tok, callee, args)
+// }
 
 func looksLikeInteger(tok token.Token) bool {
 	if len(tok.Literal) == 0 {
