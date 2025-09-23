@@ -916,6 +916,37 @@ func TestFunctionExpr(t *testing.T) {
 				code.Make(code.OpPop),
 			},
 		},
+		{
+			name: "function with local bindings",
+			input: `
+			(fn []
+			  (let a 2)
+			  (let b 3)
+			  (* a b)
+			)`,
+			wantConsts: []any{
+				int64(2),
+				int64(3),
+				[]code.Instructions{
+					code.Make(code.OpConst, 0),
+					code.Make(code.OpSetLocal, 0),
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpPop),
+					code.Make(code.OpConst, 1),
+					code.Make(code.OpSetLocal, 1),
+					code.Make(code.OpGetLocal, 1),
+					code.Make(code.OpPop),
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpGetLocal, 1),
+					code.Make(code.OpMul, 2),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpPop),
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1059,7 +1090,7 @@ func TestLetStatementScopes(t *testing.T) {
 			wantConsts: []any{
 				int64(42),
 				[]code.Instructions{
-					code.Make(code.OpGetGlobal, 0),
+					code.Make(code.OpGetLocal, 0),
 					code.Make(code.OpReturn),
 				},
 			},
@@ -1101,6 +1132,7 @@ func TestLetStatementScopes(t *testing.T) {
 			},
 			wantInstrs: []code.Instructions{
 				code.Make(code.OpConst, 2),
+				code.Make(code.OpPop),
 			},
 		},
 	}

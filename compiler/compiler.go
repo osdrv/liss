@@ -181,8 +181,13 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		if err != nil {
 			return err
 		}
-		c.emit(code.OpSetGlobal, sym.Index)
-		c.emit(code.OpGetGlobal, sym.Index)
+		if c.symbols.outer == nil {
+			c.emit(code.OpSetGlobal, sym.Index)
+			c.emit(code.OpGetGlobal, sym.Index)
+		} else {
+			c.emit(code.OpSetLocal, sym.Index)
+			c.emit(code.OpGetLocal, sym.Index)
+		}
 		if !managed {
 			c.emit(code.OpPop)
 		}
@@ -191,7 +196,11 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		if !ok {
 			return fmt.Errorf("undefined variable: %s", n.Name)
 		}
-		c.emit(code.OpGetGlobal, sym.Index)
+		if c.symbols.outer == nil {
+			c.emit(code.OpGetGlobal, sym.Index)
+		} else {
+			c.emit(code.OpGetLocal, sym.Index)
+		}
 		if !managed {
 			c.emit(code.OpPop)
 		}
@@ -316,6 +325,7 @@ func (c *Compiler) enterScope() {
 		prev:   EmittedInstruction{},
 	}
 	c.scopes = append(c.scopes, scope)
+	c.symbols = NewNestedSymbolTable(c.symbols)
 	c.scopeix++
 }
 
@@ -323,6 +333,7 @@ func (c *Compiler) leaveScope() code.Instructions {
 	instrs := c.currentInstrs()
 	c.scopes = c.scopes[:len(c.scopes)-1]
 	c.scopeix--
+	c.symbols = c.symbols.outer
 	return instrs
 }
 
