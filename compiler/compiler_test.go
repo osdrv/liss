@@ -1042,6 +1042,88 @@ func TestFunctionCall(t *testing.T) {
 	}
 }
 
+func TestLetStatementScopes(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantInstrs []code.Instructions
+		wantConsts []any
+		wantErr    error
+	}{
+		{
+			name: "global scope",
+			input: `
+			(let num 42)
+			(fn [] num)
+			`,
+			wantConsts: []any{
+				int64(42),
+				[]code.Instructions{
+					code.Make(code.OpGetGlobal, 0),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "local scope",
+			input: `
+			(fn []
+			  (let a 2)
+			  (let b 3)
+			  (* a b)
+			)
+			`,
+			wantConsts: []any{
+				int64(2),
+				int64(3),
+				[]code.Instructions{
+					code.Make(code.OpConst, 0),
+					code.Make(code.OpSetLocal, 0),
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpPop),
+					code.Make(code.OpConst, 1),
+					code.Make(code.OpSetLocal, 1),
+					code.Make(code.OpGetLocal, 1),
+					code.Make(code.OpPop),
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpGetLocal, 1),
+					code.Make(code.OpMul, 2),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 2),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New()
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
+}
+
 func assertInstrs(t *testing.T, wants []code.Instructions, got code.Instructions) {
 	want := concatArr(wants)
 	assert.Equal(t, want, got,

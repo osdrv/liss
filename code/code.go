@@ -11,7 +11,8 @@ type Instructions = []byte
 type OpCode = byte
 
 const (
-	OpConst OpCode = iota
+	_ OpCode = iota
+	OpConst
 	OpTrue
 	OpFalse
 	OpNull
@@ -34,6 +35,8 @@ const (
 	OpJumpIfFalse
 	OpGetGlobal
 	OpSetGlobal
+	OpGetLocal
+	OpSetLocal
 	OpCall
 	OpReturn
 )
@@ -67,6 +70,8 @@ var definitions = map[OpCode]*Definition{
 	OpJumpIfFalse: {"OpJumpIfFalse", []int{2}},
 	OpGetGlobal:   {"OpGetGlobal", []int{2}},
 	OpSetGlobal:   {"OpSetGlobal", []int{2}},
+	OpGetLocal:    {"OpGetLocal", []int{1}},
+	OpSetLocal:    {"OpSetLocal", []int{1}},
 	OpCall:        {"OpCall", []int{}},
 	OpReturn:      {"OpReturn", []int{}},
 }
@@ -98,6 +103,8 @@ func Make(op OpCode, operands ...int) []byte {
 		switch w {
 		case 2:
 			binary.BigEndian.PutUint16(instr[off:], uint16(o))
+		case 1:
+			instr[off] = byte(o)
 		}
 		off += w
 	}
@@ -111,6 +118,8 @@ func ReadOperands(def *Definition, ins Instructions) ([]int, int) {
 		switch w {
 		case 2:
 			operands[i] = int(ReadUint16(ins[off:]))
+		case 1:
+			operands[i] = int(ReadUint8(ins[off:]))
 		}
 		off += w
 	}
@@ -119,6 +128,10 @@ func ReadOperands(def *Definition, ins Instructions) ([]int, int) {
 
 func ReadUint16(ins Instructions) uint16 {
 	return binary.BigEndian.Uint16(ins)
+}
+
+func ReadUint8(ins Instructions) uint8 {
+	return uint8(ins[0])
 }
 
 func PrintInstr(instr Instructions) string {

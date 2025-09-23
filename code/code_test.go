@@ -31,6 +31,12 @@ func TestMake(t *testing.T) {
 			operands: []int{},
 			expected: Instructions{OpPop},
 		},
+		{
+			name:     "OpGetLocal with one operand",
+			op:       OpGetLocal,
+			operands: []int{255},
+			expected: Instructions{OpGetLocal, 255},
+		},
 	}
 
 	for _, tt := range tests {
@@ -53,6 +59,12 @@ func TestReadOperands(t *testing.T) {
 			op:        OpConst,
 			operands:  []int{65535},
 			wantBytes: 2,
+		},
+		{
+			name:      "OpGetLocal with one operand",
+			op:        OpGetLocal,
+			operands:  []int{255},
+			wantBytes: 1,
 		},
 	}
 

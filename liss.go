@@ -10,6 +10,7 @@ import (
 	"osdrv/liss/parser"
 	"osdrv/liss/repl"
 	"osdrv/liss/vm"
+	"strings"
 )
 
 type Result interface {
@@ -58,12 +59,21 @@ func main() {
 
 	debug := flag.Bool("debug", false, "Enables debug mode with stack dumps and traces")
 	src := flag.String("src", "", "Source file to execute")
+	exec := flag.String("exec", "", "Execute source code and exit")
 	flag.Parse()
 	opts := repl.Options{
-		Debug: *debug,
+		Debug:       *debug,
+		Interactive: *exec == "",
 	}
 	if opts.Debug {
 		fmt.Printf("Runtime flags: %+v\n", opts)
+	}
+
+	if *exec != "" {
+		opts.Interactive = false
+		in := strings.NewReader(strings.TrimSpace(*exec) + "\n")
+		repl.Run(in, out, opts)
+		os.Exit(0)
 	}
 
 	if *src == "" {

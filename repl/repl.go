@@ -13,7 +13,8 @@ import (
 )
 
 type Options struct {
-	Debug bool
+	Debug       bool
+	Interactive bool
 }
 
 const Prompt = "liss> "
@@ -25,7 +26,9 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 	symbols := compiler.NewSymbolTable()
 
 	for {
-		fmt.Printf(Prompt)
+		if opts.Interactive {
+			fmt.Printf(Prompt)
+		}
 		scanned := scanner.Scan()
 		if !scanned {
 			return
@@ -37,6 +40,9 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 		prog, err := par.Parse()
 		if err != nil {
 			fmt.Fprintf(out, "Failed to parse program: %s\n", err)
+		}
+		if opts.Debug {
+			fmt.Printf("AST:\n%s\n", prog.String())
 		}
 		comp := compiler.NewWithState(symbols, consts)
 		if err := comp.Compile(prog); err != nil {
@@ -57,6 +63,8 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 		if opts.Debug {
 			fmt.Printf("VM stack: %s\n", vm.PrintStack())
 		}
+
+		fmt.Printf("Constants: %+v\n", consts)
 
 		st := vm.LastPopped()
 		io.WriteString(out, st.String())
