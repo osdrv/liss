@@ -43,9 +43,8 @@ func New(bc *compiler.Bytecode) *VM {
 
 	return &VM{
 		consts: bc.Consts,
-		//instrs:  bc.Instrs,
-		stack: make([]object.Object, StackSize),
-		sp:    0,
+		stack:  make([]object.Object, StackSize),
+		sp:     0,
 
 		globals: make([]object.Object, GlobalsSize),
 
@@ -298,6 +297,10 @@ func (vm *VM) PrintStack() string {
 	}
 	b.WriteByte(']')
 	return b.String()
+}
+
+func (vm *VM) Consts() []object.Object {
+	return vm.consts
 }
 
 func (vm *VM) LastPopped() object.Object {

@@ -44,6 +44,7 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 		if opts.Debug {
 			fmt.Printf("AST:\n%s\n", prog.String())
 		}
+		fmt.Printf("Pre-comp consts: %+v\n", consts)
 		comp := compiler.NewWithState(symbols, consts)
 		if err := comp.Compile(prog); err != nil {
 			fmt.Fprintf(out, "Failed to compile program: %s\n", err)
@@ -64,7 +65,8 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 			fmt.Printf("VM stack: %s\n", vm.PrintStack())
 		}
 
-		fmt.Printf("Constants: %+v\n", consts)
+		consts = vm.Consts()
+		fmt.Printf("VM Constants: %+v\n", consts)
 
 		st := vm.LastPopped()
 		io.WriteString(out, st.String())
