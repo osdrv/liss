@@ -432,6 +432,16 @@ func TestFunctionCall(t *testing.T) {
 			(add_3)`,
 			want: int64(5),
 		},
+		{
+			name: "function call with local bindings",
+			input: `
+			(let base 10)
+			(fn one [] (- base 1))
+			(fn two [] (- base 2))
+			(+ (one) (two))
+			`,
+			want: int64(17),
+		},
 	}
 
 	for _, tt := range tests {

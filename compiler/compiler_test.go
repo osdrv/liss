@@ -1090,7 +1090,7 @@ func TestLetStatementScopes(t *testing.T) {
 			wantConsts: []any{
 				int64(42),
 				[]code.Instructions{
-					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpGetGlobal, 0),
 					code.Make(code.OpReturn),
 				},
 			},

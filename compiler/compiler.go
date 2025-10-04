@@ -181,7 +181,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		if err != nil {
 			return err
 		}
-		if c.symbols.outer == nil {
+		if sym.Scope == GlobalScope {
 			c.emit(code.OpSetGlobal, sym.Index)
 			c.emit(code.OpGetGlobal, sym.Index)
 		} else {
@@ -196,7 +196,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		if !ok {
 			return fmt.Errorf("undefined variable: %s", n.Name)
 		}
-		if c.symbols.outer == nil {
+		if sym.Scope == GlobalScope {
 			c.emit(code.OpGetGlobal, sym.Index)
 		} else {
 			c.emit(code.OpGetLocal, sym.Index)
