@@ -215,6 +215,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			c.removeLastInstr()
 		}
 		c.emit(code.OpReturn)
+		numLocals := c.symbols.numVars
 		instrs := c.leaveScope()
 		var name string
 		if n.Name != nil {
@@ -225,6 +226,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			args = append(args, arg.Name)
 		}
 		fn := object.NewFunction(name, args, instrs)
+		fn.NumLocals = numLocals
 		c.emit(code.OpConst, c.addConst(fn))
 		if len(name) > 0 {
 			sym, err := c.symbols.Define(name)

@@ -352,9 +352,10 @@ func (d *Dictionary) IsDictionary() bool {
 
 type Function struct {
 	defaultObject
-	Name   string
-	Args   []string
-	Instrs code.Instructions
+	Name      string
+	Args      []string
+	Instrs    code.Instructions
+	NumLocals int
 }
 
 var _ Object = (*Function)(nil)

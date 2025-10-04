@@ -433,7 +433,37 @@ func TestFunctionCall(t *testing.T) {
 			want: int64(5),
 		},
 		{
-			name: "function call with local bindings",
+			name: "function call with resolving a global var",
+			input: `
+			(let glob 42)
+			(fn ret_glob_plus_1 [] (+ glob 1))
+			(ret_glob_plus_1)
+			`,
+			want: int64(43),
+		},
+		{
+			name: "function call with a local binding overriding a global one",
+			input: `
+			(let foo 42)
+			(fn ret_local_foo []
+				(let foo 100)
+				(+ foo 1))
+			(ret_local_foo)
+			`,
+			want: int64(101),
+		},
+		{
+			name: "function call with a local variable and global bindings",
+			input: `
+			(let base 10)
+			(fn one [] (let x 1) (+ base x))
+			(fn two [] (let x 2) (+ base x))
+			(+ (one) (two))
+			`,
+			want: int64(23),
+		},
+		{
+			name: "function call with a local const and global bindings",
 			input: `
 			(let base 10)
 			(fn one [] (- base 1))

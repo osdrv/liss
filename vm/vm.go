@@ -37,7 +37,7 @@ func New(bc *compiler.Bytecode) *VM {
 	mainfn := &object.Function{
 		Instrs: bc.Instrs,
 	}
-	mframe := NewFrame(mainfn)
+	mframe := NewFrame(mainfn, 0)
 	frames := make([]*Frame, MaxFrames)
 	frames[0] = mframe
 
@@ -248,18 +248,30 @@ func (vm *VM) Run() error {
 			if err := vm.push(vm.globals[gix]); err != nil {
 				return err
 			}
+		case code.OpSetLocal:
+			lix := code.ReadUint8(instrs[ip+1:])
+			vm.currentFrame().ip += 1
+			frame := vm.currentFrame()
+			vm.stack[frame.bptr+int(lix)] = vm.pop()
+		case code.OpGetLocal:
+			lix := code.ReadUint8(instrs[ip+1:])
+			vm.currentFrame().ip += 1
+			frame := vm.currentFrame()
+			if err := vm.push(vm.stack[frame.bptr+int(lix)]); err != nil {
+				return err
+			}
 		case code.OpCall:
 			fn, ok := vm.stack[vm.sp-1].(*object.Function)
 			if !ok {
 				return fmt.Errorf("Object %s is not a function", vm.stack[vm.sp-1].String())
 			}
-			frame := NewFrame(fn)
+			frame := NewFrame(fn, vm.sp)
 			vm.pushFrame(frame)
+			vm.sp = frame.bptr + fn.NumLocals
 		case code.OpReturn:
-			fmt.Printf("handling op return")
 			ret := vm.pop()
-			vm.popFrame()
-			vm.pop()
+			frame := vm.popFrame()
+			vm.sp = frame.bptr - 1
 			if err := vm.push(ret); err != nil {
 				return err
 			}
