@@ -254,7 +254,8 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		} else {
 			return fmt.Errorf("unsupported callee type: %T", callee)
 		}
-		c.emit(code.OpCall)
+		// TODO: update argc
+		c.emit(code.OpCall, 0)
 		if !managed {
 			c.emit(code.OpPop)
 		}

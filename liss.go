@@ -85,12 +85,12 @@ func main() {
 
 	data, err := os.ReadFile(*src)
 	if err != nil {
-		fmt.Fprintf(er, "Error reading file %s: %v\n", src, err)
+		fmt.Fprintf(er, "Error reading file %s: %v\n", *src, err)
 		os.Exit(1)
 	}
 	result, err := Execute(string(data), opts)
 	if err != nil {
-		fmt.Fprintf(er, "Error executing file %s: %v\n", src, err)
+		fmt.Fprintf(er, "Error executing file %s: %v\n", *src, err)
 		os.Exit(1)
 	}
 	io.WriteString(out, result.String()+"\n")

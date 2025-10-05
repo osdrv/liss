@@ -72,7 +72,7 @@ var definitions = map[OpCode]*Definition{
 	OpSetGlobal:   {"OpSetGlobal", []int{2}},
 	OpGetLocal:    {"OpGetLocal", []int{1}},
 	OpSetLocal:    {"OpSetLocal", []int{1}},
-	OpCall:        {"OpCall", []int{}},
+	OpCall:        {"OpCall", []int{1}},
 	OpReturn:      {"OpReturn", []int{}},
 }
 
@@ -88,6 +88,16 @@ func Make(op OpCode, operands ...int) []byte {
 	def, ok := definitions[op]
 	if !ok {
 		return []byte{}
+	}
+	if len(operands) != len(def.OperandWidths) {
+		panic(
+			fmt.Sprintf(
+				"Wrong number of arguments: opCode: %s, want: %d, got: %d",
+				def.Name,
+				len(def.OperandWidths),
+				len(operands),
+			),
+		)
 	}
 	instrlen := 1
 	for _, w := range def.OperandWidths {

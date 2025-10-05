@@ -991,7 +991,7 @@ func TestFunctionCall(t *testing.T) {
 			},
 			wantInstrs: []code.Instructions{
 				code.Make(code.OpConst, 2),
-				code.Make(code.OpCall),
+				code.Make(code.OpCall, 0),
 				code.Make(code.OpPop),
 			},
 		},
@@ -1015,7 +1015,7 @@ func TestFunctionCall(t *testing.T) {
 				code.Make(code.OpSetGlobal, 0),
 				code.Make(code.OpPop),
 				code.Make(code.OpGetGlobal, 0),
-				code.Make(code.OpCall),
+				code.Make(code.OpCall, 0),
 				code.Make(code.OpPop),
 			},
 		},
@@ -1036,7 +1036,7 @@ func TestFunctionCall(t *testing.T) {
 				},
 				[]code.Instructions{
 					code.Make(code.OpGetGlobal, 0),
-					code.Make(code.OpCall),
+					code.Make(code.OpCall, 0),
 					code.Make(code.OpReturn),
 				},
 			},
@@ -1048,7 +1048,7 @@ func TestFunctionCall(t *testing.T) {
 				code.Make(code.OpSetGlobal, 1),
 				code.Make(code.OpPop),
 				code.Make(code.OpGetGlobal, 1),
-				code.Make(code.OpCall),
+				code.Make(code.OpCall, 0),
 				code.Make(code.OpPop),
 			},
 		},
@@ -1158,9 +1158,11 @@ func TestLetStatementScopes(t *testing.T) {
 
 func assertInstrs(t *testing.T, wants []code.Instructions, got code.Instructions) {
 	want := concatArr(wants)
+	wantStr := code.PrintInstr(want)
+	gotStr := code.PrintInstr(got)
 	assert.Equal(t, want, got,
 		fmt.Sprintf("Expected instructions do not match:\nwant:\n%s\n\ngot:\n%s",
-			code.PrintInstr(want), code.PrintInstr(got)))
+			wantStr, gotStr))
 }
 
 func assertConsts(t *testing.T, want []any, got []object.Object) {

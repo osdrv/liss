@@ -260,6 +260,8 @@ func (vm *VM) Run() error {
 				return err
 			}
 		case code.OpCall:
+			// argc := code.ReadUint8(instrs[ip+1:])
+			vm.currentFrame().ip += 1
 			fn, ok := vm.stack[vm.sp-1].(*object.Function)
 			if !ok {
 				return fmt.Errorf("Object %s is not a function", vm.stack[vm.sp-1].String())
