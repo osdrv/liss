@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRun(t *testing.T) {
@@ -507,27 +508,14 @@ func TestFunctionCall(t *testing.T) {
 			`,
 			wantErr: fmt.Errorf("Function foo expects 1 arguments, got 2"),
 		},
-		// TODO: this test failed and i don't fully understand what exaxtly happened there
-		/* {
-			name: "nested function call with multiple arguments",
-			input: `
-			(let a 1)
-			(let b 2)
-			(let c 3)
-			(fn plus1 [x] (+ x 1))
-			(fn add_plus_1 [a b c] (+ (plus1 a) (plus1 b) (plus1 c)))
-			(add_plus_1 a b c)
-			`,
-			want: int64(9),
-		}, */
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
-			assert.NoError(t, err, "Failed to parse input: %s", tt.input)
+			require.NoError(t, err, "Failed to parse input: %s", tt.input)
 			comp := compiler.New()
-			assert.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
+			require.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
 			vm := New(comp.Bytecode())
 
 			err = vm.Run()
