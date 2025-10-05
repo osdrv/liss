@@ -286,6 +286,9 @@ func (vm *VM) callFunction(argc int) error {
 	if !ok {
 		return fmt.Errorf("Object %s is not a function", vm.stack[vm.sp-1].String())
 	}
+	if len(fn.Args) != argc {
+		return fmt.Errorf("Function %s expects %d arguments, got %d", fn.Name, len(fn.Args), argc)
+	}
 	frame := NewFrame(fn, vm.sp-argc)
 	vm.pushFrame(frame)
 	vm.sp = frame.bptr + fn.NumLocals

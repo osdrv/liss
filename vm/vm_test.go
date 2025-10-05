@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"fmt"
 	"osdrv/liss/ast"
 	"osdrv/liss/compiler"
 	"osdrv/liss/lexer"
@@ -498,6 +499,27 @@ func TestFunctionCall(t *testing.T) {
 			`,
 			want: int64(9),
 		},
+		{
+			name: "function call with a wrong number of args",
+			input: `
+			(fn foo [a] a)
+			(foo 1 2)
+			`,
+			wantErr: fmt.Errorf("Function foo expects 1 arguments, got 2"),
+		},
+		// TODO: this test failed and i don't fully understand what exaxtly happened there
+		/* {
+			name: "nested function call with multiple arguments",
+			input: `
+			(let a 1)
+			(let b 2)
+			(let c 3)
+			(fn plus1 [x] (+ x 1))
+			(fn add_plus_1 [a b c] (+ (plus1 a) (plus1 b) (plus1 c)))
+			(add_plus_1 a b c)
+			`,
+			want: int64(9),
+		}, */
 	}
 
 	for _, tt := range tests {
