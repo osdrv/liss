@@ -472,6 +472,32 @@ func TestFunctionCall(t *testing.T) {
 			`,
 			want: int64(17),
 		},
+		{
+			name: "function call with one argument",
+			input: `
+			(fn identity [x] x)
+			(identity 42)`,
+			want: int64(42),
+		},
+		{
+			name: "function call with multiple arguments",
+			input: `
+			(fn add [a b c] (+ a b c))
+			(add 1 2 3)`,
+			want: int64(6),
+		},
+		{
+			name: "nested function call with multiple arguments",
+			input: `
+			(let a 1)
+			(let b 2)
+			(let c 3)
+			(fn plus1 [x] (+ x 1))
+			(fn add_plus_1 [a b c] (+ (plus1 a) (plus1 b) (plus1 c)))
+			(add_plus_1 a b c)
+			`,
+			want: int64(9),
+		},
 	}
 
 	for _, tt := range tests {
@@ -513,6 +539,7 @@ func assertObjectEql(t *testing.T, got object.Object, want any) {
 	case *object.Bool:
 		assert.Equal(t, want, obj.Value, "Expected boolean value %v, got %v", want, obj.Value)
 	default:
+		t.Logf("Object: %+v", obj)
 		t.Logf("Unimplemented object type: %d", obj.Type())
 	}
 }

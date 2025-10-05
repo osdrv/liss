@@ -207,6 +207,11 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 	case *ast.FunctionExpression:
 		c.enterScope()
 		// We compile the function body and we mark it as a managed scope.
+
+		for _, arg := range n.Args {
+			c.symbols.Define(arg.Name)
+		}
+
 		err := c.compileStep(ast.NewBlockExpression(n.Body), true)
 		if err != nil {
 			return err
@@ -246,16 +251,25 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 				return fmt.Errorf("undefined function: %s", calleeIdent.Name)
 			}
 			c.emit(code.OpGetGlobal, sym.Index)
+			for _, arg := range n.Args {
+				if err := c.compileStep(arg, true); err != nil {
+					return err
+				}
+			}
 		} else if calleeFn, ok := callee.(*ast.FunctionExpression); ok {
 			err := c.compileStep(calleeFn, true)
 			if err != nil {
 				return err
 			}
+			for _, arg := range n.Args {
+				if err := c.compileStep(arg, true); err != nil {
+					return err
+				}
+			}
 		} else {
 			return fmt.Errorf("unsupported callee type: %T", callee)
 		}
-		// TODO: update argc
-		c.emit(code.OpCall, 0)
+		c.emit(code.OpCall, len(n.Args))
 		if !managed {
 			c.emit(code.OpPop)
 		}

@@ -260,15 +260,12 @@ func (vm *VM) Run() error {
 				return err
 			}
 		case code.OpCall:
-			// argc := code.ReadUint8(instrs[ip+1:])
+			argc := code.ReadUint8(instrs[ip+1:])
 			vm.currentFrame().ip += 1
-			fn, ok := vm.stack[vm.sp-1].(*object.Function)
-			if !ok {
-				return fmt.Errorf("Object %s is not a function", vm.stack[vm.sp-1].String())
+			if err := vm.callFunction(int(argc)); err != nil {
+				return err
 			}
-			frame := NewFrame(fn, vm.sp)
-			vm.pushFrame(frame)
-			vm.sp = frame.bptr + fn.NumLocals
+
 		case code.OpReturn:
 			ret := vm.pop()
 			frame := vm.popFrame()
@@ -280,6 +277,18 @@ func (vm *VM) Run() error {
 			return fmt.Errorf("unknown opcode %s at position %d", code.PrintOpCode(op), ip)
 		}
 	}
+
+	return nil
+}
+
+func (vm *VM) callFunction(argc int) error {
+	fn, ok := vm.stack[vm.sp-1-argc].(*object.Function)
+	if !ok {
+		return fmt.Errorf("Object %s is not a function", vm.stack[vm.sp-1].String())
+	}
+	frame := NewFrame(fn, vm.sp-argc)
+	vm.pushFrame(frame)
+	vm.sp = frame.bptr + fn.NumLocals
 
 	return nil
 }

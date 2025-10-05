@@ -996,6 +996,30 @@ func TestFunctionCall(t *testing.T) {
 			},
 		},
 		{
+			name:  "unnamed function call with arguments",
+			input: `((fn [a b c] (+ a b c)) 1 2 3)`,
+			wantConsts: []any{
+				[]code.Instructions{
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpGetLocal, 1),
+					code.Make(code.OpGetLocal, 2),
+					code.Make(code.OpAdd, 3),
+					code.Make(code.OpReturn),
+				},
+				int64(1),
+				int64(2),
+				int64(3),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpConst, 3),
+				code.Make(code.OpCall, 3),
+				code.Make(code.OpPop),
+			},
+		},
+		{
 			name: "named function call",
 			input: `
 			(fn foo [] (+ 2 3))
@@ -1016,6 +1040,35 @@ func TestFunctionCall(t *testing.T) {
 				code.Make(code.OpPop),
 				code.Make(code.OpGetGlobal, 0),
 				code.Make(code.OpCall, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "named function call with args",
+			input: `
+			(fn sum_3 [a b c] (+ a b c))
+			(sum_3 1 2 3)`,
+			wantConsts: []any{
+				[]code.Instructions{
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpGetLocal, 1),
+					code.Make(code.OpGetLocal, 2),
+					code.Make(code.OpAdd, 3),
+					code.Make(code.OpReturn),
+				},
+				int64(1),
+				int64(2),
+				int64(3),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpConst, 3),
+				code.Make(code.OpCall, 3),
 				code.Make(code.OpPop),
 			},
 		},
