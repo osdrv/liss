@@ -300,23 +300,6 @@ func (p *Parser) parseBooleanLiteral() (ast.Node, error) {
 	return ast.NewBooleanLiteral(tok)
 }
 
-// func (p *Parser) parseCallExpression() (ast.Node, error) {
-// 	tok := p.curToken
-// 	callee, err := p.parseNode()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	args := make([]ast.Node, 0)
-// 	for p.curToken.Type != token.RParen {
-// 		arg, err := p.parseNode()
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		args = append(args, arg)
-// 	}
-// 	return ast.NewCallExpression(tok, callee, args)
-// }
-
 func looksLikeInteger(tok token.Token) bool {
 	if len(tok.Literal) == 0 {
 		return false

@@ -53,6 +53,7 @@ type Object interface {
 	IsArray() bool
 	IsDictionary() bool
 	IsFunction() bool
+	IsLenable() bool
 }
 
 type defaultObject struct{}
@@ -82,6 +83,10 @@ func (d defaultObject) IsDictionary() bool {
 }
 
 func (d defaultObject) IsFunction() bool {
+	return false
+}
+
+func (d defaultObject) IsLenable() bool {
 	return false
 }
 
