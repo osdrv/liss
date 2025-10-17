@@ -198,8 +198,12 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		}
 		if sym.Scope == GlobalScope {
 			c.emit(code.OpGetGlobal, sym.Index)
-		} else {
+		} else if sym.Scope == LocalScope {
 			c.emit(code.OpGetLocal, sym.Index)
+		} else if sym.Scope == BuiltinScope {
+			c.emit(code.OpGetBuiltin, sym.Index)
+		} else {
+			panic("unreachable")
 		}
 		if !managed {
 			c.emit(code.OpPop)
@@ -250,7 +254,16 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			if !ok {
 				return fmt.Errorf("undefined function: %s", calleeIdent.Name)
 			}
-			c.emit(code.OpGetGlobal, sym.Index)
+			switch sym.Scope {
+			case GlobalScope:
+				c.emit(code.OpGetGlobal, sym.Index)
+			case LocalScope:
+				c.emit(code.OpGetLocal, sym.Index)
+			case BuiltinScope:
+				c.emit(code.OpGetBuiltin, sym.Index)
+			default:
+				return fmt.Errorf("unsupported symbol scope: %v", sym.Scope)
+			}
 			for _, arg := range n.Args {
 				if err := c.compileStep(arg, true); err != nil {
 					return err

@@ -968,6 +968,46 @@ func TestFunctionExpr(t *testing.T) {
 	}
 }
 
+func TestBuiltinFunctionCall(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantInstrs []code.Instructions
+		wantConsts []any
+		wantErr    error
+	}{
+		{
+			name:       "len function",
+			input:      `(len "Hello")`,
+			wantConsts: []any{"Hello"},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpGetBuiltin, 0),
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpCall, 1),
+				code.Make(code.OpPop),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New()
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
+}
+
 func TestFunctionCall(t *testing.T) {
 	tests := []struct {
 		name       string

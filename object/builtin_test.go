@@ -74,7 +74,7 @@ func TestBuiltinLen(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := BuiltinLen(tt.input)
+			got, err := builtinLen(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuiltinLen() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -132,7 +132,7 @@ func TestBuiltinFirst(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := BuiltinFirst(tt.input)
+			got, err := builtinFirst(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuiltinFirst() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -186,7 +186,7 @@ func TestBuiltinLast(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := BuiltinLast(tt.input)
+			got, err := builtinLast(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuiltinLast() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -252,7 +252,7 @@ func TestBuiltinRest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := BuiltinRest(tt.input)
+			got, err := builtinRest(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuiltinRest() error = %v, wantErr %v", err, tt.wantErr)
 				return

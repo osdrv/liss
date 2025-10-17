@@ -9,36 +9,52 @@ var (
 	ErrNotAFunction = fmt.Errorf("not a function")
 )
 
-var (
-	builtins = map[string]any{
-		"len":    BuiltinLen,
-		"first":  BuiltinFirst,
-		"last":   BuiltinLast,
-		"rest":   BuiltinRest,
-		"isNull": BuiltinIsNull,
-	}
-)
+type indexedBuiltin struct {
+	ix int
+	fn *BuiltinFunction
+}
 
-var Builtins map[string]*BuiltinFunction
+func mkIndexedBuiltin(ix int, name string, fn any) *indexedBuiltin {
+	bfn, err := NewBuiltinFunction(name, fn)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create builtin function %s: %s", name, err))
+	}
+	return &indexedBuiltin{ix: ix, fn: bfn}
+}
+
+var builtinList []*indexedBuiltin
+var builtinIndex map[string]*indexedBuiltin = make(map[string]*indexedBuiltin)
 
 func init() {
-	for name, fn := range builtins {
-		builtinFn, err := NewBuiltinFunction(name, fn)
-		if err != nil {
-			panic(fmt.Sprintf("failed to create builtin function %s: %s", name, err))
-		}
-		if Builtins == nil {
-			Builtins = make(map[string]*BuiltinFunction)
-		}
-		Builtins[name] = builtinFn
+	builtinList = []*indexedBuiltin{
+		mkIndexedBuiltin(0, "len", builtinLen),
+		mkIndexedBuiltin(1, "first", builtinFirst),
+		mkIndexedBuiltin(2, "last", builtinLast),
+		mkIndexedBuiltin(3, "rest", builtinRest),
+		mkIndexedBuiltin(4, "isNull", builtinIsNull),
 	}
+
+	for _, b := range builtinList {
+		builtinIndex[b.fn.name] = b
+	}
+}
+
+func LookupBuiltinByName(name string) (*BuiltinFunction, int, bool) {
+	if b, ok := builtinIndex[name]; ok {
+		return b.fn, b.ix, true
+	}
+	return nil, -1, false
 }
 
 type BuiltinFunction struct {
-	name string
-	fn   any
-	argc int
+	defaultObject
+	name  string
+	fn    any // TODO: reevaluate whether I need to keep the src fn
+	argc  int
+	rawfn reflect.Value
 }
+
+var _ Object = (*BuiltinFunction)(nil)
 
 func NewBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
 	argc, err := getFuncNumArgs(fn)
@@ -46,11 +62,29 @@ func NewBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
 		return nil, err
 	}
 
+	rawfn := reflect.ValueOf(fn)
+	if rawfn.Kind() != reflect.Func {
+		return nil, ErrNotAFunction
+	}
+
 	return &BuiltinFunction{
-		name: name,
-		fn:   fn,
-		argc: argc,
+		name:  name,
+		fn:    fn,
+		argc:  argc,
+		rawfn: rawfn,
 	}, nil
+}
+
+func (b *BuiltinFunction) String() string {
+	return fmt.Sprintf("<builtin function %s>", b.name)
+}
+
+func (b *BuiltinFunction) Type() ObjectType {
+	return BuiltinType
+}
+
+func (b *BuiltinFunction) IsFunction() bool {
+	return true
 }
 
 func getFuncNumArgs(fn any) (int, error) {
@@ -61,7 +95,7 @@ func getFuncNumArgs(fn any) (int, error) {
 	return typ.NumIn(), nil
 }
 
-func BuiltinLen(a Object) (Object, error) {
+func builtinLen(a Object) (Object, error) {
 	if a.IsLenable() {
 		al := a.(lenable)
 		return &Integer{Value: int64(al.Len())}, nil
@@ -69,11 +103,11 @@ func BuiltinLen(a Object) (Object, error) {
 	return nil, fmt.Errorf("object %s is not lenable", a.String())
 }
 
-func BuiltinIsNull(v Object) (Object, error) {
+func builtinIsNull(v Object) (Object, error) {
 	return &Bool{Value: v.IsNull()}, nil
 }
 
-func BuiltinFirst(a Object) (Object, error) {
+func builtinFirst(a Object) (Object, error) {
 	if a.IsArray() {
 		arr := a.(*Array)
 		if len(arr.items) > 0 {
@@ -90,7 +124,7 @@ func BuiltinFirst(a Object) (Object, error) {
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
 }
 
-func BuiltinLast(a Object) (Object, error) {
+func builtinLast(a Object) (Object, error) {
 	if a.IsArray() {
 		arr := a.(*Array)
 		if len(arr.items) > 0 {
@@ -107,7 +141,7 @@ func BuiltinLast(a Object) (Object, error) {
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
 }
 
-func BuiltinRest(a Object) (Object, error) {
+func builtinRest(a Object) (Object, error) {
 	if a.IsArray() {
 		arr := a.(*Array)
 		if len(arr.items) > 1 {

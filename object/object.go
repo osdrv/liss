@@ -16,6 +16,7 @@ const (
 	StringType
 	NullType
 	FunctionType
+	BuiltinType
 	ArrayType
 	DictionaryType
 )
@@ -34,6 +35,8 @@ func (t ObjectType) String() string {
 		return "Null"
 	case FunctionType:
 		return "Function"
+	case BuiltinType:
+		return "Builtin"
 	case ArrayType:
 		return "Array"
 	case DictionaryType:

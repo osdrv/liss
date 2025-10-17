@@ -1,12 +1,16 @@
 package compiler
 
-import "fmt"
+import (
+	"fmt"
+	"osdrv/liss/object"
+)
 
 type Scope uint8
 
 const (
 	GlobalScope Scope = iota
 	LocalScope
+	BuiltinScope
 )
 
 type Symbol struct {
@@ -53,6 +57,9 @@ func (st *SymbolTable) Define(name string) (Symbol, error) {
 }
 
 func (st *SymbolTable) Resolve(name string) (Symbol, bool) {
+	if _, ix, ok := object.LookupBuiltinByName(name); ok {
+		return Symbol{Name: name, Index: ix, Scope: BuiltinScope}, true
+	}
 	symbol, exists := st.vars[name]
 	if !exists && st.outer != nil {
 		return st.outer.Resolve(name)
