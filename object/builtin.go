@@ -9,59 +9,65 @@ var (
 	ErrNotAFunction = fmt.Errorf("not a function")
 )
 
-type indexedBuiltin struct {
-	ix int
-	fn *BuiltinFunction
-}
+var builtins []*BuiltinFunction
+var builtinIndex map[string]int = make(map[string]int)
 
-func mkIndexedBuiltin(ix int, name string, fn any) *indexedBuiltin {
-	bfn, err := NewBuiltinFunction(name, fn)
+func mkBuiltin(name string, fn any, variadic bool) *BuiltinFunction {
+	b, err := NewBuiltinFunction(name, fn)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create builtin function %s: %s", name, err))
+		panic(err)
 	}
-	return &indexedBuiltin{ix: ix, fn: bfn}
+	b.variadic = variadic
+	return b
 }
-
-var builtinList []*indexedBuiltin
-var builtinIndex map[string]*indexedBuiltin = make(map[string]*indexedBuiltin)
 
 func init() {
-	builtinList = []*indexedBuiltin{
-		mkIndexedBuiltin(0, "len", builtinLen),
-		mkIndexedBuiltin(1, "first", builtinFirst),
-		mkIndexedBuiltin(2, "last", builtinLast),
-		mkIndexedBuiltin(3, "rest", builtinRest),
-		mkIndexedBuiltin(4, "isNull", builtinIsNull),
+	builtins = []*BuiltinFunction{
+		mkBuiltin("len", builtinLen, false),
+		mkBuiltin("first", builtinFirst, false),
+		mkBuiltin("last", builtinLast, false),
+		mkBuiltin("rest", builtinRest, false),
+		mkBuiltin("isNull", builtinIsNull, false),
 	}
 
-	for _, b := range builtinList {
-		builtinIndex[b.fn.name] = b
+	for ix, b := range builtins {
+		builtinIndex[b.name] = ix
 	}
 }
 
 func GetBuiltinByName(name string) (*BuiltinFunction, int, bool) {
-	if b, ok := builtinIndex[name]; ok {
-		return b.fn, b.ix, true
+	if ix, ok := builtinIndex[name]; ok {
+		return builtins[ix], ix, true
 	}
 	return nil, -1, false
 }
 
 func GetBuiltinByIndex(ix int) (*BuiltinFunction, bool) {
-	if ix < 0 || ix >= len(builtinList) {
+	if ix < 0 || ix >= len(builtins) {
 		return nil, false
 	}
-	return builtinList[ix].fn, true
+	return builtins[ix], true
 }
 
 type BuiltinFunction struct {
 	defaultObject
-	name  string
-	fn    any // TODO: reevaluate whether I need to keep the src fn
-	argc  int
-	rawfn reflect.Value
+	name     string
+	fn       any // TODO: reevaluate whether I need to keep the src fn
+	variadic bool
+	argc     int
+	rawfn    reflect.Value
 }
 
 var _ Object = (*BuiltinFunction)(nil)
+
+func NewVariadicBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
+	b, err := NewBuiltinFunction(name, fn)
+	if err != nil {
+		return nil, err
+	}
+	b.variadic = true
+	return b, nil
+}
 
 func NewBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
 	argc, err := getFuncNumArgs(fn)
@@ -187,4 +193,8 @@ func builtinRest(a Object) (Object, error) {
 		return &Null{}, nil
 	}
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
+}
+
+func builtinList(args ...Object) (Object, error) {
+	return &Array{items: args}, nil
 }

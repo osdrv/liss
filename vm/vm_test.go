@@ -554,6 +554,11 @@ func TestBuiltinCall(t *testing.T) {
 			input: `(isNull 42)`,
 			want:  false,
 		},
+		{
+			name:  "builtin variadic list with arguments",
+			input: `(list 1 2 3)`,
+			want:  []any{int64(1), int64(2), int64(3)},
+		},
 	}
 
 	for _, tt := range tests {

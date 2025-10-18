@@ -265,3 +265,53 @@ func TestBuiltinRest(t *testing.T) {
 		})
 	}
 }
+
+func TestBuiltinList(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   []Object
+		want    Object
+		wantErr bool
+	}{
+		{
+			name:  "empty list",
+			input: []Object{},
+			want:  &Array{items: []Object{}},
+		},
+		{
+			name: "list with one element",
+			input: []Object{
+				&Integer{Value: 1},
+			},
+			want: &Array{items: []Object{&Integer{Value: 1}}},
+		},
+		{
+			name: "list with multiple elements",
+			input: []Object{
+				&Integer{Value: 1},
+				&String{Value: "two"},
+				&Bool{Value: true},
+			},
+			want: &Array{items: []Object{
+				&Integer{Value: 1},
+				&String{Value: "two"},
+				&Bool{Value: true},
+			}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := builtinList(tt.input...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("BuiltinList() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr {
+				if got.String() != tt.want.String() {
+					t.Errorf("BuiltinList() = %v, want %v", got.String(), tt.want.String())
+				}
+			}
+		})
+	}
+}

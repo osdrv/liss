@@ -311,7 +311,7 @@ func (vm *VM) callFunction(argc int) error {
 		vm.sp = frame.bptr + fn.NumLocals
 	case *object.BuiltinFunction:
 		args := make([]object.Object, argc)
-		for i := 0; i < argc; i++ {
+		for i := range argc {
 			args[i] = vm.stack[vm.sp-argc+i]
 		}
 		res, err := fn.Invoke(args...)
