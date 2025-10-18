@@ -532,6 +532,52 @@ func TestFunctionCall(t *testing.T) {
 	}
 }
 
+func TestBuiltinCall(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    any
+		wantErr error
+	}{
+		{
+			name:  "builtin len with a string",
+			input: `(len "hello")`,
+			want:  int64(5),
+		},
+		{
+			name:  "builtin isNull with null",
+			input: `(isNull null)`,
+			want:  true,
+		},
+		{
+			name:  "builtin isNull with non-null",
+			input: `(isNull 42)`,
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			require.NoError(t, err, "Failed to parse input: %s", tt.input)
+			comp := compiler.New()
+			require.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
+			vm := New(comp.Bytecode())
+
+			err = vm.Run()
+			if tt.wantErr != nil {
+				assert.Error(t, err, "Expected error for input: %s", tt.input)
+				assert.EqualError(t, err, tt.wantErr.Error(), "Error message does not match")
+				return
+			}
+
+			assert.NoError(t, err, "Failed to run program: %s", tt.input)
+			st := vm.LastPopped()
+			test.AssertObjectEql(t, st, tt.want)
+		})
+	}
+}
+
 func parse(source string) (ast.Node, error) {
 	lex := lexer.NewLexer(source)
 	par := parser.NewParser(lex)

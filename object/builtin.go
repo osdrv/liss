@@ -39,11 +39,18 @@ func init() {
 	}
 }
 
-func LookupBuiltinByName(name string) (*BuiltinFunction, int, bool) {
+func GetBuiltinByName(name string) (*BuiltinFunction, int, bool) {
 	if b, ok := builtinIndex[name]; ok {
 		return b.fn, b.ix, true
 	}
 	return nil, -1, false
+}
+
+func GetBuiltinByIndex(ix int) (*BuiltinFunction, bool) {
+	if ix < 0 || ix >= len(builtinList) {
+		return nil, false
+	}
+	return builtinList[ix].fn, true
 }
 
 type BuiltinFunction struct {
@@ -85,6 +92,30 @@ func (b *BuiltinFunction) Type() ObjectType {
 
 func (b *BuiltinFunction) IsFunction() bool {
 	return true
+}
+
+func (b *BuiltinFunction) Invoke(args ...Object) (Object, error) {
+	if len(args) != b.argc {
+		return nil, fmt.Errorf("builtin function %s expects %d arguments, got %d", b.name, b.argc, len(args))
+	}
+
+	in := make([]reflect.Value, len(args))
+	for i, arg := range args {
+		in[i] = reflect.ValueOf(arg)
+	}
+
+	out := b.rawfn.Call(in)
+	if len(out) != 2 {
+		return nil, fmt.Errorf("builtin function %s should return two values (Object, error)", b.name)
+	}
+
+	res := out[0].Interface().(Object)
+	var err error
+	if out[1].Interface() != nil {
+		err = out[1].Interface().(error)
+	}
+
+	return res, err
 }
 
 func getFuncNumArgs(fn any) (int, error) {

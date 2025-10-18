@@ -57,7 +57,7 @@ func (st *SymbolTable) Define(name string) (Symbol, error) {
 }
 
 func (st *SymbolTable) Resolve(name string) (Symbol, bool) {
-	if _, ix, ok := object.LookupBuiltinByName(name); ok {
+	if _, ix, ok := object.GetBuiltinByName(name); ok {
 		return Symbol{Name: name, Index: ix, Scope: BuiltinScope}, true
 	}
 	symbol, exists := st.vars[name]
