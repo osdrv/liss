@@ -5,8 +5,8 @@ import (
 	"osdrv/liss/ast"
 	"osdrv/liss/compiler"
 	"osdrv/liss/lexer"
-	"osdrv/liss/object"
 	"osdrv/liss/parser"
+	"osdrv/liss/test"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -374,7 +374,7 @@ func TestRun(t *testing.T) {
 
 			assert.NoError(t, err, "Failed to run program: %s", tt.input)
 			st := vm.LastPopped()
-			assertObjectEql(t, st, tt.want)
+			test.AssertObjectEql(t, st, tt.want)
 		})
 	}
 }
@@ -527,30 +527,8 @@ func TestFunctionCall(t *testing.T) {
 
 			assert.NoError(t, err, "Failed to run program: %s", tt.input)
 			st := vm.LastPopped()
-			assertObjectEql(t, st, tt.want)
+			test.AssertObjectEql(t, st, tt.want)
 		})
-	}
-}
-
-func assertObjectEql(t *testing.T, got object.Object, want any) {
-	if got == nil {
-		assert.Equal(t, want, got, "Expected object to be %v, got %v", want, got)
-		return
-	}
-	switch obj := got.(type) {
-	case *object.Integer:
-		assert.Equal(t, want, obj.Value, "Expected integer value %v, got %v", want, obj.Value)
-	case *object.Float:
-		assert.Equal(t, want, obj.Value, "Expected float value %v, got %v", want, obj.Value)
-	case *object.String:
-		assert.Equal(t, want, obj.Value, "Expected string value %v, got %v", want, obj.Value)
-	case *object.Null:
-		assert.Equal(t, want, nil, "Expected null object, got %v", obj)
-	case *object.Bool:
-		assert.Equal(t, want, obj.Value, "Expected boolean value %v, got %v", want, obj.Value)
-	default:
-		t.Logf("Object: %+v", obj)
-		t.Logf("Unimplemented object type: %d", obj.Type())
 	}
 }
 

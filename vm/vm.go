@@ -265,8 +265,13 @@ func (vm *VM) Run() error {
 			if err := vm.callFunction(int(argc)); err != nil {
 				return err
 			}
-
 		case code.OpReturn:
+			// check if we pushed anything to the stack. If not, push null.
+			if vm.sp == vm.currentFrame().bptr {
+				if err := vm.push(Null); err != nil {
+					return err
+				}
+			}
 			ret := vm.pop()
 			frame := vm.popFrame()
 			vm.sp = frame.bptr - 1
