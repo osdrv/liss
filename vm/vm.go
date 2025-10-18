@@ -206,6 +206,17 @@ func (vm *VM) Run() error {
 			if err := vm.push(res); err != nil {
 				return err
 			}
+		case code.OpMod:
+			b := vm.pop()
+			a := vm.pop()
+			if a.Type() != object.IntegerType || b.Type() != object.IntegerType {
+				return NewTypeMismatchError(
+					fmt.Sprintf("expected integer types for modulo operation, got %s and %s", a.Type().String(), b.Type().String()))
+			}
+			mod := a.(object.Numeric).Int64() % b.(object.Numeric).Int64()
+			if err := vm.push(object.NewInteger(mod)); err != nil {
+				return err
+			}
 		case code.OpEql,
 			code.OpNotEql,
 			code.OpGreaterThan,

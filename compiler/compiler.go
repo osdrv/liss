@@ -118,6 +118,8 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			c.emit(code.OpAnd)
 		case ast.OperatorOr:
 			c.emit(code.OpOr)
+		case ast.OperatorModulus:
+			c.emit(code.OpMod)
 		}
 		if !managed {
 			c.emit(code.OpPop)
