@@ -24,10 +24,12 @@ func mkBuiltin(name string, fn any, variadic bool) *BuiltinFunction {
 func init() {
 	builtins = []*BuiltinFunction{
 		mkBuiltin("len", builtinLen, false),
-		mkBuiltin("first", builtinFirst, false),
+		mkBuiltin("head", builtinHead, false),
 		mkBuiltin("last", builtinLast, false),
-		mkBuiltin("rest", builtinRest, false),
+		mkBuiltin("tail", builtinTail, false),
 		mkBuiltin("isNull", builtinIsNull, false),
+
+		mkBuiltin("list", builtinList, true),
 	}
 
 	for ix, b := range builtins {
@@ -100,9 +102,22 @@ func (b *BuiltinFunction) IsFunction() bool {
 	return true
 }
 
+func (b *BuiltinFunction) validateArgs(args []Object) error {
+	if b.variadic {
+		if len(args) < b.argc-1 {
+			return fmt.Errorf("builtin function %s expects at least %d arguments, got %d", b.name, b.argc-1, len(args))
+		}
+	} else {
+		if len(args) != b.argc {
+			return fmt.Errorf("builtin function %s expects %d arguments, got %d", b.name, b.argc, len(args))
+		}
+	}
+	return nil
+}
+
 func (b *BuiltinFunction) Invoke(args ...Object) (Object, error) {
-	if len(args) != b.argc {
-		return nil, fmt.Errorf("builtin function %s expects %d arguments, got %d", b.name, b.argc, len(args))
+	if err := b.validateArgs(args); err != nil {
+		return nil, err
 	}
 
 	in := make([]reflect.Value, len(args))
@@ -144,7 +159,7 @@ func builtinIsNull(v Object) (Object, error) {
 	return &Bool{Value: v.IsNull()}, nil
 }
 
-func builtinFirst(a Object) (Object, error) {
+func builtinHead(a Object) (Object, error) {
 	if a.IsArray() {
 		arr := a.(*Array)
 		if len(arr.items) > 0 {
@@ -178,7 +193,7 @@ func builtinLast(a Object) (Object, error) {
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
 }
 
-func builtinRest(a Object) (Object, error) {
+func builtinTail(a Object) (Object, error) {
 	if a.IsArray() {
 		arr := a.(*Array)
 		if len(arr.items) > 1 {

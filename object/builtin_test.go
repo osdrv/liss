@@ -92,7 +92,7 @@ func TestBuiltinLen(t *testing.T) {
 	}
 }
 
-func TestBuiltinFirst(t *testing.T) {
+func TestBuiltinHead(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   Object
@@ -100,31 +100,31 @@ func TestBuiltinFirst(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "First element of a non-empty array",
+			name:    "Head element of a non-empty array",
 			input:   &Array{items: []Object{&Integer{Value: 1}, &Integer{Value: 2}, &Integer{Value: 3}}},
 			want:    &Integer{Value: 1},
 			wantErr: false,
 		},
 		{
-			name:    "First element of an empty array",
+			name:    "Head element of an empty array",
 			input:   &Array{items: []Object{}},
 			want:    &Null{},
 			wantErr: false,
 		},
 		{
-			name:    "First character of a non-empty string",
+			name:    "Head character of a non-empty string",
 			input:   &String{Value: "hello"},
 			want:    &String{Value: "h"},
 			wantErr: false,
 		},
 		{
-			name:    "First character of an empty string",
+			name:    "Head character of an empty string",
 			input:   &String{Value: ""},
 			want:    &Null{},
 			wantErr: false,
 		},
 		{
-			name:    "First element of a non-lenable object",
+			name:    "Head element of a non-lenable object",
 			input:   &Integer{Value: 42},
 			wantErr: true,
 		},
@@ -132,14 +132,14 @@ func TestBuiltinFirst(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinFirst(tt.input)
+			got, err := builtinHead(tt.input)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("BuiltinFirst() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("builtinHead() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !tt.wantErr {
 				if got.String() != tt.want.String() {
-					t.Errorf("BuiltinFirst() = %v, want %v", got.String(), tt.want.String())
+					t.Errorf("builtinHead() = %v, want %v", got.String(), tt.want.String())
 				}
 			}
 		})
@@ -200,7 +200,7 @@ func TestBuiltinLast(t *testing.T) {
 	}
 }
 
-func TestBuiltinRest(t *testing.T) {
+func TestBuiltinTail(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   Object
@@ -208,43 +208,43 @@ func TestBuiltinRest(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "Rest of a non-empty array",
+			name:    "Tail of a non-empty array",
 			input:   &Array{items: []Object{&Integer{Value: 1}, &Integer{Value: 2}, &Integer{Value: 3}}},
 			want:    &Array{items: []Object{&Integer{Value: 2}, &Integer{Value: 3}}},
 			wantErr: false,
 		},
 		{
-			name:    "Rest of an array with one element",
+			name:    "Tail of an array with one element",
 			input:   &Array{items: []Object{&Integer{Value: 1}}},
 			want:    &Null{},
 			wantErr: false,
 		},
 		{
-			name:    "Rest of an empty array",
+			name:    "Tail of an empty array",
 			input:   &Array{items: []Object{}},
 			want:    &Null{},
 			wantErr: false,
 		},
 		{
-			name:    "Rest of a non-empty string",
+			name:    "Tail of a non-empty string",
 			input:   &String{Value: "hello"},
 			want:    &String{Value: "ello"},
 			wantErr: false,
 		},
 		{
-			name:    "Rest of a string with one character",
+			name:    "Tail of a string with one character",
 			input:   &String{Value: "h"},
 			want:    &Null{},
 			wantErr: false,
 		},
 		{
-			name:    "Rest of an empty string",
+			name:    "Tail of an empty string",
 			input:   &String{Value: ""},
 			want:    &Null{},
 			wantErr: false,
 		},
 		{
-			name:    "Rest of a non-lenable object",
+			name:    "Tail of a non-lenable object",
 			input:   &Integer{Value: 42},
 			wantErr: true,
 		},
@@ -252,14 +252,15 @@ func TestBuiltinRest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinRest(tt.input)
+			got, err := builtinTail(tt.input)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("BuiltinRest() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("builtinTail() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !tt.wantErr {
 				if got.String() != tt.want.String() {
-					t.Errorf("BuiltinRest() = %v, want %v", got.String(), tt.want.String())
+					t.Errorf("builtinTail() = %v, want %v", got.String(), tt.want.String())
 				}
 			}
 		})
