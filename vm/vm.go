@@ -136,8 +136,16 @@ func (vm *VM) Run() error {
 		case code.OpSub:
 			b := vm.pop()
 			a := vm.pop()
-			res := int64(a.(*object.Integer).Value) - int64(b.(*object.Integer).Value)
-			if err := vm.push(object.NewInteger(res)); err != nil {
+			var res object.Object
+			if a.Type() == object.IntegerType && b.Type() == object.IntegerType {
+				sub := a.(object.Numeric).Int64() - b.(object.Numeric).Int64()
+				res = object.NewInteger(sub)
+			} else {
+				af := a.(object.Numeric).Float64()
+				bf := b.(object.Numeric).Float64()
+				res = object.NewFloat(af - bf)
+			}
+			if err := vm.push(res); err != nil {
 				return err
 			}
 		case code.OpMul:
@@ -182,11 +190,20 @@ func (vm *VM) Run() error {
 		case code.OpDiv:
 			b := vm.pop()
 			a := vm.pop()
-			if b.(*object.Integer).Value == 0 {
-				return errors.New("division by zero")
+
+			var res object.Object
+			if a.Type() == object.IntegerType && b.Type() == object.IntegerType {
+				if b.(*object.Integer).Value == 0 {
+					return errors.New("division by zero")
+				}
+				sub := a.(object.Numeric).Int64() / b.(object.Numeric).Int64()
+				res = object.NewInteger(sub)
+			} else {
+				af := a.(object.Numeric).Float64()
+				bf := b.(object.Numeric).Float64()
+				res = object.NewFloat(af / bf)
 			}
-			res := int64(a.(*object.Integer).Value) / int64(b.(*object.Integer).Value)
-			if err := vm.push(object.NewInteger(res)); err != nil {
+			if err := vm.push(res); err != nil {
 				return err
 			}
 		case code.OpEql,
@@ -211,6 +228,26 @@ func (vm *VM) Run() error {
 					fmt.Sprintf("expected boolean type, got %s", a.Type().String()))
 			}
 			if err := vm.push(object.NewBool(!a.(*object.Bool).Value)); err != nil {
+				return err
+			}
+		case code.OpAnd:
+			b := vm.pop()
+			a := vm.pop()
+			if a.Type() != object.BoolType || b.Type() != object.BoolType {
+				return NewTypeMismatchError(
+					fmt.Sprintf("expected boolean types, got %s and %s", a.Type().String(), b.Type().String()))
+			}
+			if err := vm.push(object.NewBool(a.(*object.Bool).Value && b.(*object.Bool).Value)); err != nil {
+				return err
+			}
+		case code.OpOr:
+			b := vm.pop()
+			a := vm.pop()
+			if a.Type() != object.BoolType || b.Type() != object.BoolType {
+				return NewTypeMismatchError(
+					fmt.Sprintf("expected boolean types, got %s and %s", a.Type().String(), b.Type().String()))
+			}
+			if err := vm.push(object.NewBool(a.(*object.Bool).Value || b.(*object.Bool).Value)); err != nil {
 				return err
 			}
 		case code.OpTrue:

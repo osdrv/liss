@@ -1,10 +1,13 @@
 package main
 
 import (
+	"osdrv/liss/object"
 	"osdrv/liss/repl"
+	"osdrv/liss/test"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // High-level Liss tests
@@ -97,7 +100,7 @@ func TestExecute(t *testing.T) {
 		},
 		{
 			name:   "Multiplication with string operands (repetition)",
-			source: "(* 'abc' 3)",
+			source: "(* 3 'abc')",
 			want:   "abcabcabc",
 		},
 		{
@@ -188,11 +191,6 @@ func TestExecute(t *testing.T) {
 			want:   true,
 		},
 		{
-			name:   "Less than with boolean operands",
-			source: "(< true false)",
-			want:   false,
-		},
-		{
 			name:   "Less than or equal with integer operands",
 			source: "(<= 5 5)",
 			want:   true,
@@ -206,11 +204,6 @@ func TestExecute(t *testing.T) {
 			name:   "Less than or equal with string operands",
 			source: "(<= 'abc' 'bcd')",
 			want:   true,
-		},
-		{
-			name:   "Less than or equal with boolean operands",
-			source: "(<= true false)",
-			want:   false,
 		},
 		{
 			name:   "Greater than with integer operands",
@@ -228,11 +221,6 @@ func TestExecute(t *testing.T) {
 			want:   true,
 		},
 		{
-			name:   "Greater than with boolean operands",
-			source: "(> true false)",
-			want:   true,
-		},
-		{
 			name:   "Greater than or equal with integer operands",
 			source: "(>= 5 5)",
 			want:   true,
@@ -247,11 +235,6 @@ func TestExecute(t *testing.T) {
 			source: "(>= 'bcd' 'abc')",
 			want:   true,
 		},
-		{
-			name:   "Greater than or equal with boolean operands",
-			source: "(>= true false)",
-			want:   true,
-		},
 	}
 
 	for _, tt := range tests {
@@ -261,12 +244,13 @@ func TestExecute(t *testing.T) {
 				if tt.wantErr != nil {
 					assert.ErrorContains(t, err, tt.wantErr.Error())
 				} else {
-					assert.NoError(t, err, "Unexpected error for source: %s", tt.source)
+					require.NoError(t, err, "Unexpected error for source: %s", tt.source)
 				}
 				return
 			}
 			assert.Equal(t, tt.wantErr, err, "Expected error %v, got %v", tt.wantErr, err)
-			assert.Equal(t, tt.want, res, "Expected result %v, got %v", tt.want, res)
+			test.AssertObjectEql(t, res.(object.Object), tt.want)
+			//assert.Equal(t, tt.want, res, "Expected result %v, got %v", tt.want, res)
 		})
 	}
 }

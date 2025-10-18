@@ -114,6 +114,10 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			c.emit(code.OpLessEqual)
 		case ast.OperatorNot:
 			c.emit(code.OpNot)
+		case ast.OperatorAnd:
+			c.emit(code.OpAnd)
+		case ast.OperatorOr:
+			c.emit(code.OpOr)
 		}
 		if !managed {
 			c.emit(code.OpPop)

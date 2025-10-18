@@ -29,6 +29,8 @@ const (
 	OpLessThan
 	OpLessEqual
 	OpNot
+	OpAnd
+	OpOr
 
 	OpPop
 	OpJump
@@ -65,6 +67,8 @@ var definitions = map[OpCode]*Definition{
 	OpLessThan:     {"OpLessThan", []int{}},
 	OpLessEqual:    {"OpLessEqual", []int{}},
 	OpNot:          {"OpNot", []int{}},
+	OpAnd:          {"OpAnd", []int{}},
+	OpOr:           {"OpOr", []int{}},
 
 	OpPop:         {"OpPop", []int{}},
 	OpJump:        {"OpJump", []int{2}},
