@@ -160,8 +160,8 @@ func builtinIsNull(v Object) (Object, error) {
 }
 
 func builtinHead(a Object) (Object, error) {
-	if a.IsArray() {
-		arr := a.(*Array)
+	if a.IsList() {
+		arr := a.(*List)
 		if len(arr.items) > 0 {
 			return arr.items[0], nil
 		}
@@ -177,8 +177,8 @@ func builtinHead(a Object) (Object, error) {
 }
 
 func builtinLast(a Object) (Object, error) {
-	if a.IsArray() {
-		arr := a.(*Array)
+	if a.IsList() {
+		arr := a.(*List)
 		if len(arr.items) > 0 {
 			return arr.items[len(arr.items)-1], nil
 		}
@@ -194,10 +194,10 @@ func builtinLast(a Object) (Object, error) {
 }
 
 func builtinTail(a Object) (Object, error) {
-	if a.IsArray() {
-		arr := a.(*Array)
+	if a.IsList() {
+		arr := a.(*List)
 		if len(arr.items) > 1 {
-			return &Array{items: arr.items[1:]}, nil
+			return &List{items: arr.items[1:]}, nil
 		}
 		return &Null{}, nil
 	} else if a.IsString() {
@@ -211,5 +211,5 @@ func builtinTail(a Object) (Object, error) {
 }
 
 func builtinList(args ...Object) (Object, error) {
-	return &Array{items: args}, nil
+	return &List{items: args}, nil
 }

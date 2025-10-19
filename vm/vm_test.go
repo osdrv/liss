@@ -355,6 +355,16 @@ func TestRun(t *testing.T) {
 			input: `(let y (let x 42))`,
 			want:  int64(42),
 		},
+		{
+			name:  "list expression with no elements",
+			input: `[]`,
+			want:  []any{},
+		},
+		{
+			name:  "list expression with elements",
+			input: `[1 "foo" true]`,
+			want:  []any{int64(1), "foo", true},
+		},
 	}
 
 	for _, tt := range tests {

@@ -179,6 +179,14 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		if !managed {
 			c.emit(code.OpPop)
 		}
+	case *ast.ListExpression:
+		for _, item := range n.Items {
+			c.compileStep(item, true)
+		}
+		c.emit(code.OpList, len(n.Items))
+		if !managed {
+			c.emit(code.OpPop)
+		}
 	case *ast.LetExpression:
 		if err := c.compileStep(n.Value, true); err != nil {
 			return err

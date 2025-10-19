@@ -27,8 +27,8 @@ const (
 
 	LParen
 	RParen
-	LBraket
-	RBraket
+	LBracket
+	RBracket
 	Dot
 
 	Plus
@@ -63,11 +63,11 @@ var (
 	tokenToString = map[TokenType]string{
 		EOF: "",
 
-		LParen:  "(",
-		RParen:  ")",
-		LBraket: "[",
-		RBraket: "]",
-		Dot:     ".",
+		LParen:   "(",
+		RParen:   ")",
+		LBracket: "[",
+		RBracket: "]",
+		Dot:      ".",
 
 		Plus:     "+",
 		Minus:    "-",

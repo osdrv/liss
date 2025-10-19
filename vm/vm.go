@@ -190,7 +190,6 @@ func (vm *VM) Run() error {
 		case code.OpDiv:
 			b := vm.pop()
 			a := vm.pop()
-
 			var res object.Object
 			if a.Type() == object.IntegerType && b.Type() == object.IntegerType {
 				if b.(*object.Integer).Value == 0 {
@@ -215,6 +214,17 @@ func (vm *VM) Run() error {
 			}
 			mod := a.(object.Numeric).Int64() % b.(object.Numeric).Int64()
 			if err := vm.push(object.NewInteger(mod)); err != nil {
+				return err
+			}
+		case code.OpList:
+			size := int(code.ReadUint16(instrs[ip+1:]))
+			vm.currentFrame().ip += 2
+			items := make([]object.Object, size)
+			for i := size - 1; i >= 0; i-- {
+				items[i] = vm.pop()
+			}
+			list := object.NewList(items)
+			if err := vm.push(list); err != nil {
 				return err
 			}
 		case code.OpEql,

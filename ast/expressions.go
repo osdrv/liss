@@ -235,3 +235,32 @@ func (e *CallExpression) String() string {
 }
 
 func (e *CallExpression) expressionNode() {}
+
+type ListExpression struct {
+	Token token.Token
+	Items []Node
+}
+
+var _ Node = (*ListExpression)(nil)
+
+func NewListExpression(tok token.Token, items []Node) (*ListExpression, error) {
+	return &ListExpression{
+		Token: tok,
+		Items: items,
+	}, nil
+}
+
+func (e *ListExpression) String() string {
+	var b bytes.Buffer
+	b.WriteByte('[')
+	for i, item := range e.Items {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteString(item.String())
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
+func (e *ListExpression) expressionNode() {}

@@ -90,6 +90,8 @@ func (p *Parser) parseNode() (ast.Node, error) {
 		node, err = p.parseIdentifierExpr()
 	case token.LParen:
 		node, err = p.parseExpression()
+	case token.LBracket:
+		node, err = p.parseListExpression()
 	default:
 		return nil, fmt.Errorf("unexpected token type: %s", p.curToken.Type.String())
 	}
@@ -109,18 +111,18 @@ func (p *Parser) parseFunctionExpression() (ast.Node, error) {
 		}
 		name = nn.(*ast.IdentifierExpr)
 	}
-	if err := p.consume(token.LBraket); err != nil {
+	if err := p.consume(token.LBracket); err != nil {
 		return nil, err
 	}
 	args := make([]*ast.IdentifierExpr, 0)
-	for p.curToken.Type != token.RBraket {
+	for p.curToken.Type != token.RBracket {
 		arg, err := p.parseIdentifierExpr()
 		if err != nil {
 			return nil, err
 		}
 		args = append(args, arg.(*ast.IdentifierExpr))
 	}
-	if err := p.consume(token.RBraket); err != nil {
+	if err := p.consume(token.RBracket); err != nil {
 		return nil, err
 	}
 	body := make([]ast.Node, 0)
@@ -183,6 +185,25 @@ func (p *Parser) parseCondExpression() (ast.Node, error) {
 		return nil, fmt.Errorf("too many operands for cond expression")
 	}
 	return ast.NewCondExpression(tok, cond, th, el)
+}
+
+func (p *Parser) parseListExpression() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.consume(token.LBracket); err != nil {
+		return nil, err
+	}
+	elements := make([]ast.Node, 0)
+	for p.curToken.Type != token.RBracket {
+		elem, err := p.parseNode()
+		if err != nil {
+			return nil, err
+		}
+		elements = append(elements, elem)
+	}
+	if err := p.consume(token.RBracket); err != nil {
+		return nil, err
+	}
+	return ast.NewListExpression(tok, elements)
 }
 
 func (p *Parser) parseExpression() (ast.Node, error) {

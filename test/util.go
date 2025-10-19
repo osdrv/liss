@@ -24,13 +24,13 @@ func AssertObjectEql(t *testing.T, got object.Object, want any) {
 		assert.Equal(t, want, nil, "Expected null object, got %v", obj)
 	case *object.Bool:
 		assert.Equal(t, want, obj.Value, "Expected boolean value %v, got %v", want, obj.Value)
-	case *object.Array:
+	case *object.List:
 		wantSlice, ok := want.([]any)
 		if !ok {
 			t.Fatalf("Expected want to be of type []any, got %T", want)
 		}
 		if len(obj.Items()) != len(wantSlice) {
-			t.Fatalf("Expected array length %d, got %d", len(wantSlice), len(obj.Items()))
+			t.Fatalf("Expected list length %d, got %d", len(wantSlice), len(obj.Items()))
 		}
 		for i, item := range obj.Items() {
 			AssertObjectEql(t, item, wantSlice[i])

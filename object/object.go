@@ -2,6 +2,7 @@ package object
 
 import (
 	"bytes"
+	"fmt"
 	"osdrv/liss/code"
 	"strconv"
 )
@@ -17,7 +18,7 @@ const (
 	NullType
 	FunctionType
 	BuiltinType
-	ArrayType
+	ListType
 	DictionaryType
 )
 
@@ -37,8 +38,8 @@ func (t ObjectType) String() string {
 		return "Function"
 	case BuiltinType:
 		return "Builtin"
-	case ArrayType:
-		return "Array"
+	case ListType:
+		return "List"
 	case DictionaryType:
 		return "Dictionary"
 	default:
@@ -53,7 +54,7 @@ type Object interface {
 	IsBool() bool
 	IsString() bool
 	IsNull() bool
-	IsArray() bool
+	IsList() bool
 	IsDictionary() bool
 	IsFunction() bool
 	IsLenable() bool
@@ -77,7 +78,7 @@ func (d defaultObject) IsString() bool {
 	return false
 }
 
-func (d defaultObject) IsArray() bool {
+func (d defaultObject) IsList() bool {
 	return false
 }
 
@@ -243,27 +244,27 @@ func (n *Null) IsNull() bool {
 	return true
 }
 
-type Array struct {
+type List struct {
 	defaultObject
 	items []Object
 }
 
-var _ Object = (*Array)(nil)
-var _ lenable = (*Array)(nil)
+var _ Object = (*List)(nil)
+var _ lenable = (*List)(nil)
 
-func NewArray(items ...Object) *Array {
-	return &Array{items: items}
+func NewList(items []Object) *List {
+	return &List{items: items}
 }
 
-func (a *Array) Type() ObjectType {
-	return ArrayType
+func (l *List) Type() ObjectType {
+	return ListType
 }
 
-func (a *Array) String() string {
+func (l *List) String() string {
 	var b bytes.Buffer
 	b.WriteByte('[')
 
-	for i, item := range a.items {
+	for i, item := range l.items {
 		if i > 0 {
 			b.WriteString(", ")
 		}
@@ -275,50 +276,50 @@ func (a *Array) String() string {
 	return b.String()
 }
 
-func (a *Array) IsLenable() bool {
+func (l *List) IsLenable() bool {
 	return true
 }
 
-func (a *Array) Len() int {
-	return len(a.items)
+func (l *List) Len() int {
+	return len(l.items)
 }
 
-func (a *Array) IsArray() bool {
+func (l *List) IsList() bool {
 	return true
 }
 
-func (a *Array) Items() []Object {
-	return a.items
+func (l *List) Items() []Object {
+	return l.items
 }
 
-func (a *Array) GetAt(ix int) (Object, bool) {
-	if ix < 0 || ix >= len(a.items) {
+func (l *List) GetAt(ix int) (Object, bool) {
+	if ix < 0 || ix >= len(l.items) {
 		return nil, false
 	}
-	return a.items[ix], true
+	return l.items[ix], true
 }
 
-func (a *Array) Append(item Object) {
-	a.items = append(a.items, item)
+func (l *List) Append(item Object) {
+	l.items = append(l.items, item)
 }
 
-func (a *Array) SetAt(ix int, item Object) bool {
-	if ix < 0 || ix >= len(a.items) {
+func (l *List) SetAt(ix int, item Object) bool {
+	if ix < 0 || ix >= len(l.items) {
 		return false
 	}
-	a.items[ix] = item
+	l.items[ix] = item
 	return true
 }
 
 type Dictionary struct {
 	defaultObject
-	items map[string]Object
+	items map[any]Object
 }
 
 var _ Object = (*Dictionary)(nil)
 var _ lenable = (*Dictionary)(nil)
 
-func NewDictionary(items map[string]Object) *Dictionary {
+func NewDictionary(items map[any]Object) *Dictionary {
 	return &Dictionary{items: items}
 }
 
@@ -336,7 +337,11 @@ func (d *Dictionary) String() string {
 			b.WriteString(", ")
 		}
 		first = false
-		b.WriteString(strconv.Quote(key))
+		var strkey string
+		if _, ok := key.(fmt.Stringer); ok {
+			strkey = key.(fmt.Stringer).String()
+		}
+		b.WriteString(strconv.Quote(strkey))
 		b.WriteString(": ")
 		b.WriteString(value.String())
 	}

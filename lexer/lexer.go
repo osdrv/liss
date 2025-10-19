@@ -246,9 +246,9 @@ func (l *Lexer) emitParenthesis() token.Token {
 	case ')':
 		typ = token.RParen
 	case '[':
-		typ = token.LBraket
+		typ = token.LBracket
 	case ']':
-		typ = token.RBraket
+		typ = token.RBracket
 	default:
 		return l.emitError("Syntax error at: `" + string(l.Source[l.pos]) + "`")
 	}

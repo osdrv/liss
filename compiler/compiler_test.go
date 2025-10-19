@@ -1249,6 +1249,56 @@ func TestLetStatementScopes(t *testing.T) {
 	}
 }
 
+func TestListExpr(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantInstrs []code.Instructions
+		wantConsts []any
+		wantErr    error
+	}{
+		{
+			name:       "empty list",
+			input:      `[]`,
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpList, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "list with elements",
+			input:      `[1 "foo" true]`,
+			wantConsts: []any{int64(1), "foo"},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpTrue),
+				code.Make(code.OpList, 3),
+				code.Make(code.OpPop),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New()
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
+}
+
 func assertInstrs(t *testing.T, wants []code.Instructions, got code.Instructions) {
 	want := concatArr(wants)
 	wantStr := code.PrintInstr(want)

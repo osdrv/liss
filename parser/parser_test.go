@@ -429,6 +429,41 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "List expression",
+			input: "[1 2 3]",
+			want: []ast.Node{
+				&ast.ListExpression{
+					Token: token.Token{
+						Type:    token.LBracket,
+						Literal: "[",
+					},
+					Items: []ast.Node{
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "1",
+							},
+							Value: int64(1),
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "2",
+							},
+							Value: int64(2),
+						},
+						&ast.IntegerLiteral{
+							Token: token.Token{
+								Type:    token.Numeric,
+								Literal: "3",
+							},
+							Value: int64(3),
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

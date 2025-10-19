@@ -55,13 +55,13 @@ func TestBuiltinLen(t *testing.T) {
 		},
 		{
 			name:    "Length of an array",
-			input:   &Array{items: []Object{&Integer{Value: 1}, &Integer{Value: 2}, &Integer{Value: 3}}},
+			input:   &List{items: []Object{&Integer{Value: 1}, &Integer{Value: 2}, &Integer{Value: 3}}},
 			want:    3,
 			wantErr: false,
 		},
 		{
 			name:    "Length of a map",
-			input:   &Dictionary{items: map[string]Object{"a": &Integer{Value: 1}, "b": &Integer{Value: 2}}},
+			input:   &Dictionary{items: map[any]Object{"a": &Integer{Value: 1}, "b": &Integer{Value: 2}}},
 			want:    2,
 			wantErr: false,
 		},
@@ -101,13 +101,13 @@ func TestBuiltinHead(t *testing.T) {
 	}{
 		{
 			name:    "Head element of a non-empty array",
-			input:   &Array{items: []Object{&Integer{Value: 1}, &Integer{Value: 2}, &Integer{Value: 3}}},
+			input:   &List{items: []Object{&Integer{Value: 1}, &Integer{Value: 2}, &Integer{Value: 3}}},
 			want:    &Integer{Value: 1},
 			wantErr: false,
 		},
 		{
 			name:    "Head element of an empty array",
-			input:   &Array{items: []Object{}},
+			input:   &List{items: []Object{}},
 			want:    &Null{},
 			wantErr: false,
 		},
@@ -155,13 +155,13 @@ func TestBuiltinLast(t *testing.T) {
 	}{
 		{
 			name:    "Last element of a non-empty array",
-			input:   &Array{items: []Object{&Integer{Value: 1}, &Integer{Value: 2}, &Integer{Value: 3}}},
+			input:   &List{items: []Object{&Integer{Value: 1}, &Integer{Value: 2}, &Integer{Value: 3}}},
 			want:    &Integer{Value: 3},
 			wantErr: false,
 		},
 		{
 			name:    "Last element of an empty array",
-			input:   &Array{items: []Object{}},
+			input:   &List{items: []Object{}},
 			want:    &Null{},
 			wantErr: false,
 		},
@@ -209,19 +209,19 @@ func TestBuiltinTail(t *testing.T) {
 	}{
 		{
 			name:    "Tail of a non-empty array",
-			input:   &Array{items: []Object{&Integer{Value: 1}, &Integer{Value: 2}, &Integer{Value: 3}}},
-			want:    &Array{items: []Object{&Integer{Value: 2}, &Integer{Value: 3}}},
+			input:   &List{items: []Object{&Integer{Value: 1}, &Integer{Value: 2}, &Integer{Value: 3}}},
+			want:    &List{items: []Object{&Integer{Value: 2}, &Integer{Value: 3}}},
 			wantErr: false,
 		},
 		{
 			name:    "Tail of an array with one element",
-			input:   &Array{items: []Object{&Integer{Value: 1}}},
+			input:   &List{items: []Object{&Integer{Value: 1}}},
 			want:    &Null{},
 			wantErr: false,
 		},
 		{
 			name:    "Tail of an empty array",
-			input:   &Array{items: []Object{}},
+			input:   &List{items: []Object{}},
 			want:    &Null{},
 			wantErr: false,
 		},
@@ -277,14 +277,14 @@ func TestBuiltinList(t *testing.T) {
 		{
 			name:  "empty list",
 			input: []Object{},
-			want:  &Array{items: []Object{}},
+			want:  &List{items: []Object{}},
 		},
 		{
 			name: "list with one element",
 			input: []Object{
 				&Integer{Value: 1},
 			},
-			want: &Array{items: []Object{&Integer{Value: 1}}},
+			want: &List{items: []Object{&Integer{Value: 1}}},
 		},
 		{
 			name: "list with multiple elements",
@@ -293,7 +293,7 @@ func TestBuiltinList(t *testing.T) {
 				&String{Value: "two"},
 				&Bool{Value: true},
 			},
-			want: &Array{items: []Object{
+			want: &List{items: []Object{
 				&Integer{Value: 1},
 				&String{Value: "two"},
 				&Bool{Value: true},

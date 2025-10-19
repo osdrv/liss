@@ -23,6 +23,8 @@ const (
 	OpDiv
 	OpMod
 
+	OpList
+
 	OpEql
 	OpNotEql
 	OpGreaterThan
@@ -55,6 +57,9 @@ var definitions = map[OpCode]*Definition{
 	OpTrue:  {"OpTrue", []int{}},
 	OpFalse: {"OpFalse", []int{}},
 	OpNull:  {"OpNull", []int{}},
+
+	// TODO: reconsider increasing the size of list operand if needed
+	OpList: {"OpList", []int{2}},
 
 	OpAdd: {"OpAdd", []int{2}},
 	OpSub: {"OpSub", []int{}},
