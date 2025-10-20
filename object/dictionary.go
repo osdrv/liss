@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	DictionaryInitialCap = 16
+	DictionaryInitialCap = 32
+	MaxLoadFactor        = 0.75
 )
 
 var (
@@ -52,8 +53,10 @@ type KeyValue struct {
 
 type Dictionary struct {
 	defaultObject
+	// TODO: implement gradual resizing
 	items []*KeyValue
 	len   int
+	cnt   int
 	cap   int
 }
 
@@ -86,7 +89,44 @@ func equalObjects(a, b Object) bool {
 	return a.Type() == b.Type() && reflect.DeepEqual(a.Raw(), b.Raw())
 }
 
+func (d *Dictionary) grow() error {
+	newcap := d.cap * 2
+	newitems := make([]*KeyValue, newcap)
+	newcnt := 0
+	for _, kv := range d.items {
+		ptr := kv
+		for ptr != nil {
+			if !ptr.deleted {
+				h, err := hashObject(ptr.Key)
+				if err != nil {
+					return err
+				}
+				h %= uint64(newcap)
+				newkv := &KeyValue{
+					Key:     ptr.Key,
+					Value:   ptr.Value,
+					deleted: false,
+				}
+				newkv.next = newitems[h]
+				newitems[h] = newkv
+				newcnt++
+			}
+			ptr = ptr.next
+		}
+	}
+	d.items = newitems
+	d.cap = newcap
+	d.cnt = newcnt
+	return nil
+}
+
 func (d *Dictionary) Put(key Object, value Object) error {
+	if float64(d.cnt)/float64(d.cap) > MaxLoadFactor {
+		if err := d.grow(); err != nil {
+			return err
+		}
+	}
+
 	h, err := hashObject(key)
 	if err != nil {
 		return err
@@ -114,6 +154,7 @@ func (d *Dictionary) Put(key Object, value Object) error {
 		kv.deleted = false
 	}
 	d.len++
+	d.cnt++
 
 	return nil
 }
@@ -136,6 +177,27 @@ func (d *Dictionary) Get(key Object) (Object, bool, error) {
 		ptr = ptr.next
 	}
 	return nil, false, nil
+}
+
+func (d *Dictionary) Delete(key Object) (bool, error) {
+	h, err := hashObject(key)
+	if err != nil {
+		return false, err
+	}
+	h %= uint64(d.cap)
+	ptr := d.items[h]
+	for ptr != nil {
+		if equalObjects(ptr.Key, key) {
+			if ptr.deleted {
+				return false, nil
+			}
+			ptr.deleted = true
+			d.len--
+			return true, nil
+		}
+		ptr = ptr.next
+	}
+	return false, nil
 }
 
 func (d *Dictionary) Raw() any {
