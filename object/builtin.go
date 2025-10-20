@@ -30,6 +30,15 @@ func init() {
 		mkBuiltin("isNull", builtinIsNull, false),
 
 		mkBuiltin("list", builtinList, true),
+		// mkBuiltin("find", builtinFind, false),
+		// mkBuiltin("findAll", builtinFindAll, false),
+		// mkBuiltin("range", builtinRange, false),
+		mkBuiltin("dict", builtinDict, true),
+		mkBuiltin("get", builtinGet, false),
+		mkBuiltin("put", builtinPut, false),
+		mkBuiltin("isset", builtinIsSet, false),
+		mkBuiltin("keys", builtinKeys, false),
+		mkBuiltin("values", builtinValues, false),
 	}
 
 	for ix, b := range builtins {
@@ -139,6 +148,10 @@ func (b *BuiltinFunction) Invoke(args ...Object) (Object, error) {
 	return res, err
 }
 
+func (b *BuiltinFunction) Raw() any {
+	panic("not implemented")
+}
+
 func getFuncNumArgs(fn any) (int, error) {
 	typ := reflect.TypeOf(fn)
 	if typ.Kind() != reflect.Func {
@@ -212,4 +225,71 @@ func builtinTail(a Object) (Object, error) {
 
 func builtinList(args ...Object) (Object, error) {
 	return &List{items: args}, nil
+}
+
+func builtinDict(pairs ...Object) (Object, error) {
+	dict := make(map[any]Object)
+	for _, pair := range pairs {
+		if !pair.IsList() {
+			return nil, fmt.Errorf("dict expects list pairs, got %s", pair.String())
+		}
+		list := pair.(*List)
+		if list.Len() != 2 {
+			return nil, fmt.Errorf("dict expects list pairs of length 2, got %d", list.Len())
+		}
+		dict[list.items[0].Raw()] = list.items[1]
+	}
+	return NewDictionaryWithItems(pairs)
+}
+
+func builtinGet(container Object, key Object) (Object, error) {
+	if !container.IsDictionary() {
+		return nil, fmt.Errorf("get: expected dictionary as first argument, got %s", container.String())
+	}
+	dict := container.(*Dictionary)
+	value, ok, err := dict.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return &Null{}, nil
+	}
+	return value, nil
+}
+
+func builtinPut(container Object, key Object, value Object) (Object, error) {
+	if !container.IsDictionary() {
+		return nil, fmt.Errorf("put: expected dictionary as first argument, got %s", container.String())
+	}
+	dict := container.(*Dictionary)
+	dict.Put(key, value)
+	return &Null{}, nil
+}
+
+func builtinIsSet(container Object, key Object) (Object, error) {
+	if !container.IsDictionary() {
+		return nil, fmt.Errorf("isset: expected dictionary as first argument, got %s", container.String())
+	}
+	dict := container.(*Dictionary)
+	_, ok, err := dict.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return &Bool{Value: ok}, nil
+}
+
+func builtinKeys(container Object) (Object, error) {
+	if !container.IsDictionary() {
+		return nil, fmt.Errorf("keys: expected dictionary as argument, got %s", container.String())
+	}
+	dict := container.(*Dictionary)
+	return NewList(dict.Keys()), nil
+}
+
+func builtinValues(container Object) (Object, error) {
+	if !container.IsDictionary() {
+		return nil, fmt.Errorf("values: expected dictionary as argument, got %s", container.String())
+	}
+	dict := container.(*Dictionary)
+	return NewList(dict.Values()), nil
 }

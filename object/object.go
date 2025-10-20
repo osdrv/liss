@@ -2,7 +2,6 @@ package object
 
 import (
 	"bytes"
-	"fmt"
 	"osdrv/liss/code"
 	"strconv"
 )
@@ -58,6 +57,7 @@ type Object interface {
 	IsDictionary() bool
 	IsFunction() bool
 	IsLenable() bool
+	Raw() any
 }
 
 type defaultObject struct{}
@@ -135,6 +135,10 @@ func (i *Integer) Float64() float64 {
 	return float64(i.Value)
 }
 
+func (i *Integer) Raw() any {
+	return i.Value
+}
+
 type Float struct {
 	defaultObject
 	Value float64
@@ -167,6 +171,10 @@ func (f *Float) IsNumeric() bool {
 	return true
 }
 
+func (f *Float) Raw() any {
+	return f.Value
+}
+
 type Bool struct {
 	defaultObject
 	Value bool
@@ -188,6 +196,10 @@ func (b *Bool) String() string {
 
 func (b *Bool) IsBool() bool {
 	return true
+}
+
+func (b *Bool) Raw() any {
+	return b.Value
 }
 
 type String struct {
@@ -222,6 +234,10 @@ func (s *String) IsString() bool {
 	return true
 }
 
+func (s *String) Raw() any {
+	return s.Value
+}
+
 type Null struct {
 	defaultObject
 }
@@ -242,6 +258,10 @@ func (n *Null) String() string {
 
 func (n *Null) IsNull() bool {
 	return true
+}
+
+func (n *Null) Raw() any {
+	return nil
 }
 
 type List struct {
@@ -311,56 +331,8 @@ func (l *List) SetAt(ix int, item Object) bool {
 	return true
 }
 
-type Dictionary struct {
-	defaultObject
-	items map[any]Object
-}
-
-var _ Object = (*Dictionary)(nil)
-var _ lenable = (*Dictionary)(nil)
-
-func NewDictionary(items map[any]Object) *Dictionary {
-	return &Dictionary{items: items}
-}
-
-func (d *Dictionary) Type() ObjectType {
-	return DictionaryType
-}
-
-func (d *Dictionary) String() string {
-	var b bytes.Buffer
-	b.WriteByte('{')
-
-	first := true
-	for key, value := range d.items {
-		if !first {
-			b.WriteString(", ")
-		}
-		first = false
-		var strkey string
-		if _, ok := key.(fmt.Stringer); ok {
-			strkey = key.(fmt.Stringer).String()
-		}
-		b.WriteString(strconv.Quote(strkey))
-		b.WriteString(": ")
-		b.WriteString(value.String())
-	}
-
-	b.WriteByte('}')
-
-	return b.String()
-}
-
-func (d *Dictionary) IsLenable() bool {
-	return true
-}
-
-func (d *Dictionary) Len() int {
-	return len(d.items)
-}
-
-func (d *Dictionary) IsDictionary() bool {
-	return true
+func (l *List) Raw() any {
+	return l.items
 }
 
 type Function struct {
@@ -405,4 +377,8 @@ func (f *Function) String() string {
 
 func (f *Function) IsFunction() bool {
 	return true
+}
+
+func (f *Function) Raw() any {
+	return f
 }

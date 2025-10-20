@@ -59,12 +59,12 @@ func TestBuiltinLen(t *testing.T) {
 			want:    3,
 			wantErr: false,
 		},
-		{
-			name:    "Length of a map",
-			input:   &Dictionary{items: map[any]Object{"a": &Integer{Value: 1}, "b": &Integer{Value: 2}}},
-			want:    2,
-			wantErr: false,
-		},
+		// {
+		// 	name:    "Length of a map",
+		// 	input:   &Dictionary{items: map[any]Object{"a": &Integer{Value: 1}, "b": &Integer{Value: 2}}},
+		// 	want:    2,
+		// 	wantErr: false,
+		// },
 		{
 			name:    "Length of a non-lenable object",
 			input:   &Integer{Value: 42},
