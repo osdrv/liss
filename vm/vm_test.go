@@ -52,8 +52,13 @@ func TestRun(t *testing.T) {
 		},
 		{
 			name:  "string repetition",
-			input: `(* 3 "Hello")`,
+			input: `(* "Hello" 3)`,
 			want:  "HelloHelloHello",
+		},
+		{
+			name:  "list repetition",
+			input: `(* [1 2] 3)`,
+			want:  []any{int64(1), int64(2), int64(1), int64(2), int64(1), int64(2)},
 		},
 		{
 			name:  "basic arithmetic: integer subtraction",

@@ -58,6 +58,7 @@ type Object interface {
 	IsFunction() bool
 	IsLenable() bool
 	Raw() any
+	Clone() Object
 }
 
 type defaultObject struct{}
@@ -115,6 +116,10 @@ func NewInteger(value int64) *Integer {
 	return &Integer{Value: value}
 }
 
+func (i *Integer) Clone() Object {
+	return &Integer{Value: i.Value}
+}
+
 func (i *Integer) Type() ObjectType {
 	return IntegerType
 }
@@ -149,6 +154,10 @@ var _ Numeric = (*Float)(nil)
 
 func NewFloat(value float64) *Float {
 	return &Float{Value: value}
+}
+
+func (f *Float) Clone() Object {
+	return &Float{Value: f.Value}
 }
 
 func (f *Float) Type() ObjectType {
@@ -186,6 +195,10 @@ func NewBool(value bool) *Bool {
 	return &Bool{Value: value}
 }
 
+func (b *Bool) Clone() Object {
+	return &Bool{Value: b.Value}
+}
+
 func (b *Bool) Type() ObjectType {
 	return BoolType
 }
@@ -212,6 +225,10 @@ var _ lenable = (*String)(nil)
 
 func NewString(value string) *String {
 	return &String{Value: value}
+}
+
+func (s *String) Clone() Object {
+	return &String{Value: s.Value}
 }
 
 func (s *String) Type() ObjectType {
@@ -252,6 +269,10 @@ func NewNull() *Null {
 	return &Null{}
 }
 
+func (n *Null) Clone() Object {
+	return &Null{}
+}
+
 func (n *Null) Type() ObjectType {
 	return NullType
 }
@@ -278,6 +299,14 @@ var _ lenable = (*List)(nil)
 
 func NewList(items []Object) *List {
 	return &List{items: items}
+}
+
+func (l *List) Clone() Object {
+	clonedItems := make([]Object, len(l.items))
+	for i, item := range l.items {
+		clonedItems[i] = item.Clone()
+	}
+	return &List{items: clonedItems}
 }
 
 func (l *List) Type() ObjectType {
@@ -359,6 +388,10 @@ func NewFunction(name string, args []string, instrs code.Instructions) *Function
 
 func (f *Function) Type() ObjectType {
 	return FunctionType
+}
+
+func (f *Function) Clone() Object {
+	return f
 }
 
 func (f *Function) String() string {

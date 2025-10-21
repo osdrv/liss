@@ -100,8 +100,13 @@ func TestExecute(t *testing.T) {
 		},
 		{
 			name:   "Multiplication with string operands (repetition)",
-			source: "(* 3 'abc')",
+			source: "(* 'abc' 3)",
 			want:   "abcabcabc",
+		},
+		{
+			name:   "Multiplication with list (repetition)",
+			source: "(* (list 1 2) 3)",
+			want:   []any{int64(1), int64(2), int64(1), int64(2), int64(1), int64(2)},
 		},
 		{
 			name:   "Division with integer operands",

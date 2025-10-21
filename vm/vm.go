@@ -155,12 +155,50 @@ func (vm *VM) Run() error {
 			elem := vm.peek()
 			switch elem.Type() {
 			case object.IntegerType:
-				product := int64(1)
-				for range argc {
-					product *= int64(vm.pop().(*object.Integer).Value)
-				}
-				if err := vm.push(object.NewInteger(product)); err != nil {
-					return err
+				factor := vm.pop().(*object.Integer).Value
+				switch vm.peek().Type() {
+				case object.IntegerType:
+					product := factor
+					for range argc - 1 {
+						product *= vm.pop().(*object.Integer).Value
+					}
+					if err := vm.push(object.NewInteger(product)); err != nil {
+						return err
+					}
+				case object.FloatType:
+					product := float64(factor)
+					for range argc - 1 {
+						product *= float64(vm.pop().(*object.Float).Value)
+					}
+					if err := vm.push(object.NewFloat(product)); err != nil {
+						return err
+					}
+				case object.StringType:
+					if argc != 2 {
+						return errors.New("string multiplication requires exactly two arguments")
+					}
+					var b strings.Builder
+					str := vm.pop().(*object.String).Value
+					for i := int64(0); i < factor; i++ {
+						b.WriteString(str)
+					}
+					if err := vm.push(object.NewString(b.String())); err != nil {
+						return nil
+					}
+				case object.ListType:
+					if argc != 2 {
+						return errors.New("list multiplication requires exactly two arguments")
+					}
+					listObj := vm.pop().(*object.List)
+					items := make([]object.Object, 0, factor*int64(listObj.Len()))
+					for i := int64(0); i < factor; i++ {
+						items = append(items, listObj.Items()...)
+					}
+					if err := vm.push(object.NewList(items)); err != nil {
+						return err
+					}
+				default:
+					return errors.New("invalid argument type for multiplication")
 				}
 			case object.FloatType:
 				product := float64(1.0)
@@ -169,22 +207,6 @@ func (vm *VM) Run() error {
 				}
 				if err := vm.push(object.NewFloat(product)); err != nil {
 					return err
-				}
-			case object.StringType:
-				if argc != 2 {
-					return errors.New("string multiplication requires exactly two arguments")
-				}
-				var b strings.Builder
-				str := vm.pop().(*object.String).Value
-				reps := vm.pop()
-				if reps.Type() != object.IntegerType {
-					return errors.New("invalid argument type for string multiplication")
-				}
-				for i := int64(0); i < int64(reps.(*object.Integer).Value); i++ {
-					b.WriteString(str)
-				}
-				if err := vm.push(object.NewString(b.String())); err != nil {
-					return nil
 				}
 			}
 		case code.OpDiv:

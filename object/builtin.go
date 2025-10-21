@@ -100,6 +100,10 @@ func NewBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
 	}, nil
 }
 
+func (b *BuiltinFunction) Clone() Object {
+	return b
+}
+
 func (b *BuiltinFunction) String() string {
 	return fmt.Sprintf("<builtin function %s>", b.name)
 }

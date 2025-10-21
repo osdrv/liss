@@ -71,6 +71,20 @@ func NewDictionary() *Dictionary {
 	}
 }
 
+func (d *Dictionary) Clone() Object {
+	newDict := NewDictionary()
+	for _, kv := range d.items {
+		ptr := kv
+		for ptr != nil {
+			if !ptr.deleted {
+				newDict.Put(ptr.Key, ptr.Value)
+			}
+			ptr = ptr.next
+		}
+	}
+	return newDict
+}
+
 func NewDictionaryWithItems(items []Object) (*Dictionary, error) {
 	d := NewDictionary()
 	for _, item := range items {
