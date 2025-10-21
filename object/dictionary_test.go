@@ -25,7 +25,7 @@ func TestDictionaryPutGet(t *testing.T) {
 		assert.True(t, ok)
 		strValue, ok := value.(*String)
 		assert.True(t, ok)
-		assert.Equal(t, v, strValue.Value)
+		assert.Equal(t, v, strValue.Raw())
 	}
 }
 

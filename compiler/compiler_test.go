@@ -1317,11 +1317,11 @@ func assertConsts(t *testing.T, want []any, got []object.Object) {
 		}
 		switch v := got[i].(type) {
 		case *object.Integer:
-			assert.Equal(t, w, v.Value, "Expected constant at index %d to match", i)
+			assert.Equal(t, w, v.Raw(), "Expected constant at index %d to match", i)
 		case *object.Float:
-			assert.Equal(t, w, v.Value, "Expected constant at index %d to match", i)
+			assert.Equal(t, w, v.Raw(), "Expected constant at index %d to match", i)
 		case *object.String:
-			assert.Equal(t, w, v.Value, "Expected constant at index %d to match", i)
+			assert.Equal(t, w, v.Raw(), "Expected constant at index %d to match", i)
 		case *object.Function:
 			winstr := w.([]code.Instructions)
 			assertInstrs(t, winstr, v.Instrs)

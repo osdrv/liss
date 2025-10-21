@@ -124,7 +124,7 @@ func (vm *VM) Run() error {
 					strs = append(strs, str)
 				}
 				for i := len(strs) - 1; i >= 0; i-- {
-					b.WriteString(strs[i].Value)
+					b.WriteString(string(strs[i].Value))
 				}
 				if err := vm.push(object.NewString(b.String())); err != nil {
 					return err
@@ -178,7 +178,7 @@ func (vm *VM) Run() error {
 						return errors.New("string multiplication requires exactly two arguments")
 					}
 					var b strings.Builder
-					str := vm.pop().(*object.String).Value
+					str := string(vm.pop().(*object.String).Value)
 					for i := int64(0); i < factor; i++ {
 						b.WriteString(str)
 					}

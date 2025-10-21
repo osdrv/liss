@@ -53,7 +53,7 @@ func TestBuiltinLen(t *testing.T) {
 	}{
 		{
 			name:    "Length of a string",
-			input:   &String{Value: "hello"},
+			input:   &String{Value: []rune("hello")},
 			want:    5,
 			wantErr: false,
 		},
@@ -63,12 +63,12 @@ func TestBuiltinLen(t *testing.T) {
 			want:    3,
 			wantErr: false,
 		},
-		// {
-		// 	name:    "Length of a dictionary",
-		// 	input:   &Dictionary{items: map[any]Object{"a": &Integer{Value: 1}, "b": &Integer{Value: 2}}},
-		// 	want:    2,
-		// 	wantErr: false,
-		// },
+		{
+			name:    "Length of a dictionary",
+			input:   &Dictionary{len: 2},
+			want:    2,
+			wantErr: false,
+		},
 		{
 			name:    "Length of a non-lenable object",
 			input:   &Integer{Value: 42},
@@ -117,13 +117,13 @@ func TestBuiltinHead(t *testing.T) {
 		},
 		{
 			name:    "Head character of a non-empty string",
-			input:   &String{Value: "hello"},
-			want:    &String{Value: "h"},
+			input:   &String{Value: []rune("hello")},
+			want:    &String{Value: []rune("h")},
 			wantErr: false,
 		},
 		{
 			name:    "Head character of an empty string",
-			input:   &String{Value: ""},
+			input:   &String{Value: []rune{}},
 			want:    &Null{},
 			wantErr: false,
 		},
@@ -171,13 +171,13 @@ func TestBuiltinLast(t *testing.T) {
 		},
 		{
 			name:    "Last character of a non-empty string",
-			input:   &String{Value: "hello"},
-			want:    &String{Value: "o"},
+			input:   &String{Value: []rune("hello")},
+			want:    &String{Value: []rune{'o'}},
 			wantErr: false,
 		},
 		{
 			name:    "Last character of an empty string",
-			input:   &String{Value: ""},
+			input:   &String{Value: []rune{}},
 			want:    &Null{},
 			wantErr: false,
 		},
@@ -231,19 +231,19 @@ func TestBuiltinTail(t *testing.T) {
 		},
 		{
 			name:    "Tail of a non-empty string",
-			input:   &String{Value: "hello"},
-			want:    &String{Value: "ello"},
+			input:   &String{Value: []rune("hello")},
+			want:    &String{Value: []rune("ello")},
 			wantErr: false,
 		},
 		{
 			name:    "Tail of a string with one character",
-			input:   &String{Value: "h"},
+			input:   &String{Value: []rune{'h'}},
 			want:    &Null{},
 			wantErr: false,
 		},
 		{
 			name:    "Tail of an empty string",
-			input:   &String{Value: ""},
+			input:   &String{Value: []rune{}},
 			want:    &Null{},
 			wantErr: false,
 		},
@@ -294,12 +294,12 @@ func TestBuiltinList(t *testing.T) {
 			name: "list with multiple elements",
 			input: []Object{
 				&Integer{Value: 1},
-				&String{Value: "two"},
+				&String{Value: []rune("two")},
 				&Bool{Value: true},
 			},
 			want: &List{items: []Object{
 				&Integer{Value: 1},
-				&String{Value: "two"},
+				&String{Value: []rune("two")},
 				&Bool{Value: true},
 			}},
 		},
@@ -337,9 +337,9 @@ func TestBuiltinGet(t *testing.T) {
 		},
 		{
 			name:  "Get character from string by index",
-			input: &String{Value: "hello"},
+			input: &String{Value: []rune("hello")},
 			key:   &Integer{Value: 4},
-			want:  &String{Value: "o"},
+			want:  &String{Value: []rune{'o'}},
 		},
 		{
 			name:  "Get element with invalid index",
@@ -349,7 +349,7 @@ func TestBuiltinGet(t *testing.T) {
 		},
 		{
 			name:  "Get character with invalid index",
-			input: &String{Value: "hi"},
+			input: &String{Value: []rune("hi")},
 			key:   &Integer{Value: -1},
 			want:  &Null{},
 		},

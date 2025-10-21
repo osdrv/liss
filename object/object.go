@@ -217,14 +217,14 @@ func (b *Bool) Raw() any {
 
 type String struct {
 	defaultObject
-	Value string
+	Value []rune
 }
 
 var _ Object = (*String)(nil)
 var _ lenable = (*String)(nil)
 
 func NewString(value string) *String {
-	return &String{Value: value}
+	return &String{Value: []rune(value)}
 }
 
 func (s *String) Clone() Object {
@@ -236,7 +236,7 @@ func (s *String) Type() ObjectType {
 }
 
 func (s *String) String() string {
-	b := make([]byte, len(s.Value)+2)
+	b := make([]rune, len(s.Value)+2)
 	b[0] = '"'
 	b[len(b)-1] = '"'
 	copy(b[1:], s.Value)
@@ -256,7 +256,7 @@ func (s *String) IsString() bool {
 }
 
 func (s *String) Raw() any {
-	return s.Value
+	return string(s.Value)
 }
 
 type Null struct {

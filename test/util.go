@@ -15,15 +15,15 @@ func AssertObjectEql(t *testing.T, got object.Object, want any) {
 	}
 	switch obj := got.(type) {
 	case *object.Integer:
-		assert.Equal(t, want, obj.Value, "Expected integer value %v, got %v", want, obj.Value)
+		assert.Equal(t, want, obj.Raw(), "Expected integer value %v, got %v", want, obj.Value)
 	case *object.Float:
-		assert.Equal(t, want, obj.Value, "Expected float value %v, got %v", want, obj.Value)
+		assert.Equal(t, want, obj.Raw(), "Expected float value %v, got %v", want, obj.Value)
 	case *object.String:
-		assert.Equal(t, want, obj.Value, "Expected string value %v, got %v", want, obj.Value)
+		assert.Equal(t, want, obj.Raw(), "Expected string value %v, got %v", want, obj.Value)
 	case *object.Null:
 		assert.Equal(t, want, nil, "Expected null object, got %v", obj)
 	case *object.Bool:
-		assert.Equal(t, want, obj.Value, "Expected boolean value %v, got %v", want, obj.Value)
+		assert.Equal(t, want, obj.Raw(), "Expected boolean value %v, got %v", want, obj.Value)
 	case *object.List:
 		wantSlice, ok := want.([]any)
 		if !ok {

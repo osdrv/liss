@@ -103,7 +103,7 @@ func compare(a, b object.Object, cmp code.OpCode) (bool, error) {
 			return false, NewUnsupportedOpTypeError(
 				fmt.Sprintf("unsupported operation %v for type %s", code.PrintOpCode(cmp), ac.Type().String()))
 		}
-		return cmpfn(ac.(*object.String).Value, bc.(*object.String).Value), nil
+		return cmpfn(string(ac.(*object.String).Value), string(bc.(*object.String).Value)), nil
 	case object.BoolType:
 		cmpfn, ok := m_bool[cmp]
 		if !ok {

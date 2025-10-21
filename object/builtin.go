@@ -187,7 +187,7 @@ func builtinHead(a Object) (Object, error) {
 	} else if a.IsString() {
 		str := a.(*String)
 		if len(str.Value) > 0 {
-			return &String{Value: string(str.Value[0])}, nil
+			return &String{Value: (str.Value[0:1])}, nil
 		}
 		return &Null{}, nil
 	}
@@ -204,7 +204,7 @@ func builtinLast(a Object) (Object, error) {
 	} else if a.IsString() {
 		str := a.(*String)
 		if len(str.Value) > 0 {
-			return &String{Value: string(str.Value[len(str.Value)-1])}, nil
+			return &String{Value: []rune{str.Value[len(str.Value)-1]}}, nil
 		}
 		return &Null{}, nil
 	}
@@ -291,7 +291,7 @@ func builtinGetFromString(container Object, key Object) (Object, error) {
 	if index < 0 || int(index) >= len(str.Value) {
 		return &Null{}, nil
 	}
-	return &String{Value: string(str.Value[index])}, nil
+	return &String{Value: []rune{str.Value[index]}}, nil
 }
 
 func builtinGet(container Object, key Object) (Object, error) {
