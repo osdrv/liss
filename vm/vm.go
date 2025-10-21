@@ -129,6 +129,20 @@ func (vm *VM) Run() error {
 				if err := vm.push(object.NewString(b.String())); err != nil {
 					return err
 				}
+			case object.ListType:
+				items := make([]object.Object, 0)
+				for range argc {
+					obj := vm.pop()
+					if obj.Type() != object.ListType {
+						return errors.New("all arguments for list addition must be lists")
+					}
+					listObj := obj.(*object.List)
+					items = append(listObj.Items(), items...)
+				}
+				newList := object.NewList(items)
+				if err := vm.push(newList); err != nil {
+					return err
+				}
 			default:
 				// TODO: it is compiler's job to ensure that the types are correct
 				return errors.New("invalid type for addition")

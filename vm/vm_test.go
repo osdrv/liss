@@ -523,6 +523,13 @@ func TestFunctionCall(t *testing.T) {
 			`,
 			wantErr: fmt.Errorf("Function foo expects 1 arguments, got 2"),
 		},
+		{
+			name:  "concatenate 3 lists",
+			input: `(+ [1 2 3] [4 5 6] [7 8 9])`,
+			want: []any{int64(1), int64(2), int64(3),
+				int64(4), int64(5), int64(6),
+				int64(7), int64(8), int64(9)},
+		},
 	}
 
 	for _, tt := range tests {

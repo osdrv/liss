@@ -24,6 +24,7 @@ func mkBuiltin(name string, fn any, variadic bool) *BuiltinFunction {
 func init() {
 	builtins = []*BuiltinFunction{
 		mkBuiltin("len", builtinLen, false),
+		mkBuiltin("isEmpty", builtinIsEmpty, false),
 		mkBuiltin("head", builtinHead, false),
 		mkBuiltin("last", builtinLast, false),
 		mkBuiltin("tail", builtinTail, false),
@@ -37,7 +38,7 @@ func init() {
 		mkBuiltin("get", builtinGet, false),
 		mkBuiltin("put", builtinPut, false),
 		mkBuiltin("del", builtinDel, false),
-		mkBuiltin("isset", builtinIsSet, false),
+		mkBuiltin("isSet", builtinIsSet, false),
 		mkBuiltin("keys", builtinKeys, false),
 		mkBuiltin("values", builtinValues, false),
 	}
@@ -171,6 +172,14 @@ func builtinLen(a Object) (Object, error) {
 		return &Integer{Value: int64(al.Len())}, nil
 	}
 	return nil, fmt.Errorf("object %s is not lenable", a.String())
+}
+
+func builtinIsEmpty(a Object) (Object, error) {
+	if a.IsLenable() {
+		al := a.(lenable)
+		return &Bool{Value: al.Len() == 0}, nil
+	}
+	return nil, fmt.Errorf("object %s is not lennable", a.String())
 }
 
 func builtinIsNull(v Object) (Object, error) {
