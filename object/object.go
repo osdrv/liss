@@ -219,7 +219,11 @@ func (s *String) Type() ObjectType {
 }
 
 func (s *String) String() string {
-	return s.Value
+	b := make([]byte, len(s.Value)+2)
+	b[0] = '"'
+	b[len(b)-1] = '"'
+	copy(b[1:], s.Value)
+	return string(b)
 }
 
 func (s *String) IsLenable() bool {
