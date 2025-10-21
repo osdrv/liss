@@ -247,7 +247,7 @@ func builtinDict(pairs ...Object) (Object, error) {
 	return NewDictionaryWithItems(pairs)
 }
 
-func builtinGet(container Object, key Object) (Object, error) {
+func builtinGetFromDict(container Object, key Object) (Object, error) {
 	if !container.IsDictionary() {
 		return nil, fmt.Errorf("get: expected dictionary as first argument, got %s", container.String())
 	}
@@ -260,6 +260,49 @@ func builtinGet(container Object, key Object) (Object, error) {
 		return &Null{}, nil
 	}
 	return value, nil
+}
+
+func builtinGetFromList(container Object, key Object) (Object, error) {
+	if !container.IsList() {
+		return nil, fmt.Errorf("get: expected list as first argument, got %s", container.String())
+	}
+	list := container.(*List)
+	indexObj, ok := key.(*Integer)
+	if !ok {
+		return nil, fmt.Errorf("get: expected integer as index for list, got %s", key.String())
+	}
+	index := indexObj.Value
+	if index < 0 || int(index) >= len(list.items) {
+		return &Null{}, nil
+	}
+	return list.items[index], nil
+}
+
+func builtinGetFromString(container Object, key Object) (Object, error) {
+	if !container.IsString() {
+		return nil, fmt.Errorf("get: expected string as first argument, got %s", container.String())
+	}
+	str := container.(*String)
+	indexObj, ok := key.(*Integer)
+	if !ok {
+		return nil, fmt.Errorf("get: expected integer as index for string, got %s", key.String())
+	}
+	index := indexObj.Value
+	if index < 0 || int(index) >= len(str.Value) {
+		return &Null{}, nil
+	}
+	return &String{Value: string(str.Value[index])}, nil
+}
+
+func builtinGet(container Object, key Object) (Object, error) {
+	if container.IsList() {
+		return builtinGetFromList(container, key)
+	} else if container.IsDictionary() {
+		return builtinGetFromDict(container, key)
+	} else if container.IsString() {
+		return builtinGetFromString(container, key)
+	}
+	return nil, fmt.Errorf("get: expected list or dictionary as first argument, got %s", container.String())
 }
 
 func builtinPut(container Object, key Object, value Object) (Object, error) {

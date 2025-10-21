@@ -1,6 +1,10 @@
 package object
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestGetFuncNumArgs(t *testing.T) {
 	tests := []struct {
@@ -60,7 +64,7 @@ func TestBuiltinLen(t *testing.T) {
 			wantErr: false,
 		},
 		// {
-		// 	name:    "Length of a map",
+		// 	name:    "Length of a dictionary",
 		// 	input:   &Dictionary{items: map[any]Object{"a": &Integer{Value: 1}, "b": &Integer{Value: 2}}},
 		// 	want:    2,
 		// 	wantErr: false,
@@ -312,6 +316,60 @@ func TestBuiltinList(t *testing.T) {
 				if got.String() != tt.want.String() {
 					t.Errorf("BuiltinList() = %v, want %v", got.String(), tt.want.String())
 				}
+			}
+		})
+	}
+}
+
+func TestBuiltinGet(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   Object
+		key     Object
+		want    Object
+		wantErr bool
+	}{
+		{
+			name:  "Get element from array by index",
+			input: &List{items: []Object{&Integer{Value: 10}, &Integer{Value: 20}, &Integer{Value: 30}}},
+			key:   &Integer{Value: 1},
+			want:  &Integer{Value: 20},
+		},
+		{
+			name:  "Get character from string by index",
+			input: &String{Value: "hello"},
+			key:   &Integer{Value: 4},
+			want:  &String{Value: "o"},
+		},
+		{
+			name:  "Get element with invalid index",
+			input: &List{items: []Object{&Integer{Value: 10}, &Integer{Value: 20}}},
+			key:   &Integer{Value: 5},
+			want:  &Null{},
+		},
+		{
+			name:  "Get character with invalid index",
+			input: &String{Value: "hi"},
+			key:   &Integer{Value: -1},
+			want:  &Null{},
+		},
+		{
+			name:    "Get from non-indexable object",
+			input:   &Integer{Value: 42},
+			key:     &Integer{Value: 0},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := builtinGet(tt.input, tt.key)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("BuiltinGet() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr {
+				assert.Equal(t, tt.want.String(), got.String(), "BuiltinGet() = %v, want %v", got.String(), tt.want.String())
 			}
 		})
 	}
