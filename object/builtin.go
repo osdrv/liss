@@ -36,6 +36,7 @@ func init() {
 		mkBuiltin("dict", builtinDict, true),
 		mkBuiltin("get", builtinGet, false),
 		mkBuiltin("put", builtinPut, false),
+		mkBuiltin("del", builtinDel, false),
 		mkBuiltin("isset", builtinIsSet, false),
 		mkBuiltin("keys", builtinKeys, false),
 		mkBuiltin("values", builtinValues, false),
@@ -262,8 +263,23 @@ func builtinPut(container Object, key Object, value Object) (Object, error) {
 		return nil, fmt.Errorf("put: expected dictionary as first argument, got %s", container.String())
 	}
 	dict := container.(*Dictionary)
-	dict.Put(key, value)
+	err := dict.Put(key, value)
+	if err != nil {
+		return nil, err
+	}
 	return &Null{}, nil
+}
+
+func builtinDel(container Object, key Object) (Object, error) {
+	if !container.IsDictionary() {
+		return nil, fmt.Errorf("del: expected dictionary as first argument, got %s", container.String())
+	}
+	dict := container.(*Dictionary)
+	ok, err := dict.Delete(key)
+	if err != nil {
+		return nil, err
+	}
+	return &Bool{Value: ok}, nil
 }
 
 func builtinIsSet(container Object, key Object) (Object, error) {
