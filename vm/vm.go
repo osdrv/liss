@@ -120,7 +120,11 @@ func (vm *VM) Run() error {
 				var b strings.Builder
 				strs := make([]*object.String, 0, argc)
 				for range argc {
-					str := vm.pop().(*object.String)
+					obj := vm.pop()
+					if obj.Type() != object.StringType {
+						return errors.New("all arguments for string concatenation must be strings")
+					}
+					str := obj.(*object.String)
 					strs = append(strs, str)
 				}
 				for i := len(strs) - 1; i >= 0; i-- {

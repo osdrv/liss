@@ -530,6 +530,30 @@ func TestFunctionCall(t *testing.T) {
 				int64(4), int64(5), int64(6),
 				int64(7), int64(8), int64(9)},
 		},
+		{
+			name: "basic dict put",
+			input: `
+			(let d (dict))
+			(put d "key1" 42)
+			(get d "key1")
+			`,
+			want: int64(42),
+		},
+		{
+			name: "dict put, delete and get",
+			input: `
+			(let d (dict))
+			(put d "key1" 42)
+			(del d "key1")
+			(get d "key1")
+			`,
+			want: nil,
+		},
+		{
+			name:  "utf8 strings",
+			input: `(+ "Привет, " "мир!")`,
+			want:  "Привет, мир!",
+		},
 	}
 
 	for _, tt := range tests {
