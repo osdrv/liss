@@ -65,12 +65,14 @@ func (p *Prog) addThread(list []Thread, t Thread, ix int) []Thread {
 		case ReOpCaptureStart:
 			newCaps := make([]int, len(t.Caps))
 			copy(newCaps, t.Caps)
-			newCaps[inst.Arg*2] = ix
+			gid := p.NumCaps - inst.Arg
+			newCaps[gid*2] = ix
 			workList = append(workList, Thread{inst.Out, newCaps})
 		case ReOpCaptureEnd:
 			newCaps := make([]int, len(t.Caps))
 			copy(newCaps, t.Caps)
-			newCaps[inst.Arg*2+1] = ix
+			gid := p.NumCaps - inst.Arg
+			newCaps[gid*2+1] = ix
 			workList = append(workList, Thread{inst.Out, newCaps})
 		}
 	}
@@ -140,9 +142,13 @@ func (p *Prog) String() string {
 		case ReOpSplit:
 			b.WriteString(fmt.Sprintf("SPLIT -> %d, %d\n", inst.Out, inst.Out1))
 		case ReOpCaptureStart:
-			b.WriteString(fmt.Sprintf("CAPTURE_START %d -> %d\n", inst.Arg, inst.Out))
+			// Groups are numerated from the end
+			gid := p.NumCaps - inst.Arg
+			b.WriteString(fmt.Sprintf("CAPTURE_START (group %d) -> %d\n", gid, inst.Out))
 		case ReOpCaptureEnd:
-			b.WriteString(fmt.Sprintf("CAPTURE_END %d -> %d\n", inst.Arg, inst.Out))
+			// Groups are numerated from the end
+			gid := p.NumCaps - inst.Arg
+			b.WriteString(fmt.Sprintf("CAPTURE_END (group %d) -> %d\n", gid, inst.Out))
 		case ReOpJump:
 			b.WriteString(fmt.Sprintf("JUMP -> %d\n", inst.Out))
 		}

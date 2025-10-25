@@ -15,6 +15,7 @@ func Compile(pattern string) (*Regexp, error) {
 	match := c.addInst(Inst{Op: ReOpMatch})
 	start := c.compile(node, match)
 	c.prog.Start = start
+	c.prog.NumCaps = c.nCaps
 
 	return &Regexp{
 		Prog: c.prog,

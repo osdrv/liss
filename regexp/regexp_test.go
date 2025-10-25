@@ -109,3 +109,58 @@ func TestMatchString(t *testing.T) {
 		})
 	}
 }
+
+func TestMatchWithCaptures(t *testing.T) {
+	tests := []struct {
+		name         string
+		pattern      string
+		input        string
+		wantCaptures []string
+		wantOk       bool
+	}{
+		{
+			name:         "no captures match",
+			pattern:      "hello",
+			input:        "hello",
+			wantCaptures: []string{"hello"},
+			wantOk:       true,
+		},
+		{
+			name:         "single capture match",
+			pattern:      "(he)llo",
+			input:        "hello",
+			wantCaptures: []string{"hello", "he"},
+			wantOk:       true,
+		},
+		{
+			name:         "multiple captures match",
+			pattern:      "(he)(ll)o",
+			input:        "hello",
+			wantCaptures: []string{"hello", "he", "ll"},
+			wantOk:       true,
+		},
+		{
+			name:    "test single rune capture",
+			pattern: "(a)b",
+			input:   "ab",
+			wantCaptures: []string{
+				"ab",
+				"a",
+			},
+			wantOk: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			re, err := Compile(tt.pattern)
+			t.Log(re.Prog.String())
+			require.NoError(t, err, "Compile(%q) failed", tt.pattern)
+			captures, ok := re.MatchString(tt.input)
+			assert.Equal(t, tt.wantOk, ok, "MatchString(%q) with pattern %q", tt.input, tt.pattern)
+			if ok {
+				assert.Equal(t, tt.wantCaptures, captures, "Captures for input %q with pattern %q", tt.input, tt.pattern)
+			}
+		})
+	}
+}
