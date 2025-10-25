@@ -9,33 +9,33 @@ import (
 func TestVMMatch(t *testing.T) {
 	tests := []struct {
 		name       string
-		program    []Inst
 		input      string
+		program    *Prog
 		numCaps    int
 		wantOk     bool
 		wantGroups []int
 	}{
 		{
 			name: "single rune match",
-			program: []Inst{
+			program: &Prog{[]Inst{
 				{Op: ReOpRune, Rune: 'a', Out: 1},
 				{Op: ReOpMatch},
-			},
+			}, 0},
 			input:  "a",
 			wantOk: true,
 		},
 		{
 			name: "single rune mismatch",
-			program: []Inst{
+			program: &Prog{[]Inst{
 				{Op: ReOpRune, Rune: 'a', Out: 1},
 				{Op: ReOpMatch},
-			},
+			}, 0},
 			input:  "b",
 			wantOk: false,
 		},
 		{
 			name: "a(b|c)*d on abcd:",
-			program: []Inst{
+			program: &Prog{[]Inst{
 				{Op: ReOpRune, Rune: 'a', Out: 1}, // 0: 'a' -> 1
 				{Op: ReOpSplit, Out: 2, Out1: 7},  // 1: loop start (epsilon)
 				{Op: ReOpSplit, Out: 3, Out1: 5},  // 2: alternation start (epsilon)
@@ -45,13 +45,13 @@ func TestVMMatch(t *testing.T) {
 				{Op: ReOpJump, Out: 1},            // 6: Jump back to loop start
 				{Op: ReOpRune, Rune: 'd', Out: 8}, // 7: 'd' -> 8
 				{Op: ReOpMatch},                   // 8: Success
-			},
+			}, 0},
 			input:  "abcd",
 			wantOk: true,
 		},
 		{
 			name: "a(b|c)*d on ad:",
-			program: []Inst{
+			program: &Prog{[]Inst{
 				{Op: ReOpRune, Rune: 'a', Out: 1}, // 0: 'a' -> 1
 				{Op: ReOpSplit, Out: 2, Out1: 7},  // 1: loop start (epsilon)
 				{Op: ReOpSplit, Out: 3, Out1: 5},  // 2: alternation start (epsilon)
@@ -61,13 +61,13 @@ func TestVMMatch(t *testing.T) {
 				{Op: ReOpJump, Out: 1},            // 6: Jump back to loop start
 				{Op: ReOpRune, Rune: 'd', Out: 8}, // 7: 'd' -> 8
 				{Op: ReOpMatch},                   // 8: Success
-			},
+			}, 0},
 			input:  "ad",
 			wantOk: true,
 		},
 		{
 			name: "a(b|c)*d on axd:",
-			program: []Inst{
+			program: &Prog{[]Inst{
 				{Op: ReOpRune, Rune: 'a', Out: 1}, // 0: 'a' -> 1
 				{Op: ReOpSplit, Out: 2, Out1: 7},  // 1: loop start (epsilon)
 				{Op: ReOpSplit, Out: 3, Out1: 5},  // 2: alternation start (epsilon)
@@ -77,19 +77,19 @@ func TestVMMatch(t *testing.T) {
 				{Op: ReOpJump, Out: 1},            // 6: Jump back to loop start
 				{Op: ReOpRune, Rune: 'd', Out: 8}, // 7: 'd' -> 8
 				{Op: ReOpMatch},                   // 8: Success
-			},
+			}, 0},
 			input:  "axd",
 			wantOk: false,
 		},
 		{
 			name: "capture single rune",
-			program: []Inst{
+			program: &Prog{[]Inst{
 				{Op: ReOpCaptureStart, Arg: 1, Out: 1}, // 0: Capture start for group 1
 				{Op: ReOpRune, Rune: 'a', Out: 2},      // 1: 'a' -> 2
 				{Op: ReOpCaptureEnd, Arg: 1, Out: 3},   // 2: Capture end for group 1
 				{Op: ReOpRune, Rune: 'b', Out: 4},      // 3: 'b' -> 4
 				{Op: ReOpMatch},                        // 4: Match
-			},
+			}, 0},
 			numCaps:    1,
 			input:      "ab",
 			wantOk:     true,
@@ -97,7 +97,7 @@ func TestVMMatch(t *testing.T) {
 		},
 		{
 			name: "capture with * matcher",
-			program: []Inst{
+			program: &Prog{[]Inst{
 				{Op: ReOpCaptureStart, Arg: 1, Out: 1}, // 0: Capture start for group 1
 				{Op: ReOpSplit, Out: 2, Out1: 4},       // 1: loop start (epsilon)
 				{Op: ReOpRune, Rune: 'a', Out: 3},      // 2: 'a' -> 3
@@ -105,7 +105,7 @@ func TestVMMatch(t *testing.T) {
 				{Op: ReOpCaptureEnd, Arg: 1, Out: 5},   // 4: Capture end for group 1
 				{Op: ReOpRune, Rune: 'b', Out: 6},      // 5: 'b' -> 6
 				{Op: ReOpMatch},                        // 6: Match
-			},
+			}, 0},
 			numCaps:    1,
 			input:      "aaaab",
 			wantOk:     true,
@@ -115,8 +115,7 @@ func TestVMMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vm := NewVM(tt.program, 0)
-			gotGroups, gotOk := vm.Match(tt.input, tt.numCaps)
+			gotGroups, gotOk := tt.program.Match(tt.input, tt.numCaps)
 			assert.Equal(t, tt.wantOk, gotOk, "VM.Match(%q) = %v; want %v", tt.input, gotOk, tt.wantOk)
 			if tt.wantGroups != nil {
 				assert.Equal(t, tt.wantGroups, gotGroups, "VM.Match(%q) groups = %v; want %v", tt.input, gotGroups, tt.wantGroups)

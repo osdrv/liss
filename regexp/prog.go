@@ -25,19 +25,19 @@ type Thread struct {
 	Caps []int
 }
 
-type VM struct {
+type Prog struct {
 	Insts []Inst
 	Start int
 }
 
-func NewVM(insts []Inst, start int) *VM {
-	return &VM{
+func NewProg(insts []Inst, start int) *Prog {
+	return &Prog{
 		Insts: insts,
 		Start: start,
 	}
 }
 
-func (vm *VM) addThread(list []Thread, t Thread, ix int) []Thread {
+func (p *Prog) addThread(list []Thread, t Thread, ix int) []Thread {
 	// worklist is a stack of threads to process
 	workList := []Thread{t}
 
@@ -45,7 +45,7 @@ func (vm *VM) addThread(list []Thread, t Thread, ix int) []Thread {
 		t := workList[len(workList)-1]
 		workList = workList[:len(workList)-1]
 
-		inst := vm.Insts[t.PC]
+		inst := p.Insts[t.PC]
 		switch inst.Op {
 		case ReOpRune, ReOpAny, ReOpMatch:
 			list = append(list, t)
@@ -72,14 +72,14 @@ func (vm *VM) addThread(list []Thread, t Thread, ix int) []Thread {
 	return list
 }
 
-func (vm *VM) Match(s string, numCaps int) ([]int, bool) {
+func (p *Prog) Match(s string, numCaps int) ([]int, bool) {
 	capsLen := (numCaps + 1) * 2 // +1 for group 0
 	var clist []Thread
 	var nlist []Thread
 
 	initialCaps := make([]int, capsLen)
 	initialCaps[0] = 0 // Group 0 starts at position 0
-	clist = vm.addThread(nil, Thread{vm.Start, initialCaps}, 0)
+	clist = p.addThread(nil, Thread{p.Start, initialCaps}, 0)
 	var ix int
 
 	for i, r := range s {
@@ -87,14 +87,14 @@ func (vm *VM) Match(s string, numCaps int) ([]int, bool) {
 		nlist = nil
 
 		for _, t := range clist {
-			inst := vm.Insts[t.PC]
+			inst := p.Insts[t.PC]
 			switch inst.Op {
 			case ReOpRune:
 				if inst.Rune == r {
-					nlist = vm.addThread(nlist, Thread{inst.Out, t.Caps}, i+1)
+					nlist = p.addThread(nlist, Thread{inst.Out, t.Caps}, i+1)
 				}
 			case ReOpAny:
-				nlist = vm.addThread(nlist, Thread{inst.Out, t.Caps}, i+1)
+				nlist = p.addThread(nlist, Thread{inst.Out, t.Caps}, i+1)
 			}
 		}
 		clist = nlist
@@ -107,7 +107,7 @@ func (vm *VM) Match(s string, numCaps int) ([]int, bool) {
 	ix = len(s)
 
 	for _, t := range clist {
-		inst := vm.Insts[t.PC]
+		inst := p.Insts[t.PC]
 		if inst.Op == ReOpMatch {
 			// Complete the group 0 capture end
 			finalCaps := make([]int, capsLen)
