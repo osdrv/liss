@@ -549,11 +549,6 @@ func TestFunctionCall(t *testing.T) {
 			`,
 			want: nil,
 		},
-		{
-			name:  "utf8 strings",
-			input: `(+ "Привет, " "мир!")`,
-			want:  "Привет, мир!",
-		},
 	}
 
 	for _, tt := range tests {
@@ -614,6 +609,16 @@ func TestBuiltinCall(t *testing.T) {
 			name:  "builtin match: unicode string",
 			input: `(match "пр.*ет" "привет")`,
 			want:  true,
+		},
+		{
+			name:  "utf8 strings",
+			input: `(+ "Привет, " "мир!")`,
+			want:  "Привет, мир!",
+		},
+		{
+			name:  "builtin capture",
+			input: `(capture "(a*)b" "aaaaab")`,
+			want:  []any{"aaaaab", "aaaaa"},
 		},
 	}
 

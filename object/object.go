@@ -474,6 +474,6 @@ func (r *Regexp) Match(s string) bool {
 	return ok
 }
 
-func (r *Regexp) MatchCapture(s string) ([]string, bool) {
+func (r *Regexp) Capture(s string) ([]string, bool) {
 	return r.re.MatchString(s)
 }

@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"osdrv/liss/regexp"
 	"reflect"
 )
 
@@ -42,6 +43,7 @@ func init() {
 		mkBuiltin("keys", builtinKeys, false),
 		mkBuiltin("values", builtinValues, false),
 		mkBuiltin("match", builtinMatch, false),
+		mkBuiltin("capture", builtinCapture, false),
 	}
 
 	for ix, b := range builtins {
@@ -382,7 +384,37 @@ func builtinMatch(pat Object, str Object) (Object, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &Bool{Value: re.Match(sstr)}, nil
+		return NewBool(re.Match(sstr)), nil
 	}
 	return nil, fmt.Errorf("match: expected regexp or string as first argument, got %s", pat.String())
+}
+
+func builtinCapture(pat Object, str Object) (Object, error) {
+	if !str.IsString() {
+		return nil, fmt.Errorf("capture: expected string as second argument, got %s", str.String())
+	}
+	sstr := string(str.(*String).Value)
+	// pat could be a Regexp object or a string
+	var re *regexp.Regexp
+	if pat.IsRegexp() {
+		re = pat.(*Regexp).re
+	} else if pat.IsString() {
+		strPat := pat.(*String)
+		var err error
+		re, err = regexp.Compile(string(strPat.Value))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("capture: expected regexp or string as first argument, got %s", pat.String())
+	}
+
+	capts, ok := re.MatchString(sstr)
+	res := &List{items: []Object{}}
+	if ok {
+		for _, match := range capts {
+			res.items = append(res.items, NewString(match))
+		}
+	}
+	return res, nil
 }
