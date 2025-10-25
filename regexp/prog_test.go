@@ -11,7 +11,6 @@ func TestVMMatch(t *testing.T) {
 		name       string
 		input      string
 		program    *Prog
-		numCaps    int
 		wantOk     bool
 		wantGroups []int
 	}{
@@ -20,7 +19,7 @@ func TestVMMatch(t *testing.T) {
 			program: &Prog{[]Inst{
 				{Op: ReOpRune, Rune: 'a', Out: 1},
 				{Op: ReOpMatch},
-			}, 0},
+			}, 0, 0},
 			input:  "a",
 			wantOk: true,
 		},
@@ -29,7 +28,7 @@ func TestVMMatch(t *testing.T) {
 			program: &Prog{[]Inst{
 				{Op: ReOpRune, Rune: 'a', Out: 1},
 				{Op: ReOpMatch},
-			}, 0},
+			}, 0, 0},
 			input:  "b",
 			wantOk: false,
 		},
@@ -45,7 +44,7 @@ func TestVMMatch(t *testing.T) {
 				{Op: ReOpJump, Out: 1},            // 6: Jump back to loop start
 				{Op: ReOpRune, Rune: 'd', Out: 8}, // 7: 'd' -> 8
 				{Op: ReOpMatch},                   // 8: Success
-			}, 0},
+			}, 0, 0},
 			input:  "abcd",
 			wantOk: true,
 		},
@@ -61,7 +60,7 @@ func TestVMMatch(t *testing.T) {
 				{Op: ReOpJump, Out: 1},            // 6: Jump back to loop start
 				{Op: ReOpRune, Rune: 'd', Out: 8}, // 7: 'd' -> 8
 				{Op: ReOpMatch},                   // 8: Success
-			}, 0},
+			}, 0, 0},
 			input:  "ad",
 			wantOk: true,
 		},
@@ -77,7 +76,7 @@ func TestVMMatch(t *testing.T) {
 				{Op: ReOpJump, Out: 1},            // 6: Jump back to loop start
 				{Op: ReOpRune, Rune: 'd', Out: 8}, // 7: 'd' -> 8
 				{Op: ReOpMatch},                   // 8: Success
-			}, 0},
+			}, 0, 0},
 			input:  "axd",
 			wantOk: false,
 		},
@@ -89,8 +88,7 @@ func TestVMMatch(t *testing.T) {
 				{Op: ReOpCaptureEnd, Arg: 1, Out: 3},   // 2: Capture end for group 1
 				{Op: ReOpRune, Rune: 'b', Out: 4},      // 3: 'b' -> 4
 				{Op: ReOpMatch},                        // 4: Match
-			}, 0},
-			numCaps:    1,
+			}, 0, 1},
 			input:      "ab",
 			wantOk:     true,
 			wantGroups: []int{0, 2, 0, 1}, // group 0: [0,2), group 1: [0,1)
@@ -105,8 +103,7 @@ func TestVMMatch(t *testing.T) {
 				{Op: ReOpCaptureEnd, Arg: 1, Out: 5},   // 4: Capture end for group 1
 				{Op: ReOpRune, Rune: 'b', Out: 6},      // 5: 'b' -> 6
 				{Op: ReOpMatch},                        // 6: Match
-			}, 0},
-			numCaps:    1,
+			}, 0, 1},
 			input:      "aaaab",
 			wantOk:     true,
 			wantGroups: []int{0, 5, 0, 4}, // group 0: [0,5), group 1: [0,4)
@@ -115,7 +112,7 @@ func TestVMMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotGroups, gotOk := tt.program.Match(tt.input, tt.numCaps)
+			gotGroups, gotOk := tt.program.Match(tt.input)
 			assert.Equal(t, tt.wantOk, gotOk, "VM.Match(%q) = %v; want %v", tt.input, gotOk, tt.wantOk)
 			if tt.wantGroups != nil {
 				assert.Equal(t, tt.wantGroups, gotGroups, "VM.Match(%q) groups = %v; want %v", tt.input, gotGroups, tt.wantGroups)

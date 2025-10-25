@@ -1,5 +1,10 @@
 package regexp
 
+import (
+	"fmt"
+	"strings"
+)
+
 type ReOp uint8
 
 const (
@@ -26,8 +31,9 @@ type Thread struct {
 }
 
 type Prog struct {
-	Insts []Inst
-	Start int
+	Insts   []Inst
+	Start   int
+	NumCaps int
 }
 
 func NewProg(insts []Inst, start int) *Prog {
@@ -72,8 +78,8 @@ func (p *Prog) addThread(list []Thread, t Thread, ix int) []Thread {
 	return list
 }
 
-func (p *Prog) Match(s string, numCaps int) ([]int, bool) {
-	capsLen := (numCaps + 1) * 2 // +1 for group 0
+func (p *Prog) Match(s string) ([]int, bool) {
+	capsLen := (p.NumCaps + 1) * 2 // +1 for group 0
 	var clist []Thread
 	var nlist []Thread
 
@@ -118,4 +124,28 @@ func (p *Prog) Match(s string, numCaps int) ([]int, bool) {
 	}
 
 	return nil, false
+}
+
+func (p *Prog) String() string {
+	var b strings.Builder
+	for i, inst := range p.Insts {
+		b.WriteString(fmt.Sprintf("%04d: ", i))
+		switch inst.Op {
+		case ReOpMatch:
+			b.WriteString("MATCH\n")
+		case ReOpRune:
+			b.WriteString(fmt.Sprintf("RUNE '%c' -> %d\n", inst.Rune, inst.Out))
+		case ReOpAny:
+			b.WriteString(fmt.Sprintf("ANY -> %d\n", inst.Out))
+		case ReOpSplit:
+			b.WriteString(fmt.Sprintf("SPLIT -> %d, %d\n", inst.Out, inst.Out1))
+		case ReOpCaptureStart:
+			b.WriteString(fmt.Sprintf("CAPTURE_START %d -> %d\n", inst.Arg, inst.Out))
+		case ReOpCaptureEnd:
+			b.WriteString(fmt.Sprintf("CAPTURE_END %d -> %d\n", inst.Arg, inst.Out))
+		case ReOpJump:
+			b.WriteString(fmt.Sprintf("JUMP -> %d\n", inst.Out))
+		}
+	}
+	return b.String()
 }
