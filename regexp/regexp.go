@@ -23,6 +23,7 @@ func Compile(pattern string) (*Regexp, error) {
 }
 
 func (r *Regexp) MatchString(s string) ([]string, bool) {
+	rr := []rune(s)
 	caps, ok := r.Prog.Match(s)
 	if !ok {
 		return nil, false
@@ -32,7 +33,7 @@ func (r *Regexp) MatchString(s string) ([]string, bool) {
 		start := caps[i]
 		end := caps[i+1]
 		if start >= 0 && end >= 0 && start <= end && end <= len(s) {
-			matches[i/2] = s[start:end]
+			matches[i/2] = string(rr[start:end])
 		} else {
 			matches[i/2] = ""
 		}

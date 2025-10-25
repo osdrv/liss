@@ -90,7 +90,9 @@ func (p *Prog) Match(s string) ([]int, bool) {
 	clist = p.addThread(nil, Thread{p.Start, initialCaps}, 0)
 	var ix int
 
-	for i, r := range s {
+	rr := []rune(s)
+	for i, r := range rr {
+		fmt.Printf("%d: %c\n", i, r)
 		ix = i
 		nlist = nil
 
@@ -112,7 +114,7 @@ func (p *Prog) Match(s string) ([]int, bool) {
 			return nil, false
 		}
 	}
-	ix = len(s)
+	ix = len(rr)
 
 	for _, t := range clist {
 		inst := p.Insts[t.PC]

@@ -98,6 +98,12 @@ func TestMatchString(t *testing.T) {
 			pattern: "a.*bc",
 			want:    true,
 		},
+		{
+			name:    "unicode match",
+			input:   "привет",
+			pattern: "при.*ет",
+			want:    true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -146,6 +152,17 @@ func TestMatchWithCaptures(t *testing.T) {
 			wantCaptures: []string{
 				"ab",
 				"a",
+			},
+			wantOk: true,
+		},
+		{
+			name:    "unicode capture",
+			pattern: "(при)(вет)",
+			input:   "привет",
+			wantCaptures: []string{
+				"привет",
+				"при",
+				"вет",
 			},
 			wantOk: true,
 		},
