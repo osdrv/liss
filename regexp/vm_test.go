@@ -95,6 +95,22 @@ func TestVMMatch(t *testing.T) {
 			wantOk:     true,
 			wantGroups: []int{0, 2, 0, 1}, // group 0: [0,2), group 1: [0,1)
 		},
+		{
+			name: "capture with * matcher",
+			program: []Inst{
+				{Op: ReOpCaptureStart, Arg: 1, Out: 1}, // 0: Capture start for group 1
+				{Op: ReOpSplit, Out: 2, Out1: 4},       // 1: loop start (epsilon)
+				{Op: ReOpRune, Rune: 'a', Out: 3},      // 2: 'a' -> 3
+				{Op: ReOpJump, Out: 1},                 // 3: Jump back to loop start
+				{Op: ReOpCaptureEnd, Arg: 1, Out: 5},   // 4: Capture end for group 1
+				{Op: ReOpRune, Rune: 'b', Out: 6},      // 5: 'b' -> 6
+				{Op: ReOpMatch},                        // 6: Match
+			},
+			numCaps:    1,
+			input:      "aaaab",
+			wantOk:     true,
+			wantGroups: []int{0, 5, 0, 4}, // group 0: [0,5), group 1: [0,4)
+		},
 	}
 
 	for _, tt := range tests {
