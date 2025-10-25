@@ -3,6 +3,7 @@ package object
 import (
 	"bytes"
 	"osdrv/liss/code"
+	"osdrv/liss/regexp"
 	"strconv"
 )
 
@@ -19,6 +20,7 @@ const (
 	BuiltinType
 	ListType
 	DictionaryType
+	RegexpType
 )
 
 func (t ObjectType) String() string {
@@ -41,6 +43,8 @@ func (t ObjectType) String() string {
 		return "List"
 	case DictionaryType:
 		return "Dictionary"
+	case RegexpType:
+		return "Regexp"
 	default:
 		return "Unknown"
 	}
@@ -57,6 +61,7 @@ type Object interface {
 	IsDictionary() bool
 	IsFunction() bool
 	IsLenable() bool
+	IsRegexp() bool
 	Raw() any
 	Clone() Object
 }
@@ -92,6 +97,10 @@ func (d defaultObject) IsFunction() bool {
 }
 
 func (d defaultObject) IsLenable() bool {
+	return false
+}
+
+func (d defaultObject) IsRegexp() bool {
 	return false
 }
 
@@ -418,4 +427,53 @@ func (f *Function) IsFunction() bool {
 
 func (f *Function) Raw() any {
 	return f
+}
+
+type Regexp struct {
+	defaultObject
+	pat string
+	re  *regexp.Regexp
+}
+
+var _ Object = (*Regexp)(nil)
+
+func (r *Regexp) Type() ObjectType {
+	return RegexpType
+}
+
+func (r *Regexp) Clone() Object {
+	return r
+}
+
+func (r *Regexp) String() string {
+	return "Regexp(" + r.pat + ")"
+}
+
+func (r *Regexp) IsRegexp() bool {
+	return true
+}
+
+func (r *Regexp) Raw() any {
+	return r.pat
+}
+
+func NewRegexp(pat string) (*Regexp, error) {
+	re, err := regexp.Compile(pat)
+	if err != nil {
+		return nil, err
+	}
+	return &Regexp{
+		re:  re,
+		pat: pat,
+	}, nil
+}
+
+func (r *Regexp) Match(s string) bool {
+	// TODO: optimize to avoid captures if not needed
+	_, ok := r.re.MatchString(s)
+	return ok
+}
+
+func (r *Regexp) MatchCapture(s string) ([]string, bool) {
+	return r.re.MatchString(s)
 }

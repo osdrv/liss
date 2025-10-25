@@ -41,6 +41,7 @@ func init() {
 		mkBuiltin("isSet", builtinIsSet, false),
 		mkBuiltin("keys", builtinKeys, false),
 		mkBuiltin("values", builtinValues, false),
+		mkBuiltin("match", builtinMatch, false),
 	}
 
 	for ix, b := range builtins {
@@ -364,4 +365,24 @@ func builtinValues(container Object) (Object, error) {
 	}
 	dict := container.(*Dictionary)
 	return NewList(dict.Values()), nil
+}
+
+func builtinMatch(pat Object, str Object) (Object, error) {
+	if !str.IsString() {
+		return nil, fmt.Errorf("match: expected string as second argument, got %s", str.String())
+	}
+	sstr := string(str.(*String).Value)
+	// pat could be a Regexp object or a string
+	if pat.IsRegexp() {
+		re := pat.(*Regexp)
+		return &Bool{Value: re.Match(sstr)}, nil
+	} else if pat.IsString() {
+		strPat := pat.(*String)
+		re, err := NewRegexp(string(strPat.Value))
+		if err != nil {
+			return nil, err
+		}
+		return &Bool{Value: re.Match(sstr)}, nil
+	}
+	return nil, fmt.Errorf("match: expected regexp or string as first argument, got %s", pat.String())
 }

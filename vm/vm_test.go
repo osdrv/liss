@@ -605,6 +605,16 @@ func TestBuiltinCall(t *testing.T) {
 			input: `(list 1 2 3)`,
 			want:  []any{int64(1), int64(2), int64(3)},
 		},
+		{
+			name:  "builtin match: simple match",
+			input: `(match "h.*o" "hello")`,
+			want:  true,
+		},
+		{
+			name:  "builtin match: unicode string",
+			input: `(match "пр.*ет" "привет")`,
+			want:  true,
+		},
 	}
 
 	for _, tt := range tests {

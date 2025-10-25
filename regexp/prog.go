@@ -92,7 +92,6 @@ func (p *Prog) Match(s string) ([]int, bool) {
 
 	rr := []rune(s)
 	for i, r := range rr {
-		fmt.Printf("%d: %c\n", i, r)
 		ix = i
 		nlist = nil
 
