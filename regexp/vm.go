@@ -38,27 +38,35 @@ func NewVM(insts []Inst, start int) *VM {
 }
 
 func (vm *VM) addThread(list []Thread, t Thread, ix int) []Thread {
-	inst := vm.Insts[t.PC]
+	// worklist is a stack of threads to process
+	workList := []Thread{t}
 
-	switch inst.Op {
-	case ReOpCaptureStart:
-		newCaps := make([]int, len(t.Caps))
-		copy(newCaps, t.Caps)
-		newCaps[inst.Arg*2] = ix
-		return vm.addThread(list, Thread{inst.Out, newCaps}, ix)
-	case ReOpCaptureEnd:
-		newCaps := make([]int, len(t.Caps))
-		copy(newCaps, t.Caps)
-		newCaps[inst.Arg*2+1] = ix
-		return vm.addThread(list, Thread{inst.Out, newCaps}, ix)
-	case ReOpSplit:
-		list = vm.addThread(list, Thread{inst.Out, t.Caps}, ix)
-		list = vm.addThread(list, Thread{inst.Out1, t.Caps}, ix)
-		return list
-	case ReOpJump:
-		return vm.addThread(list, Thread{inst.Out, t.Caps}, ix)
-	case ReOpRune, ReOpAny, ReOpMatch:
-		list = append(list, t)
+	for len(workList) > 0 {
+		t := workList[len(workList)-1]
+		workList = workList[:len(workList)-1]
+
+		inst := vm.Insts[t.PC]
+		switch inst.Op {
+		case ReOpRune, ReOpAny, ReOpMatch:
+			list = append(list, t)
+		case ReOpSplit:
+			// Push least preferred path first
+			workList = append(workList, Thread{inst.Out1, t.Caps})
+			// Push most preferred path second
+			workList = append(workList, Thread{inst.Out, t.Caps})
+		case ReOpJump:
+			workList = append(workList, Thread{inst.Out, t.Caps})
+		case ReOpCaptureStart:
+			newCaps := make([]int, len(t.Caps))
+			copy(newCaps, t.Caps)
+			newCaps[inst.Arg*2] = ix
+			workList = append(workList, Thread{inst.Out, newCaps})
+		case ReOpCaptureEnd:
+			newCaps := make([]int, len(t.Caps))
+			copy(newCaps, t.Caps)
+			newCaps[inst.Arg*2+1] = ix
+			workList = append(workList, Thread{inst.Out, newCaps})
+		}
 	}
 
 	return list
