@@ -958,10 +958,10 @@ func TestLetExpr(t *testing.T) {
 			wantConsts: []any{int64(42)},
 			wantInstrs: []code.Instructions{
 				code.Make(code.OpConst, 0),
-				code.Make(code.OpSetGlobal, 0),
-				code.Make(code.OpGetGlobal, 0),
 				code.Make(code.OpSetGlobal, 1),
 				code.Make(code.OpGetGlobal, 1),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
 				code.Make(code.OpPop),
 			},
 		},

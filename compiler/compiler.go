@@ -188,13 +188,14 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			c.emit(code.OpPop)
 		}
 	case *ast.LetExpression:
-		if err := c.compileStep(n.Value, true); err != nil {
-			return err
-		}
 		sym, err := c.symbols.Define(n.Identifier.Name)
 		if err != nil {
 			return err
 		}
+		if err := c.compileStep(n.Value, true); err != nil {
+			return err
+		}
+
 		if sym.Scope == GlobalScope {
 			c.emit(code.OpSetGlobal, sym.Index)
 			c.emit(code.OpGetGlobal, sym.Index)
@@ -213,24 +214,24 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		if err := c.loadSymbol(sym); err != nil {
 			return err
 		}
-		// switch sym.Scope {
-		// case GlobalScope:
-		// 	c.emit(code.OpGetGlobal, sym.Index)
-		// case LocalScope:
-		// 	c.emit(code.OpGetLocal, sym.Index)
-		// case BuiltinScope:
-		// 	c.emit(code.OpGetBuiltin, sym.Index)
-		// case FreeScope:
-		// 	c.emit(code.OpGetFree, sym.Index)
-		// default:
-		// 	panic("unreachable")
-		// }
 		if !managed {
 			c.emit(code.OpPop)
 		}
 	case *ast.FunctionExpression:
+		var fnsym *Symbol
+		var name string
+		if n.Name != nil {
+			name = n.Name.Name
+			if len(name) > 0 {
+				sym, err := c.symbols.Define(name)
+				if err != nil {
+					return err
+				}
+				fnsym = &sym
+			}
+		}
+
 		c.enterScope()
-		// We compile the function body and we mark it as a managed scope.
 
 		for _, arg := range n.Args {
 			c.symbols.Define(arg.Name)
@@ -253,10 +254,6 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			c.loadSymbol(f)
 		}
 
-		var name string
-		if n.Name != nil {
-			name = n.Name.Name
-		}
 		args := make([]string, 0, len(n.Args))
 		for _, arg := range n.Args {
 			args = append(args, arg.Name)
@@ -265,12 +262,8 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		fn.NumLocals = numLocals
 		c.emit(code.OpClosure, c.addConst(fn), len(free))
 
-		if len(name) > 0 {
-			sym, err := c.symbols.Define(name)
-			if err != nil {
-				return err
-			}
-			c.emit(code.OpSetGlobal, sym.Index)
+		if fnsym != nil {
+			c.emit(code.OpSetGlobal, fnsym.Index)
 		}
 		if !managed {
 			c.emit(code.OpPop)

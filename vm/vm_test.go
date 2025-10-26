@@ -685,6 +685,34 @@ func TestClosures(t *testing.T) {
 			`,
 			want: int64(11),
 		},
+		{
+			name: "recursive functions with let declaration",
+			input: `
+			(let countdown
+				(fn [n]
+			    	(cond (= n 0)
+								0
+								(countdown (- n 1))
+								)
+				)
+			)
+			(countdown 1)
+			`,
+			want: int64(0),
+		},
+		{
+			name: "recursive functions",
+			input: `
+			(fn countdown [n]
+			    (cond (= n 0)
+							0
+							(countdown (- n 1))
+				)
+			)
+			(countdown 1)
+			`,
+			want: int64(0),
+		},
 	}
 
 	for _, tt := range tests {
