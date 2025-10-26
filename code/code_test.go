@@ -37,6 +37,12 @@ func TestMake(t *testing.T) {
 			operands: []int{255},
 			expected: Instructions{OpGetLocal, 255},
 		},
+		{
+			name:     "OpClosure with two operands",
+			op:       OpClosure,
+			operands: []int{65535, 255},
+			expected: Instructions{OpClosure, 255, 255, 255},
+		},
 	}
 
 	for _, tt := range tests {
@@ -85,11 +91,13 @@ func TestPrintInstr(t *testing.T) {
 		Make(OpConst, 1),
 		Make(OpConst, 2),
 		Make(OpConst, 65535),
+		Make(OpClosure, 65535, 255),
 	}
 
 	expected := `0000 OpConst 1
 0003 OpConst 2
 0006 OpConst 65535
+0009 OpClosure 65535 255
 `
 	conc := Instructions{}
 	for _, instr := range instrs {

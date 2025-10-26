@@ -33,11 +33,11 @@ type VM struct {
 }
 
 func New(bc *compiler.Bytecode) *VM {
-
 	mainfn := &object.Function{
 		Instrs: bc.Instrs,
 	}
-	mframe := NewFrame(mainfn, 0)
+	maincl := object.NewClosure(mainfn, nil)
+	mframe := NewFrame(maincl, 0)
 	frames := make([]*Frame, MaxFrames)
 	frames[0] = mframe
 
@@ -389,6 +389,13 @@ func (vm *VM) Run() error {
 			if err := vm.push(ret); err != nil {
 				return err
 			}
+		case code.OpClosure:
+			cix := code.ReadUint16(instrs[ip+1:])
+			_ = code.ReadUint8(instrs[ip+3:]) // number of free variables, not used currently
+			vm.currentFrame().ip += 3
+			if err := vm.pushClosure(int(cix)); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unknown opcode %s at position %d", code.PrintOpCode(op), ip)
 		}
@@ -397,16 +404,26 @@ func (vm *VM) Run() error {
 	return nil
 }
 
+func (vm *VM) pushClosure(cix int) error {
+	cnst := vm.consts[cix]
+	fn, ok := cnst.(*object.Function)
+	if !ok {
+		return fmt.Errorf("constant at index %d is not a function", cix)
+	}
+	closure := object.NewClosure(fn, nil)
+	return vm.push(closure)
+}
+
 func (vm *VM) callFunction(argc int) error {
 	fnobj := vm.stack[vm.sp-1-argc]
 	switch fn := fnobj.(type) {
-	case *object.Function:
-		if len(fn.Args) != argc {
-			return fmt.Errorf("Function %s expects %d arguments, got %d", fn.Name, len(fn.Args), argc)
+	case *object.Closure:
+		if len(fn.Fn.Args) != argc {
+			return fmt.Errorf("Function %s expects %d arguments, got %d", fn.Fn.Name, len(fn.Fn.Args), argc)
 		}
 		frame := NewFrame(fn, vm.sp-argc)
 		vm.pushFrame(frame)
-		vm.sp = frame.bptr + fn.NumLocals
+		vm.sp = frame.bptr + fn.Fn.NumLocals
 	case *object.BuiltinFunction:
 		args := make([]object.Object, argc)
 		for i := range argc {

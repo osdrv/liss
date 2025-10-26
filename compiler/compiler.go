@@ -250,7 +250,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		}
 		fn := object.NewFunction(name, args, instrs)
 		fn.NumLocals = numLocals
-		c.emit(code.OpConst, c.addConst(fn))
+		c.emit(code.OpClosure, c.addConst(fn), 0)
 		if len(name) > 0 {
 			sym, err := c.symbols.Define(name)
 			if err != nil {

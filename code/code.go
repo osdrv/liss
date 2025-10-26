@@ -44,6 +44,7 @@ const (
 	OpSetLocal
 	OpGetBuiltin
 	OpCall
+	OpClosure
 	OpReturn
 )
 
@@ -86,6 +87,7 @@ var definitions = map[OpCode]*Definition{
 	OpSetLocal:    {"OpSetLocal", []int{1}},
 	OpGetBuiltin:  {"OpGetBuiltin", []int{1}},
 	OpCall:        {"OpCall", []int{1}},
+	OpClosure:     {"OpClosure", []int{2, 1}},
 	OpReturn:      {"OpReturn", []int{}},
 }
 
@@ -192,6 +194,8 @@ func fmtInstr(def *Definition, ops []int) string {
 		return def.Name
 	case 1:
 		return fmt.Sprintf("%s %d", def.Name, ops[0])
+	case 2:
+		return fmt.Sprintf("%s %d %d", def.Name, ops[0], ops[1])
 	}
 
 	return fmt.Sprintf("ERROR: unhandled operand count for %s", def.Name)

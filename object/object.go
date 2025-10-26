@@ -18,6 +18,7 @@ const (
 	NullType
 	FunctionType
 	BuiltinType
+	ClosureType
 	ListType
 	DictionaryType
 	RegexpType
@@ -39,6 +40,8 @@ func (t ObjectType) String() string {
 		return "Function"
 	case BuiltinType:
 		return "Builtin"
+	case ClosureType:
+		return "Closure"
 	case ListType:
 		return "List"
 	case DictionaryType:
@@ -476,4 +479,39 @@ func (r *Regexp) Match(s string) bool {
 
 func (r *Regexp) Capture(s string) ([]string, bool) {
 	return r.re.MatchString(s)
+}
+
+type Closure struct {
+	defaultObject
+	Fn   *Function
+	Free []Object
+}
+
+var _ Object = (*Closure)(nil)
+
+func NewClosure(fn *Function, free []Object) *Closure {
+	return &Closure{
+		Fn:   fn,
+		Free: free,
+	}
+}
+
+func (c *Closure) Type() ObjectType {
+	return ClosureType
+}
+
+func (c *Closure) Clone() Object {
+	return c
+}
+
+func (c *Closure) String() string {
+	return "closure {" + c.Fn.String() + "}"
+}
+
+func (c *Closure) IsFunction() bool {
+	return true
+}
+
+func (c *Closure) Raw() any {
+	return c
 }
