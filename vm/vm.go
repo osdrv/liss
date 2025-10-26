@@ -78,16 +78,16 @@ func (vm *VM) Run() error {
 		instrs = vm.currentFrame().Instructions()
 		op = code.OpCode(instrs[ip])
 
-		fmt.Printf("Current frame:\n%s\n", code.PrintInstr(vm.currentFrame().Instructions()))
-		fmt.Printf("Curtrent instruction pointer: %d\n", ip)
-		fmt.Printf("VM is executing operation: %d\n", op)
+		// fmt.Printf("Current frame:\n%s\n", code.PrintInstr(vm.currentFrame().Instructions()))
+		// fmt.Printf("Curtrent instruction pointer: %d\n", ip)
+		// fmt.Printf("VM is executing operation: %d\n", op)
 
 		switch op {
 		case code.OpConst:
-			fmt.Printf("Fetching constant\n")
+			//fmt.Printf("Fetching constant\n")
 			ix := code.ReadUint16(instrs[ip+1:])
-			fmt.Printf("Read const: %d\n", ix)
-			fmt.Printf("const: %+v\n", vm.consts)
+			//fmt.Printf("Read const: %d\n", ix)
+			//fmt.Printf("const: %+v\n", vm.consts)
 			vm.currentFrame().ip += 2
 			if err := vm.push(vm.consts[ix]); err != nil {
 				return err
