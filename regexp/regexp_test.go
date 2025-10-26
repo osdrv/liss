@@ -166,6 +166,17 @@ func TestMatchWithCaptures(t *testing.T) {
 			},
 			wantOk: true,
 		},
+		{
+			name:    "capture from a multi-word sentence",
+			pattern: `The (.*) jumps over the (.*)`,
+			input:   "The quick brown fox jumps over the lazy dog",
+			wantCaptures: []string{
+				"The quick brown fox jumps over the lazy dog",
+				"quick brown fox",
+				"lazy dog",
+			},
+			wantOk: true,
+		},
 	}
 
 	for _, tt := range tests {

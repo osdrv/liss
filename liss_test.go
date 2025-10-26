@@ -240,6 +240,14 @@ func TestExecute(t *testing.T) {
 			source: "(>= 'bcd' 'abc')",
 			want:   true,
 		},
+		{
+			name: "Extract capture group from regex match",
+			source: `
+				(let capts (capture "10 (.*) lines" "10 blue lines"))
+				(get capts 1)
+				`,
+			want: "blue",
+		},
 	}
 
 	for _, tt := range tests {
