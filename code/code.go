@@ -46,6 +46,7 @@ const (
 	OpGetFree
 	OpCall
 	OpClosure
+	OpCurrentClosure
 	OpReturn
 )
 
@@ -79,18 +80,19 @@ var definitions = map[OpCode]*Definition{
 	OpAnd:          {"OpAnd", []int{}},
 	OpOr:           {"OpOr", []int{}},
 
-	OpPop:         {"OpPop", []int{}},
-	OpJump:        {"OpJump", []int{2}},
-	OpJumpIfFalse: {"OpJumpIfFalse", []int{2}},
-	OpGetGlobal:   {"OpGetGlobal", []int{2}},
-	OpSetGlobal:   {"OpSetGlobal", []int{2}},
-	OpGetLocal:    {"OpGetLocal", []int{1}},
-	OpSetLocal:    {"OpSetLocal", []int{1}},
-	OpGetBuiltin:  {"OpGetBuiltin", []int{1}},
-	OpGetFree:     {"OpGetFree", []int{1}},
-	OpCall:        {"OpCall", []int{1}},
-	OpClosure:     {"OpClosure", []int{2, 1}},
-	OpReturn:      {"OpReturn", []int{}},
+	OpPop:            {"OpPop", []int{}},
+	OpJump:           {"OpJump", []int{2}},
+	OpJumpIfFalse:    {"OpJumpIfFalse", []int{2}},
+	OpGetGlobal:      {"OpGetGlobal", []int{2}},
+	OpSetGlobal:      {"OpSetGlobal", []int{2}},
+	OpGetLocal:       {"OpGetLocal", []int{1}},
+	OpSetLocal:       {"OpSetLocal", []int{1}},
+	OpGetBuiltin:     {"OpGetBuiltin", []int{1}},
+	OpGetFree:        {"OpGetFree", []int{1}},
+	OpCall:           {"OpCall", []int{1}},
+	OpClosure:        {"OpClosure", []int{2, 1}},
+	OpCurrentClosure: {"OpCurrentClosure", []int{}},
+	OpReturn:         {"OpReturn", []int{}},
 }
 
 func Lookup(op OpCode) (*Definition, error) {

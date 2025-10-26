@@ -403,6 +403,11 @@ func (vm *VM) Run() error {
 			if err := vm.push(currentClosure.Free[int(fix)]); err != nil {
 				return err
 			}
+		case code.OpCurrentClosure:
+			cur := vm.currentFrame().cl
+			if err := vm.push(cur); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unknown opcode %s at position %d", code.PrintOpCode(op), ip)
 		}

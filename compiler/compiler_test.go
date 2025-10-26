@@ -1093,6 +1093,78 @@ func TestFunctionExpr(t *testing.T) {
 				code.Make(code.OpPop),
 			},
 		},
+		{
+			name: "recursive function",
+			input: `
+			(fn countdown [x]
+				(countdown (- x 1))
+			)
+			(countdown 1)
+			`,
+			wantConsts: []any{
+				int64(1),
+				[]code.Instructions{
+					code.Make(code.OpCurrentClosure),
+					code.Make(code.OpGetLocal, 0), // x
+					code.Make(code.OpConst, 0),    // 1
+					code.Make(code.OpSub),
+					code.Make(code.OpCall, 1),
+					code.Make(code.OpReturn),
+				},
+				int64(1),
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpClosure, 1, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpCall, 1),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "recursive functions with a wrapper",
+			input: `
+			(fn wrapper []
+				(fn countdown [x]
+					(countdown (- x 1))
+				)
+				(countdown 1)
+			)
+			(wrapper)
+			`,
+			wantConsts: []any{
+				int64(1),
+				[]code.Instructions{
+					code.Make(code.OpCurrentClosure),
+					code.Make(code.OpGetLocal, 0), // x
+					code.Make(code.OpConst, 0),    // 1
+					code.Make(code.OpSub),
+					code.Make(code.OpCall, 1),
+					code.Make(code.OpReturn),
+				},
+				int64(1),
+				[]code.Instructions{
+					code.Make(code.OpClosure, 1, 0),
+					code.Make(code.OpSetLocal, 0), // countdown
+					code.Make(code.OpPop),
+					code.Make(code.OpGetLocal, 0), // countdown
+					code.Make(code.OpConst, 2),    // 1
+					code.Make(code.OpCall, 1),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpClosure, 3, 0), // wrapper
+				code.Make(code.OpSetGlobal, 0),  // wrapper
+				// TODO: optimize away pops for last expr in function
+				code.Make(code.OpPop),
+				code.Make(code.OpGetGlobal, 0), // wrapper
+				code.Make(code.OpCall, 0),
+				code.Make(code.OpPop),
+			},
+		},
 	}
 
 	for _, tt := range tests {

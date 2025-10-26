@@ -12,6 +12,7 @@ const (
 	LocalScope
 	BuiltinScope
 	FreeScope
+	FunctionScope
 )
 
 type Symbol struct {
@@ -58,6 +59,16 @@ func (st *SymbolTable) Define(name string) (Symbol, error) {
 	st.vars[name] = symbol
 	st.numVars++
 	return symbol, nil
+}
+
+func (st *SymbolTable) DefineFunctionName(name string) Symbol {
+	sym := Symbol{
+		Name:  name,
+		Index: 0,
+		Scope: FunctionScope,
+	}
+	st.vars[name] = sym
+	return sym
 }
 
 func (st *SymbolTable) defineFree(orig Symbol) Symbol {

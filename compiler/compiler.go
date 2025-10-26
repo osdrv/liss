@@ -233,6 +233,12 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 
 		c.enterScope()
 
+		if n.Name != nil {
+			if len(name) > 0 {
+				c.symbols.DefineFunctionName(n.Name.Name)
+			}
+		}
+
 		for _, arg := range n.Args {
 			c.symbols.Define(arg.Name)
 		}
@@ -263,7 +269,11 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		c.emit(code.OpClosure, c.addConst(fn), len(free))
 
 		if fnsym != nil {
-			c.emit(code.OpSetGlobal, fnsym.Index)
+			if fnsym.Scope == GlobalScope {
+				c.emit(code.OpSetGlobal, fnsym.Index)
+			} else {
+				c.emit(code.OpSetLocal, fnsym.Index)
+			}
 		}
 		if !managed {
 			c.emit(code.OpPop)
@@ -282,6 +292,10 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 				c.emit(code.OpGetLocal, sym.Index)
 			case BuiltinScope:
 				c.emit(code.OpGetBuiltin, sym.Index)
+			case FreeScope:
+				c.emit(code.OpGetFree, sym.Index)
+			case FunctionScope:
+				c.emit(code.OpCurrentClosure)
 			default:
 				return fmt.Errorf("unsupported symbol scope: %v", sym.Scope)
 			}
@@ -322,6 +336,8 @@ func (c *Compiler) loadSymbol(sym Symbol) error {
 		c.emit(code.OpGetBuiltin, sym.Index)
 	case FreeScope:
 		c.emit(code.OpGetFree, sym.Index)
+	case FunctionScope:
+		c.emit(code.OpCurrentClosure)
 	default:
 		return fmt.Errorf("unsupported symbol scope: %v", sym.Scope)
 	}

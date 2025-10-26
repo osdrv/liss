@@ -713,6 +713,22 @@ func TestClosures(t *testing.T) {
 			`,
 			want: int64(0),
 		},
+		{
+			name: "recursive functions with a wrapper",
+			input: `
+			(fn wrapper []
+				(fn countdown [n]
+					(cond (= n 0)
+							0
+							(countdown (- n 1))
+					)
+				)
+				(countdown 1)
+			)
+			(wrapper)
+			`,
+			want: int64(0),
+		},
 	}
 
 	for _, tt := range tests {

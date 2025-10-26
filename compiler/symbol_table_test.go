@@ -125,3 +125,13 @@ func TestResolveUnresolvable(t *testing.T) {
 		assert.False(t, ok, "Did not expect to resolve symbol %q", name)
 	}
 }
+
+func TestResolveFunctionName(t *testing.T) {
+	glob := NewSymbolTable()
+	glob.DefineFunctionName("a")
+
+	expect := Symbol{Name: "a", Scope: FunctionScope, Index: 0}
+	sym, ok := glob.Resolve("a")
+	assert.True(t, ok, "Expected to resolve symbol %q", "a")
+	assert.Equal(t, expect, sym, "Symbols do not match: want: %v, got: %v", expect, sym)
+}
