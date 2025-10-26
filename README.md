@@ -2,7 +2,7 @@
 
 ![LISS Logo](https://github.com/osdrv/liss-doc/blob/main/img/liss-1.png?raw=true)
 
-Liss is a functional programming language with a Lisp-like syntax. It is a compiled language that runs on its own virtual machine.
+Liss is an educational functional programming language with a Lisp-like syntax. It is a compiled language that runs on its own virtual machine.
 
 ## Features
 
@@ -10,6 +10,7 @@ Liss is a functional programming language with a Lisp-like syntax. It is a compi
 *   **Functional:** Emphasizes a functional programming style.
 *   **Compiler and VM:** Compiles to bytecode that runs on a custom virtual machine.
 *   **REPL:** Includes an interactive Read-Eval-Print Loop for experimentation.
+*   **Regexp Support:** Built-in support for regular expressions (Thompson's construction).
 
 ## Example
 

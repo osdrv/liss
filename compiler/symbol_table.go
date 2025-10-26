@@ -11,6 +11,7 @@ const (
 	GlobalScope Scope = iota
 	LocalScope
 	BuiltinScope
+	FreeScope
 )
 
 type Symbol struct {
@@ -21,6 +22,7 @@ type Symbol struct {
 
 type SymbolTable struct {
 	outer *SymbolTable
+	free  []Symbol
 
 	vars    map[string]Symbol
 	numVars int
@@ -29,6 +31,7 @@ type SymbolTable struct {
 func NewSymbolTable() *SymbolTable {
 	return &SymbolTable{
 		vars:    make(map[string]Symbol),
+		free:    []Symbol{},
 		numVars: 0,
 	}
 }
@@ -37,6 +40,7 @@ func NewNestedSymbolTable(outer *SymbolTable) *SymbolTable {
 	return &SymbolTable{
 		outer:   outer,
 		vars:    make(map[string]Symbol),
+		free:    []Symbol{},
 		numVars: 0,
 	}
 }
@@ -56,13 +60,32 @@ func (st *SymbolTable) Define(name string) (Symbol, error) {
 	return symbol, nil
 }
 
+func (st *SymbolTable) defineFree(orig Symbol) Symbol {
+	st.free = append(st.free, orig)
+	symbol := Symbol{
+		Name:  orig.Name,
+		Index: len(st.free) - 1,
+		Scope: FreeScope,
+	}
+	st.vars[orig.Name] = symbol
+	return symbol
+}
+
 func (st *SymbolTable) Resolve(name string) (Symbol, bool) {
 	if _, ix, ok := object.GetBuiltinByName(name); ok {
 		return Symbol{Name: name, Index: ix, Scope: BuiltinScope}, true
 	}
-	symbol, exists := st.vars[name]
-	if !exists && st.outer != nil {
-		return st.outer.Resolve(name)
+	symbol, ok := st.vars[name]
+	if !ok && st.outer != nil {
+		symbol, ok = st.outer.Resolve(name)
+		if !ok {
+			return symbol, ok
+		}
+		if symbol.Scope == GlobalScope || symbol.Scope == BuiltinScope {
+			return symbol, ok
+		}
+		free := st.defineFree(symbol)
+		return free, true
 	}
-	return symbol, exists
+	return symbol, ok
 }

@@ -33,7 +33,153 @@ func TestComplilerScopes(t *testing.T) {
 	assert.Len(t, c.scopes[c.scopeix].instrs, 2, "The inner scope should now contain two instructions")
 	assert.Equal(t, code.OpNull, c.scopes[c.scopeix].last.OpCode, "Last instruction in the outer scope should be an OpNull")
 	assert.Equal(t, code.OpTrue, c.scopes[c.scopeix].prev.OpCode, "Previous instruction in the outer scope should be an OpTrue")
+}
 
+func TestClosures(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantConsts []any
+		wantInstrs []code.Instructions
+		wantErr    error
+	}{
+		{
+			name: "simple closure",
+			input: `
+			(fn [a]
+				(fn [b] (+ a b))
+			)`,
+			wantConsts: []any{
+				[]code.Instructions{
+					code.Make(code.OpGetFree, 0),
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpAdd, 2),
+					code.Make(code.OpReturn),
+				},
+				[]code.Instructions{
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpClosure, 0, 1),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpClosure, 1, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "nested closures",
+			input: `
+			(fn [a]
+				(fn [b]
+					(fn [c] (+ a b c))
+				)
+			)`,
+			wantConsts: []any{
+				[]code.Instructions{
+					code.Make(code.OpGetFree, 0),
+					code.Make(code.OpGetFree, 1),
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpAdd, 3),
+					code.Make(code.OpReturn),
+				},
+				[]code.Instructions{
+					code.Make(code.OpGetFree, 0),
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpClosure, 0, 2),
+					code.Make(code.OpReturn),
+				},
+				[]code.Instructions{
+					code.Make(code.OpGetLocal, 0),
+					code.Make(code.OpClosure, 1, 1),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpClosure, 2, 0),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name: "closure with let expressions",
+			input: `
+			(let global 55)
+			(fn []
+				(let a 66)
+				(fn []
+					(let b 77)
+					(fn []
+						(let c 88)
+						(+ global a b c)
+					)
+				)
+			)`,
+			wantConsts: []any{
+				int64(55),
+				int64(66),
+				int64(77),
+				int64(88),
+				[]code.Instructions{
+					code.Make(code.OpConst, 3),    // c
+					code.Make(code.OpSetLocal, 0), // c
+					code.Make(code.OpGetLocal, 0), // c
+					code.Make(code.OpPop),
+					code.Make(code.OpGetGlobal, 0), // global
+					code.Make(code.OpGetFree, 0),   // a
+					code.Make(code.OpGetFree, 1),   // b
+					code.Make(code.OpGetLocal, 0),  // c
+					code.Make(code.OpAdd, 4),
+					code.Make(code.OpReturn),
+				},
+				[]code.Instructions{
+					code.Make(code.OpConst, 2),    // b
+					code.Make(code.OpSetLocal, 0), // b
+					code.Make(code.OpGetLocal, 0), // b
+					code.Make(code.OpPop),
+					code.Make(code.OpGetFree, 0),  // a
+					code.Make(code.OpGetLocal, 0), // b
+					code.Make(code.OpClosure, 4, 2),
+					code.Make(code.OpReturn),
+				},
+				[]code.Instructions{
+					code.Make(code.OpConst, 1),    // a
+					code.Make(code.OpSetLocal, 0), // a
+					// TODO: optimize away these pops
+					code.Make(code.OpGetLocal, 0), // a
+					code.Make(code.OpPop),
+					code.Make(code.OpGetLocal, 0), // a
+					code.Make(code.OpClosure, 5, 1),
+					code.Make(code.OpReturn),
+				},
+			},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),     // global
+				code.Make(code.OpSetGlobal, 0), // global
+				code.Make(code.OpGetGlobal, 0), // global
+				code.Make(code.OpPop),
+				code.Make(code.OpClosure, 6, 0),
+				code.Make(code.OpPop),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New()
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
 }
 
 func TestCompileStep(t *testing.T) {

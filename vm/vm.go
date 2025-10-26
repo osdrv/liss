@@ -391,9 +391,16 @@ func (vm *VM) Run() error {
 			}
 		case code.OpClosure:
 			cix := code.ReadUint16(instrs[ip+1:])
-			_ = code.ReadUint8(instrs[ip+3:]) // number of free variables, not used currently
+			numfree := code.ReadUint8(instrs[ip+3:]) // number of free variables, not used currently
 			vm.currentFrame().ip += 3
-			if err := vm.pushClosure(int(cix)); err != nil {
+			if err := vm.pushClosure(int(cix), int(numfree)); err != nil {
+				return err
+			}
+		case code.OpGetFree:
+			fix := code.ReadUint8(instrs[ip+1:])
+			vm.currentFrame().ip += 1
+			currentClosure := vm.currentFrame().cl
+			if err := vm.push(currentClosure.Free[int(fix)]); err != nil {
 				return err
 			}
 		default:
@@ -404,13 +411,18 @@ func (vm *VM) Run() error {
 	return nil
 }
 
-func (vm *VM) pushClosure(cix int) error {
+func (vm *VM) pushClosure(cix int, numfree int) error {
 	cnst := vm.consts[cix]
 	fn, ok := cnst.(*object.Function)
 	if !ok {
 		return fmt.Errorf("constant at index %d is not a function", cix)
 	}
-	closure := object.NewClosure(fn, nil)
+	free := make([]object.Object, numfree)
+	for i := range numfree {
+		free[i] = vm.stack[vm.sp-numfree+i]
+	}
+	vm.sp = vm.sp - numfree
+	closure := object.NewClosure(fn, free)
 	return vm.push(closure)
 }
 

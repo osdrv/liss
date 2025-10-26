@@ -210,15 +210,21 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		if !ok {
 			return fmt.Errorf("undefined variable: %s", n.Name)
 		}
-		if sym.Scope == GlobalScope {
-			c.emit(code.OpGetGlobal, sym.Index)
-		} else if sym.Scope == LocalScope {
-			c.emit(code.OpGetLocal, sym.Index)
-		} else if sym.Scope == BuiltinScope {
-			c.emit(code.OpGetBuiltin, sym.Index)
-		} else {
-			panic("unreachable")
+		if err := c.loadSymbol(sym); err != nil {
+			return err
 		}
+		// switch sym.Scope {
+		// case GlobalScope:
+		// 	c.emit(code.OpGetGlobal, sym.Index)
+		// case LocalScope:
+		// 	c.emit(code.OpGetLocal, sym.Index)
+		// case BuiltinScope:
+		// 	c.emit(code.OpGetBuiltin, sym.Index)
+		// case FreeScope:
+		// 	c.emit(code.OpGetFree, sym.Index)
+		// default:
+		// 	panic("unreachable")
+		// }
 		if !managed {
 			c.emit(code.OpPop)
 		}
@@ -238,8 +244,15 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			c.removeLastInstr()
 		}
 		c.emit(code.OpReturn)
+
+		free := c.symbols.free
 		numLocals := c.symbols.numVars
 		instrs := c.leaveScope()
+
+		for _, f := range free {
+			c.loadSymbol(f)
+		}
+
 		var name string
 		if n.Name != nil {
 			name = n.Name.Name
@@ -250,7 +263,8 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		}
 		fn := object.NewFunction(name, args, instrs)
 		fn.NumLocals = numLocals
-		c.emit(code.OpClosure, c.addConst(fn), 0)
+		c.emit(code.OpClosure, c.addConst(fn), len(free))
+
 		if len(name) > 0 {
 			sym, err := c.symbols.Define(name)
 			if err != nil {
@@ -302,6 +316,22 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		}
 	}
 
+	return nil
+}
+
+func (c *Compiler) loadSymbol(sym Symbol) error {
+	switch sym.Scope {
+	case GlobalScope:
+		c.emit(code.OpGetGlobal, sym.Index)
+	case LocalScope:
+		c.emit(code.OpGetLocal, sym.Index)
+	case BuiltinScope:
+		c.emit(code.OpGetBuiltin, sym.Index)
+	case FreeScope:
+		c.emit(code.OpGetFree, sym.Index)
+	default:
+		return fmt.Errorf("unsupported symbol scope: %v", sym.Scope)
+	}
 	return nil
 }
 
