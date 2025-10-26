@@ -11,13 +11,19 @@ Liss is an educational functional programming language with a Lisp-like syntax. 
 *   **Compiler and VM:** Compiles to bytecode that runs on a custom virtual machine.
 *   **REPL:** Includes an interactive Read-Eval-Print Loop for experimentation.
 *   **Regexp Support:** Built-in support for regular expressions (Thompson's construction).
+*  **Closures:** Supports first-class functions and closures.
 
 ## Example
 
-Here is a simple Liss program that adds two numbers:
+Here is an example of a LISS program that computes the factorial of a number:
 
-```lisp
-(+ 1 2)
+```liss
+(fn fact [n]
+  (cond (= n 0)
+        1
+        (* n (fact (- n 1)))
+  )
+)
 ```
 
 ## License
