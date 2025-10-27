@@ -243,7 +243,7 @@ func TestExecute(t *testing.T) {
 		{
 			name: "Extract capture group from regex match",
 			source: `
-				(let capts (capture "10 (.*) lines" "10 blue lines"))
+				(let capts (re:capture "10 (.*) lines" "10 blue lines"))
 				(get capts 1)
 				`,
 			want: "blue",

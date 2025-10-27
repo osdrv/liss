@@ -8,7 +8,7 @@ import (
 
 func TestDictionaryPutGet(t *testing.T) {
 	items := map[int]string{}
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		items[i] = "value_" + string(rune('A'+i))
 	}
 
@@ -31,7 +31,7 @@ func TestDictionaryPutGet(t *testing.T) {
 
 func TestDictionaryPutGetDeleteGet(t *testing.T) {
 	items := map[int]string{}
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		items[i] = "value_" + string(rune('A'+i))
 	}
 

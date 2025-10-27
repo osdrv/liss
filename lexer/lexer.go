@@ -270,7 +270,7 @@ func (l *Lexer) emitKWOrIdentifier() token.Token {
 	to := from
 	for !l.isEOF() {
 		ch := l.Source[l.pos]
-		if isAlpha(ch) || ch == '_' || (to > from && isDigit(ch)) {
+		if isAlpha(ch) || ch == '_' || (to > from && isDigit(ch)) || (to > from && ch == ':') {
 			l.advance(LexerModeDefault)
 			to++
 		} else {

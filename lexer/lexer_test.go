@@ -549,6 +549,24 @@ func TestNextToken(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "Identifier with namespace separators",
+			input: "foo:bar boo:baz:bar",
+			match: TokenTypeMatch | TokenLiteralMatch,
+			want: []token.Token{
+				{
+					Type:    token.Identifier,
+					Literal: "foo:bar",
+				},
+				{
+					Type:    token.Identifier,
+					Literal: "boo:baz:bar",
+				},
+				{
+					Type: token.EOF,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

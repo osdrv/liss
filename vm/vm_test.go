@@ -602,12 +602,12 @@ func TestBuiltinCall(t *testing.T) {
 		},
 		{
 			name:  "builtin match: simple match",
-			input: `(match "h.*o" "hello")`,
+			input: `(re:match "h.*o" "hello")`,
 			want:  true,
 		},
 		{
 			name:  "builtin match: unicode string",
-			input: `(match "пр.*ет" "привет")`,
+			input: `(re:match "пр.*ет" "привет")`,
 			want:  true,
 		},
 		{
@@ -617,7 +617,7 @@ func TestBuiltinCall(t *testing.T) {
 		},
 		{
 			name:  "builtin capture",
-			input: `(capture "(a*)b" "aaaaab")`,
+			input: `(re:capture "(a*)b" "aaaaab")`,
 			want:  []any{"aaaaab", "aaaaa"},
 		},
 	}

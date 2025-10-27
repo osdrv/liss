@@ -42,8 +42,8 @@ func init() {
 		mkBuiltin("isSet", builtinIsSet, false),
 		mkBuiltin("keys", builtinKeys, false),
 		mkBuiltin("values", builtinValues, false),
-		mkBuiltin("match", builtinMatch, false),
-		mkBuiltin("capture", builtinCapture, false),
+		mkBuiltin("re:match", builtinMatch, false),
+		mkBuiltin("re:capture", builtinCapture, false),
 	}
 
 	for ix, b := range builtins {
