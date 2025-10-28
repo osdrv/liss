@@ -19,6 +19,7 @@ type Result interface {
 
 func Run(bc *compiler.Bytecode, opts repl.Options) (Result, error) {
 	vm := vm.New(bc)
+	defer vm.Shutdown()
 	if err := vm.Run(); err != nil {
 		return nil, fmt.Errorf("failed to run bytecode: %w", err)
 	}

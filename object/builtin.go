@@ -25,7 +25,7 @@ func mkBuiltin(name string, fn any, variadic bool) *BuiltinFunction {
 func init() {
 	builtins = []*BuiltinFunction{
 		mkBuiltin("len", builtinLen, false),
-		mkBuiltin("isEmpty", builtinIsEmpty, false),
+		mkBuiltin("isEmpty", builtinIsEmpty, false), // TODO: empty
 		mkBuiltin("head", builtinHead, false),
 		mkBuiltin("last", builtinLast, false),
 		mkBuiltin("tail", builtinTail, false),
@@ -39,11 +39,13 @@ func init() {
 		mkBuiltin("get", builtinGet, false),
 		mkBuiltin("put", builtinPut, false),
 		mkBuiltin("del", builtinDel, false),
-		mkBuiltin("isSet", builtinIsSet, false),
+		mkBuiltin("has", builtinHas, false),
 		mkBuiltin("keys", builtinKeys, false),
 		mkBuiltin("values", builtinValues, false),
-		mkBuiltin("re:match", builtinMatch, false),
-		mkBuiltin("re:capture", builtinCapture, false),
+		mkBuiltin("re:compile", builtinReCompile, false),
+		mkBuiltin("re:match", builtinReMatch, false),
+		mkBuiltin("re:capture", builtinReCapture, false),
+		mkBuiltin("io:print", builtinIoPrint, false),
 	}
 
 	for ix, b := range builtins {
@@ -102,6 +104,10 @@ func NewBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
 		argc:  argc,
 		rawfn: rawfn,
 	}, nil
+}
+
+func (b *BuiltinFunction) Name() string {
+	return b.name
 }
 
 func (b *BuiltinFunction) Clone() Object {
@@ -341,9 +347,9 @@ func builtinDel(container Object, key Object) (Object, error) {
 	return &Bool{Value: ok}, nil
 }
 
-func builtinIsSet(container Object, key Object) (Object, error) {
+func builtinHas(container Object, key Object) (Object, error) {
 	if !container.IsDictionary() {
-		return nil, fmt.Errorf("isset: expected dictionary as first argument, got %s", container.String())
+		return nil, fmt.Errorf("has: expected dictionary as first argument, got %s", container.String())
 	}
 	dict := container.(*Dictionary)
 	_, ok, err := dict.Get(key)
@@ -369,7 +375,19 @@ func builtinValues(container Object) (Object, error) {
 	return NewList(dict.Values()), nil
 }
 
-func builtinMatch(pat Object, str Object) (Object, error) {
+func builtinReCompile(pat Object) (Object, error) {
+	if !pat.IsString() {
+		return nil, fmt.Errorf("compile: expected string as argument, got %s", pat.String())
+	}
+	strPat := pat.(*String)
+	re, err := NewRegexp(string(strPat.Value))
+	if err != nil {
+		return nil, err
+	}
+	return re, nil
+}
+
+func builtinReMatch(pat Object, str Object) (Object, error) {
 	if !str.IsString() {
 		return nil, fmt.Errorf("match: expected string as second argument, got %s", str.String())
 	}
@@ -389,7 +407,7 @@ func builtinMatch(pat Object, str Object) (Object, error) {
 	return nil, fmt.Errorf("match: expected regexp or string as first argument, got %s", pat.String())
 }
 
-func builtinCapture(pat Object, str Object) (Object, error) {
+func builtinReCapture(pat Object, str Object) (Object, error) {
 	if !str.IsString() {
 		return nil, fmt.Errorf("capture: expected string as second argument, got %s", str.String())
 	}
@@ -417,4 +435,20 @@ func builtinCapture(pat Object, str Object) (Object, error) {
 		}
 	}
 	return res, nil
+}
+
+func builtinIoPrint(f Object, str Object) (Object, error) {
+	if !f.IsFile() {
+		return nil, fmt.Errorf("io:print: expected file as first argument, got %s", f.String())
+	}
+	if !str.IsString() {
+		return nil, fmt.Errorf("io:print: expected string as second argument, got %s", str.String())
+	}
+	file := f.(*File)
+	sstr := string(str.(*String).Value)
+	_, err := file.fd.WriteString(sstr)
+	if err != nil {
+		return nil, err
+	}
+	return &Null{}, nil
 }

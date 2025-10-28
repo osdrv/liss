@@ -3,10 +3,16 @@ package vm
 import (
 	"errors"
 	"fmt"
+	"os"
 	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/object"
 	"strings"
+)
+
+const (
+	STDOUT = "STDOUT"
+	STDERR = "STDERR"
 )
 
 const MaxFrames = 1024
@@ -19,6 +25,35 @@ var True = object.NewBool(true)
 var False = object.NewBool(false)
 var Null = object.NewNull()
 
+type VMContext struct {
+	files map[string]*object.File
+}
+
+func NewVMContext() *VMContext {
+	return &VMContext{
+		files: make(map[string]*object.File),
+	}
+}
+
+type builtinHook func(*VM, *object.BuiltinFunction, []object.Object) (*object.BuiltinFunction, []object.Object, error)
+
+var (
+	DefaultHooks = map[string]builtinHook{
+		"io:print": func(vm *VM, fn *object.BuiltinFunction, args []object.Object) (*object.BuiltinFunction, []object.Object, error) {
+			if len(args) < 1 {
+				return nil, nil, fmt.Errorf("print expects at least 1 argument, got %d", len(args))
+			}
+			if !args[0].IsFile() {
+				newargs := make([]object.Object, len(args)+1)
+				newargs[0] = vm.ctx.files[STDOUT]
+				copy(newargs[1:], args)
+				args = newargs
+			}
+			return fn, args, nil
+		},
+	}
+)
+
 type VM struct {
 	consts []object.Object
 	//instrs code.Instructions
@@ -30,6 +65,10 @@ type VM struct {
 
 	frames   []*Frame
 	framesix int
+
+	hooks map[string]builtinHook
+
+	ctx *VMContext
 }
 
 func New(bc *compiler.Bytecode) *VM {
@@ -41,6 +80,10 @@ func New(bc *compiler.Bytecode) *VM {
 	frames := make([]*Frame, MaxFrames)
 	frames[0] = mframe
 
+	ctx := NewVMContext()
+	ctx.files[STDOUT] = object.NewFile(os.Stdout, STDOUT)
+	ctx.files[STDERR] = object.NewFile(os.Stderr, STDERR)
+
 	return &VM{
 		consts: bc.Consts,
 		stack:  make([]object.Object, StackSize),
@@ -50,6 +93,18 @@ func New(bc *compiler.Bytecode) *VM {
 
 		frames:   frames,
 		framesix: 1,
+
+		hooks: DefaultHooks,
+
+		ctx: ctx,
+	}
+}
+
+func (vm *VM) Shutdown() {
+	for _, f := range vm.ctx.files {
+		if f != nil && f.Path() != STDOUT && f.Path() != STDERR {
+			f.Close()
+		}
 	}
 }
 
@@ -446,6 +501,15 @@ func (vm *VM) callFunction(argc int) error {
 		for i := range argc {
 			args[i] = vm.stack[vm.sp-argc+i]
 		}
+
+		if hook, ok := vm.hooks[fn.Name()]; ok {
+			var err error
+			fn, args, err = hook(vm, fn, args)
+			if err != nil {
+				return err
+			}
+		}
+
 		res, err := fn.Invoke(args...)
 		if err != nil {
 			return err
