@@ -30,6 +30,7 @@ func init() {
 		mkBuiltin("last", builtinLast, false),
 		mkBuiltin("tail", builtinTail, false),
 		mkBuiltin("isNull", builtinIsNull, false),
+		mkBuiltin("str", builtinStr, false),
 
 		mkBuiltin("list", builtinList, true),
 		// mkBuiltin("find", builtinFind, false),
@@ -193,6 +194,10 @@ func builtinIsEmpty(a Object) (Object, error) {
 
 func builtinIsNull(v Object) (Object, error) {
 	return &Bool{Value: v.IsNull()}, nil
+}
+
+func builtinStr(a Object) (Object, error) {
+	return &String{Value: []rune(a.String())}, nil
 }
 
 func builtinHead(a Object) (Object, error) {
@@ -446,6 +451,7 @@ func builtinIoPrint(f Object, str Object) (Object, error) {
 	}
 	file := f.(*File)
 	sstr := string(str.(*String).Value)
+
 	_, err := file.fd.WriteString(sstr)
 	if err != nil {
 		return nil, err

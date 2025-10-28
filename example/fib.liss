@@ -3,13 +3,10 @@
         0
         (cond (= n 1)
             1
-            (fib (- n 1) (- n 2))
+            (+(fib (- n 1)) (fib (- n 2)))
         )
     )
 )
 
-(fn hello [s]
-    (+ "Hello, " s "!")
-)
-
-(hello "LISS")
+(let res (fib 30))
+(io:print (+ (str res) "\n"))

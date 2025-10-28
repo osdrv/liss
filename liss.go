@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"osdrv/liss/compiler"
 	"osdrv/liss/lexer"
@@ -89,12 +88,10 @@ func main() {
 		fmt.Fprintf(er, "Error reading file %s: %v\n", *src, err)
 		os.Exit(1)
 	}
-	result, err := Execute(string(data), opts)
-	if err != nil {
+	if _, err := Execute(string(data), opts); err != nil {
 		fmt.Fprintf(er, "Error executing file %s: %v\n", *src, err)
 		os.Exit(1)
 	}
-	io.WriteString(out, result.String()+"\n")
 
 	os.Exit(0)
 }

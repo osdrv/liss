@@ -1,0 +1,5 @@
+(fn hello [s]
+    (+ "Hello, " s "!\n")
+)
+
+(io:print (hello "LISS"))
