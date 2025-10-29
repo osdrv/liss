@@ -110,6 +110,12 @@ func TestMatchString(t *testing.T) {
 			pattern: "\\d+",
 			want:    true,
 		},
+		{
+			name:    "match multiple digit groups",
+			input:   "123 456 789",
+			pattern: "(\\d+) (\\d+) (\\d+)",
+			want:    true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -180,6 +186,18 @@ func TestMatchWithCaptures(t *testing.T) {
 				"The quick brown fox jumps over the lazy dog",
 				"quick brown fox",
 				"lazy dog",
+			},
+			wantOk: true,
+		},
+		{
+			name:    "capture multiple digit groups",
+			pattern: "(\\d+) (\\d+) (\\d+)",
+			input:   "123 456 789",
+			wantCaptures: []string{
+				"123 456 789",
+				"123",
+				"456",
+				"789",
 			},
 			wantOk: true,
 		},

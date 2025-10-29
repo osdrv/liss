@@ -9,4 +9,4 @@
 )
 
 (let res (fib 30))
-(io:print (+ (str res) "\n"))
+(print (+ (str res) "\n"))
