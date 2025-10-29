@@ -1,0 +1,160 @@
+(fn list:head [arr]
+    (cond (or (is_null? arr) (is_empty? arr))
+        null
+        (get arr 0)
+    )
+)
+
+(fn list:push [arr v]
+    (+ arr [v])
+)
+
+(fn _range [acc ix arr start end]
+    (cond (or (< ix start) (>= ix end) (>= ix (len arr)))
+        acc
+        (
+            (let _acc (list:push acc (get arr ix)))
+            (_range _acc (+ ix 1) arr start end)
+        )
+    )
+)
+
+(fn list:range [arr start end]
+    (cond (is_null? arr)
+        null
+        (cond (>= start (len arr))
+            []
+            (_range [] start arr start end)
+        )
+    )
+)
+
+(fn _find [acc ix arr n break]
+    (cond (is_empty? arr)
+        acc
+        (
+            (let _found (= (list:head arr) n))
+            (let _acc
+                (cond _found
+                    (list:push acc ix)
+                    acc
+                )
+            )
+            (cond (& break _found)
+                _acc
+                (_find _acc (+ ix 1) (tail arr) n break)
+            )
+        )
+    )
+)
+
+(fn list:find [arr n]
+    (let _acc (_find [] 0 arr n true))
+    (cond (is_empty? _acc)
+        -1
+        (list:head _acc)
+    )
+)
+
+(fn list:findAll [arr n]
+    (let _res (_find [] 0 arr n false))
+    _res
+)
+
+(fn _min2 [a b] (cond (< a b) a b))
+
+(fn _max2 [a b] (cond (> a b) a b))
+
+(fn _merge [a aix alen b bix blen]
+    (cond
+        (and (>= aix alen) (>= bix blen))
+        []
+        (cond (>= aix alen)
+            (list:range b bix blen)
+            (cond (>= bix blen)
+                (list:range a aix alen)
+                (cond (< (get a aix) (get b bix))
+                    (+ [(get a aix)] (_merge a (+ aix 1) alen b bix blen))
+                    (+ [(get b bix)] (_merge a aix alen b (+ bix 1) blen))
+                )
+            )
+        )
+    )
+)
+
+(fn _mergesort [arr]
+    (let _len (len arr))
+    (io:print "sorting array")
+    (io:print arr)
+    (io:print "\n")
+    (cond (<= _len 1)
+        arr
+        (cond (= _len 2)
+            [
+                (_min2 (get arr 0) (get arr 1))
+                (_max2 (get arr 0) (get arr 1))
+            ]
+            (
+                (let _mid (/ _len 2))
+                (io:print "range: ")
+                (io:print [0 _mid _len])
+                (io:print "\n")
+                (let _a (list:range arr 0 _mid))
+                (let _b (list:range arr _mid _len))
+                (_merge
+                    (_mergesort _a)
+                    0
+                    (len _a)
+                    (_mergesort _b)
+                    0
+                    (len _b)
+                )
+            )
+        )
+    )
+)
+
+
+(fn list:sort [arr]
+    (cond (is_null? arr)
+        null
+        (
+            (let _len (len arr))
+            (cond (<= _len 1)
+                arr
+                (_mergesort arr)
+            )
+        )
+    )
+)
+
+(fn test []
+    (
+        (let vec [
+            23 5 7 9 7 11 3 7 13 17
+            19 2 29 31 7 41 43 47 53
+            59 61 67 71 73 79 83 89 97])
+        (io:print "list: ")
+        (io:print vec)
+        (io:print "\n")
+        (io:print "list:find: ")
+        (io:print (list:find vec 7))
+        (io:print "\n")
+        (io:print "list:findAll: ")
+        (io:print (list:findAll vec 7))
+        (io:print "\n")
+
+        (io:print "range 0..2: ")
+        (io:print (list:range vec 0 2))
+        (io:print "\n")
+        (io:print "range 2..10: ")
+        (io:print (list:range vec 2 10))
+        (io:print "\n")
+
+        (io:print "sorted: ")
+        (io:print (list:sort vec))
+        (io:print "\n")
+    )
+)
+
+(test)

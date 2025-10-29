@@ -1199,7 +1199,7 @@ func TestBuiltinFunctionCall(t *testing.T) {
 			input:      `(len "Hello")`,
 			wantConsts: []any{"Hello"},
 			wantInstrs: []code.Instructions{
-				code.Make(code.OpGetBuiltin, 0),
+				code.Make(code.OpGetBuiltin, 2),
 				code.Make(code.OpConst, 0),
 				code.Make(code.OpCall, 1),
 				code.Make(code.OpPop),

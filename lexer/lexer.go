@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"osdrv/liss/token"
+	"strings"
 )
 
 type LexerMode uint8
@@ -270,7 +271,7 @@ func (l *Lexer) emitKWOrIdentifier() token.Token {
 	to := from
 	for !l.isEOF() {
 		ch := l.Source[l.pos]
-		if isAlpha(ch) || ch == '_' || (to > from && isDigit(ch)) || (to > from && ch == ':') {
+		if isAlpha(ch) || ch == '_' || (to > from && isDigit(ch)) || (to > from && ch == ':') || (to > from && ch == '?') {
 			l.advance(LexerModeDefault)
 			to++
 		} else {
@@ -278,7 +279,12 @@ func (l *Lexer) emitKWOrIdentifier() token.Token {
 		}
 	}
 
-	tok.Literal = l.Source[from:to]
+	lit := l.Source[from:to]
+	if strings.ContainsRune(lit[:len(lit)-1], '?') {
+		return l.emitError("Invalid character '?' in the middle of an identifier: it is only allowed at the end")
+	}
+
+	tok.Literal = lit
 	if kwType, ok := token.Keywords[tok.Literal]; ok {
 		tok.Type = kwType
 	} else {

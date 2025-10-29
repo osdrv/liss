@@ -586,13 +586,13 @@ func TestBuiltinCall(t *testing.T) {
 			want:  int64(5),
 		},
 		{
-			name:  "builtin isNull with null",
-			input: `(isNull null)`,
+			name:  "builtin is_null? with null",
+			input: `(is_null? null)`,
 			want:  true,
 		},
 		{
-			name:  "builtin isNull with non-null",
-			input: `(isNull 42)`,
+			name:  "builtin is_null? with non-null",
+			input: `(is_null? 42)`,
 			want:  false,
 		},
 		{

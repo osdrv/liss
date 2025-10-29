@@ -1,10 +1,12 @@
 package lexer
 
 import (
+	"errors"
 	"osdrv/liss/token"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type TokenMatch uint8
@@ -479,7 +481,7 @@ func TestNextToken(t *testing.T) {
 		},
 		{
 			name:  "Identifiers",
-			input: "foo bar baz _underscore123 a b_c d3f trueee",
+			input: "foo bar baz _underscore123 a b_c d3f trueee foo?",
 			match: TokenTypeMatch | TokenLiteralMatch,
 			want: []token.Token{
 				{
@@ -513,6 +515,10 @@ func TestNextToken(t *testing.T) {
 				{
 					Type:    token.Identifier,
 					Literal: "trueee",
+				},
+				{
+					Type:    token.Identifier,
+					Literal: "foo?",
 				},
 				{
 					Type: token.EOF,
@@ -567,6 +573,17 @@ func TestNextToken(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "Identifier with a questionmark in the middle is an error",
+			input: "foo?bar",
+			match: TokenTypeMatch | TokenLiteralMatch,
+			want: []token.Token{
+				{
+					Type: token.Error,
+				},
+			},
+			wantErr: errors.New("Invalid character '?' in the middle of an identifier"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -580,7 +597,11 @@ func TestNextToken(t *testing.T) {
 					break
 				}
 			}
-			assert.ErrorIs(t, lex.Err(), tt.wantErr)
+			if tt.wantErr == nil {
+				require.NoError(t, lex.Err())
+			} else {
+				require.ErrorContains(t, lex.Err(), tt.wantErr.Error())
+			}
 			assert.Len(t, got, len(tt.want))
 
 			for ix := range got {

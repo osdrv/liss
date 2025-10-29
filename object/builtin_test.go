@@ -220,13 +220,13 @@ func TestBuiltinTail(t *testing.T) {
 		{
 			name:    "Tail of an array with one element",
 			input:   &List{items: []Object{&Integer{Value: 1}}},
-			want:    &Null{},
+			want:    &List{},
 			wantErr: false,
 		},
 		{
 			name:    "Tail of an empty array",
 			input:   &List{items: []Object{}},
-			want:    &Null{},
+			want:    &List{},
 			wantErr: false,
 		},
 		{
@@ -238,13 +238,13 @@ func TestBuiltinTail(t *testing.T) {
 		{
 			name:    "Tail of a string with one character",
 			input:   &String{Value: []rune{'h'}},
-			want:    &Null{},
+			want:    &String{},
 			wantErr: false,
 		},
 		{
 			name:    "Tail of an empty string",
 			input:   &String{Value: []rune{}},
-			want:    &Null{},
+			want:    &String{},
 			wantErr: false,
 		},
 		{

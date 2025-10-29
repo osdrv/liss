@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"osdrv/liss/regexp"
 	"reflect"
+	"time"
 )
 
 var (
@@ -24,17 +25,18 @@ func mkBuiltin(name string, fn any, variadic bool) *BuiltinFunction {
 
 func init() {
 	builtins = []*BuiltinFunction{
+		mkBuiltin("time", builtinTime, false),
+		mkBuiltin("time_millis", builtinTimeMillis, false),
+
 		mkBuiltin("len", builtinLen, false),
-		mkBuiltin("isEmpty", builtinIsEmpty, false), // TODO: empty
+		mkBuiltin("is_empty?", builtinEmpty, false), // TODO: is_empty?
 		mkBuiltin("head", builtinHead, false),
 		mkBuiltin("last", builtinLast, false),
 		mkBuiltin("tail", builtinTail, false),
-		mkBuiltin("isNull", builtinIsNull, false),
+		mkBuiltin("is_null?", builtinIsNull, false), // TODO: is_null?
 		mkBuiltin("str", builtinStr, false),
 
 		mkBuiltin("list", builtinList, true),
-		// mkBuiltin("find", builtinFind, false),
-		// mkBuiltin("findAll", builtinFindAll, false),
 		// mkBuiltin("range", builtinRange, false),
 		mkBuiltin("dict", builtinDict, true),
 		mkBuiltin("get", builtinGet, false),
@@ -176,6 +178,14 @@ func getFuncNumArgs(fn any) (int, error) {
 	return typ.NumIn(), nil
 }
 
+func builtinTime() (Object, error) {
+	return NewInteger(int64(time.Now().Unix())), nil
+}
+
+func builtinTimeMillis() (Object, error) {
+	return NewInteger(int64(time.Now().UnixMilli())), nil
+}
+
 func builtinLen(a Object) (Object, error) {
 	if a.IsLenable() {
 		al := a.(lenable)
@@ -184,7 +194,7 @@ func builtinLen(a Object) (Object, error) {
 	return nil, fmt.Errorf("object %s is not lenable", a.String())
 }
 
-func builtinIsEmpty(a Object) (Object, error) {
+func builtinEmpty(a Object) (Object, error) {
 	if a.IsLenable() {
 		al := a.(lenable)
 		return &Bool{Value: al.Len() == 0}, nil
@@ -240,13 +250,14 @@ func builtinTail(a Object) (Object, error) {
 		if len(arr.items) > 1 {
 			return &List{items: arr.items[1:]}, nil
 		}
-		return &Null{}, nil
+		// empty list
+		return &List{}, nil
 	} else if a.IsString() {
 		str := a.(*String)
 		if len(str.Value) > 1 {
 			return &String{Value: str.Value[1:]}, nil
 		}
-		return &Null{}, nil
+		return &String{}, nil
 	}
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
 }
@@ -329,15 +340,27 @@ func builtinGet(container Object, key Object) (Object, error) {
 }
 
 func builtinPut(container Object, key Object, value Object) (Object, error) {
-	if !container.IsDictionary() {
-		return nil, fmt.Errorf("put: expected dictionary as first argument, got %s", container.String())
+	if container.IsList() {
+		if key.Type() != IntegerType {
+			return nil, fmt.Errorf("put: expected integer as index for list, got %s", key.String())
+		}
+		list := container.(*List)
+		ix := key.(*Integer).Value
+		if ix < 0 || int(ix) >= len(list.items) {
+			return nil, fmt.Errorf("put: index %d out of bounds for list of length %d", ix, len(list.items))
+		}
+		list.items[ix] = value
+		return &Null{}, nil
+	} else if container.IsDictionary() {
+		dict := container.(*Dictionary)
+		err := dict.Put(key, value)
+		if err != nil {
+			return nil, err
+		}
+		return &Null{}, nil
+	} else {
+		return nil, fmt.Errorf("put: expected list or dictionary as first argument, got %s", container.String())
 	}
-	dict := container.(*Dictionary)
-	err := dict.Put(key, value)
-	if err != nil {
-		return nil, err
-	}
-	return &Null{}, nil
 }
 
 func builtinDel(container Object, key Object) (Object, error) {
@@ -442,19 +465,22 @@ func builtinReCapture(pat Object, str Object) (Object, error) {
 	return res, nil
 }
 
-func builtinIoPrint(f Object, str Object) (Object, error) {
+func builtinIoPrint(f Object, obj Object) (Object, error) {
 	if !f.IsFile() {
 		return nil, fmt.Errorf("io:print: expected file as first argument, got %s", f.String())
 	}
-	if !str.IsString() {
-		return nil, fmt.Errorf("io:print: expected string as second argument, got %s", str.String())
-	}
 	file := f.(*File)
-	sstr := string(str.(*String).Value)
-
-	_, err := file.fd.WriteString(sstr)
-	if err != nil {
-		return nil, err
+	var str string
+	switch obj.(type) {
+	case *String:
+		str = string(obj.(*String).Value)
+	default:
+		str = obj.String()
 	}
-	return &Null{}, nil
+
+	if n, err := file.fd.WriteString(str); err != nil {
+		return NewInteger(0), err
+	} else {
+		return NewInteger(int64(n)), nil
+	}
 }
