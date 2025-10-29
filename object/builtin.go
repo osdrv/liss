@@ -45,9 +45,9 @@ func init() {
 		mkBuiltin("has", builtinHas, false),
 		mkBuiltin("keys", builtinKeys, false),
 		mkBuiltin("values", builtinValues, false),
-		mkBuiltin("re:compile", builtinReCompile, false),
-		mkBuiltin("re:match", builtinReMatch, false),
-		mkBuiltin("re:capture", builtinReCapture, false),
+		mkBuiltin("re", builtinReCompile, false),
+		mkBuiltin("match?", builtinReMatch, false),
+		mkBuiltin("match", builtinReCapture, false),
 		mkBuiltin("io:print", builtinIoPrint, false),
 	}
 

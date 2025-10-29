@@ -5,6 +5,7 @@ type NodeType uint8
 const (
 	NodeTypeLiteral NodeType = iota
 	NodeTypeAny
+	NodeTypeClass
 	NodeTypeConcat
 	NodeTypeAlternation
 	NodeTypeStar

@@ -1,5 +1,7 @@
 package regexp
 
+import "fmt"
+
 type compiler struct {
 	prog  *Prog
 	nCaps int
@@ -39,6 +41,12 @@ func (c *compiler) compile(node *ASTNode, next int) int {
 		return start
 	case NodeTypeAny:
 		return c.addInst(Inst{Op: ReOpAny, Out: next})
+	case NodeTypeClass:
+		class, ok := RuneClassMap[node.Value]
+		if !ok {
+			panic(fmt.Sprintf("unknown character class: %s", node.Value))
+		}
+		return c.addInst(Inst{Op: ReOpRuneClass, Arg: class, Out: next})
 	case NodeTypeConcat:
 		start := next
 		for i := len(node.Children) - 1; i >= 0; i-- {

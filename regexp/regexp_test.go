@@ -104,6 +104,12 @@ func TestMatchString(t *testing.T) {
 			pattern: "при.*ет",
 			want:    true,
 		},
+		{
+			name:    "match digit class",
+			input:   "123",
+			pattern: "\\d+",
+			want:    true,
+		},
 	}
 
 	for _, tt := range tests {

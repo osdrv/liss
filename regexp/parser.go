@@ -32,6 +32,20 @@ func (p *parser) parseAtom() (*ASTNode, error) {
 		p.consume() // consume '.'
 		return &ASTNode{Type: NodeTypeAny}, nil
 	}
+	if p.peek() == '\\' {
+		p.consume() // consume '\'
+		r := p.peek()
+		if r == 0 {
+			return nil, fmt.Errorf("Unexpected end of input after escape character")
+		}
+		p.consume()
+		switch r {
+		case 'd', 'D', 'w', 'W', 's', 'S':
+			return &ASTNode{Type: NodeTypeClass, Value: string(r)}, nil
+		default:
+			return &ASTNode{Type: NodeTypeLiteral, Value: string(r)}, nil
+		}
+	}
 	if p.peek() == '(' {
 		p.consume() // consume '('
 		isCapture := true

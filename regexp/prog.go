@@ -5,11 +5,34 @@ import (
 	"strings"
 )
 
+type RuneClass = int
+
+const (
+	RuneClassDigit    RuneClass = 1 << iota // \d
+	RuneClassWord                           // \w
+	RuneClassSpace                          // \s
+	RuneClassNotDigit                       // \D
+	RuneClassNotWord                        // \W
+	RuneClassNotSpace                       // \S
+)
+
+var (
+	RuneClassMap = map[string]RuneClass{
+		"d": RuneClassDigit,
+		"w": RuneClassWord,
+		"s": RuneClassSpace,
+		"D": RuneClassNotDigit,
+		"W": RuneClassNotWord,
+		"S": RuneClassNotSpace,
+	}
+)
+
 type ReOp uint8
 
 const (
 	ReOpMatch ReOp = iota
 	ReOpRune
+	ReOpRuneClass
 	ReOpAny
 	ReOpSplit
 	ReOpCaptureStart
@@ -53,7 +76,7 @@ func (p *Prog) addThread(list []Thread, t Thread, ix int) []Thread {
 
 		inst := p.Insts[t.PC]
 		switch inst.Op {
-		case ReOpRune, ReOpAny, ReOpMatch:
+		case ReOpRune, ReOpRuneClass, ReOpAny, ReOpMatch:
 			list = append(list, t)
 		case ReOpSplit:
 			// Push least preferred path first
@@ -98,8 +121,8 @@ func (p *Prog) Match(s string) ([]int, bool) {
 		for _, t := range clist {
 			inst := p.Insts[t.PC]
 			switch inst.Op {
-			case ReOpRune:
-				if inst.Rune == r {
+			case ReOpRune, ReOpRuneClass:
+				if matchRune(r, inst) {
 					nlist = p.addThread(nlist, Thread{inst.Out, t.Caps}, i+1)
 				}
 			case ReOpAny:
@@ -127,6 +150,29 @@ func (p *Prog) Match(s string) ([]int, bool) {
 	}
 
 	return nil, false
+}
+
+func matchRune(r rune, inst Inst) bool {
+	switch inst.Op {
+	case ReOpRune:
+		return r == inst.Rune
+	case ReOpRuneClass:
+		switch inst.Arg {
+		case RuneClassDigit:
+			return r >= '0' && r <= '9'
+		case RuneClassWord:
+			return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
+		case RuneClassSpace:
+			return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\f' || r == '\v'
+		case RuneClassNotDigit:
+			return !(r >= '0' && r <= '9')
+		case RuneClassNotWord:
+			return !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_')
+		case RuneClassNotSpace:
+			return !(r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\f' || r == '\v')
+		}
+	}
+	return false
 }
 
 func (p *Prog) String() string {
