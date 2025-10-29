@@ -39,7 +39,7 @@ type builtinHook func(*VM, *object.BuiltinFunction, []object.Object) (*object.Bu
 
 var (
 	DefaultHooks = map[string]builtinHook{
-		"io:print": func(vm *VM, fn *object.BuiltinFunction, args []object.Object) (*object.BuiltinFunction, []object.Object, error) {
+		"print": func(vm *VM, fn *object.BuiltinFunction, args []object.Object) (*object.BuiltinFunction, []object.Object, error) {
 			if len(args) < 1 {
 				return nil, nil, fmt.Errorf("print expects at least 1 argument, got %d", len(args))
 			}

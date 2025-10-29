@@ -84,9 +84,6 @@
 
 (fn _mergesort [arr]
     (let _len (len arr))
-    (io:print "sorting array")
-    (io:print arr)
-    (io:print "\n")
     (cond (<= _len 1)
         arr
         (cond (= _len 2)
@@ -96,9 +93,6 @@
             ]
             (
                 (let _mid (/ _len 2))
-                (io:print "range: ")
-                (io:print [0 _mid _len])
-                (io:print "\n")
                 (let _a (list:range arr 0 _mid))
                 (let _b (list:range arr _mid _len))
                 (_merge
@@ -134,26 +128,26 @@
             23 5 7 9 7 11 3 7 13 17
             19 2 29 31 7 41 43 47 53
             59 61 67 71 73 79 83 89 97])
-        (io:print "list: ")
-        (io:print vec)
-        (io:print "\n")
-        (io:print "list:find: ")
-        (io:print (list:find vec 7))
-        (io:print "\n")
-        (io:print "list:findAll: ")
-        (io:print (list:findAll vec 7))
-        (io:print "\n")
+        (print "list: ")
+        (print vec)
+        (print "\n")
+        (print "list:find: ")
+        (print (list:find vec 7))
+        (print "\n")
+        (print "list:findAll: ")
+        (print (list:findAll vec 7))
+        (print "\n")
 
-        (io:print "range 0..2: ")
-        (io:print (list:range vec 0 2))
-        (io:print "\n")
-        (io:print "range 2..10: ")
-        (io:print (list:range vec 2 10))
-        (io:print "\n")
+        (print "range 0..2: ")
+        (print (list:range vec 0 2))
+        (print "\n")
+        (print "range 2..10: ")
+        (print (list:range vec 2 10))
+        (print "\n")
 
-        (io:print "sorted: ")
-        (io:print (list:sort vec))
-        (io:print "\n")
+        (print "sorted: ")
+        (print (list:sort vec))
+        (print "\n")
     )
 )
 

@@ -170,6 +170,8 @@ func matchRune(r rune, inst Inst) bool {
 			return !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_')
 		case RuneClassNotSpace:
 			return !(r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\f' || r == '\v')
+		default:
+			panic(fmt.Sprintf("Unsupported rune class: %d", inst.Arg))
 		}
 	}
 	return false

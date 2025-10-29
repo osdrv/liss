@@ -26,7 +26,7 @@ func mkBuiltin(name string, fn any, variadic bool) *BuiltinFunction {
 func init() {
 	builtins = []*BuiltinFunction{
 		mkBuiltin("time", builtinTime, false),
-		mkBuiltin("time_millis", builtinTimeMillis, false),
+		mkBuiltin("time_ml", builtinTimeMillis, false),
 
 		mkBuiltin("len", builtinLen, false),
 		mkBuiltin("is_empty?", builtinEmpty, false), // TODO: is_empty?
@@ -48,7 +48,7 @@ func init() {
 		mkBuiltin("re", builtinReCompile, false),
 		mkBuiltin("match?", builtinReMatch, false),
 		mkBuiltin("match", builtinReCapture, false),
-		mkBuiltin("io:print", builtinIoPrint, false),
+		mkBuiltin("print", builtinPrint, false),
 	}
 
 	for ix, b := range builtins {
@@ -465,9 +465,9 @@ func builtinReCapture(pat Object, str Object) (Object, error) {
 	return res, nil
 }
 
-func builtinIoPrint(f Object, obj Object) (Object, error) {
+func builtinPrint(f Object, obj Object) (Object, error) {
 	if !f.IsFile() {
-		return nil, fmt.Errorf("io:print: expected file as first argument, got %s", f.String())
+		return nil, fmt.Errorf("print: expected file as first argument, got %s", f.String())
 	}
 	file := f.(*File)
 	var str string
