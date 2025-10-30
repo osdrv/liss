@@ -65,12 +65,14 @@ func NewWithState(symbols *SymbolTable, consts []object.Object) *Compiler {
 	return c
 }
 
-func (c *Compiler) compileStep(node ast.Node, managed bool) error {
+func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 	switch n := node.(type) {
 	case *ast.BlockExpression:
 		for ix, expr := range n.Nodes {
-			m := ix >= len(n.Nodes)-1 && managed
-			if err := c.compileStep(expr, m); err != nil {
+			// only the last expression of the block can be in a tail position
+			isLast := ix == len(n.Nodes)-1
+			m := isLast && managed
+			if err := c.compileStep(expr, m, isLast && isTail); err != nil {
 				return err
 			}
 		}
@@ -87,7 +89,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			}
 		}
 		for i := range len(n.Operands) {
-			if err := c.compileStep(n.Operands[i], true); err != nil {
+			if err := c.compileStep(n.Operands[i], true, false); err != nil {
 				return err
 			}
 		}
@@ -125,18 +127,18 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			c.emit(code.OpPop)
 		}
 	case *ast.CondExpression:
-		if err := c.compileStep(n.Cond, true); err != nil {
+		if err := c.compileStep(n.Cond, true, false); err != nil {
 			return err
 		}
 		jmp1 := c.emit(code.OpJumpIfFalse, 9999)
-		if err := c.compileStep(n.Then, managed); err != nil {
+		if err := c.compileStep(n.Then, managed, isTail); err != nil {
 			return err
 		}
 		jmp2 := c.emit(code.OpJump, 9999)
 		jmpTo := len(c.currentInstrs())
 		c.updOperand(jmp1, jmpTo)
 		if n.Else != nil {
-			if err := c.compileStep(n.Else, managed); err != nil {
+			if err := c.compileStep(n.Else, managed, isTail); err != nil {
 				return err
 			}
 		} else {
@@ -181,7 +183,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		}
 	case *ast.ListExpression:
 		for _, item := range n.Items {
-			c.compileStep(item, true)
+			c.compileStep(item, true, false)
 		}
 		c.emit(code.OpList, len(n.Items))
 		if !managed {
@@ -192,7 +194,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 		if err != nil {
 			return err
 		}
-		if err := c.compileStep(n.Value, true); err != nil {
+		if err := c.compileStep(n.Value, true, false); err != nil {
 			return err
 		}
 
@@ -243,7 +245,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 			c.symbols.Define(arg.Name)
 		}
 
-		err := c.compileStep(ast.NewBlockExpression(n.Body), true)
+		err := c.compileStep(ast.NewBlockExpression(n.Body), true, true)
 		if err != nil {
 			return err
 		}
@@ -300,24 +302,29 @@ func (c *Compiler) compileStep(node ast.Node, managed bool) error {
 				return fmt.Errorf("unsupported symbol scope: %v", sym.Scope)
 			}
 			for _, arg := range n.Args {
-				if err := c.compileStep(arg, true); err != nil {
+				if err := c.compileStep(arg, true, false); err != nil {
 					return err
 				}
 			}
 		} else if calleeFn, ok := callee.(*ast.FunctionExpression); ok {
-			err := c.compileStep(calleeFn, true)
+			err := c.compileStep(calleeFn, true, false)
 			if err != nil {
 				return err
 			}
 			for _, arg := range n.Args {
-				if err := c.compileStep(arg, true); err != nil {
+				if err := c.compileStep(arg, true, false); err != nil {
 					return err
 				}
 			}
 		} else {
 			return fmt.Errorf("unsupported callee type: %T", callee)
 		}
-		c.emit(code.OpCall, len(n.Args))
+
+		if isTail {
+			c.emit(code.OpTailCall, len(n.Args))
+		} else {
+			c.emit(code.OpCall, len(n.Args))
+		}
 		if !managed {
 			c.emit(code.OpPop)
 		}
@@ -345,7 +352,7 @@ func (c *Compiler) loadSymbol(sym Symbol) error {
 }
 
 func (c *Compiler) Compile(prog ast.Node) error {
-	if err := c.compileStep(prog, false); err != nil {
+	if err := c.compileStep(prog, false, false); err != nil {
 		return err
 	}
 	return nil

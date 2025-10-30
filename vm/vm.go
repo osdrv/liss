@@ -428,6 +428,50 @@ func (vm *VM) Run() error {
 			if err := vm.callFunction(int(argc)); err != nil {
 				return err
 			}
+		case code.OpTailCall:
+			argc := int(code.ReadUint8(instrs[ip+1:]))
+			vm.currentFrame().ip += 1
+
+			fnobj := vm.stack[vm.sp-1-argc]
+			switch fn := fnobj.(type) {
+			case *object.Closure:
+				if len(fn.Fn.Args) != argc {
+					return fmt.Errorf("Function %s expects %d arguments, got %d", fn.Fn.Name, len(fn.Fn.Args), argc)
+				}
+
+				for i := 0; i < argc; i++ {
+					vm.stack[vm.currentFrame().bptr+i] = vm.stack[vm.sp-argc+i]
+				}
+
+				vm.currentFrame().cl = fn
+				vm.currentFrame().ip = -1
+				vm.sp = vm.currentFrame().bptr + fn.Fn.NumLocals
+			case *object.BuiltinFunction:
+				args := make([]object.Object, argc)
+				for i := range argc {
+					args[i] = vm.stack[vm.sp-argc+i]
+				}
+
+				if hook, ok := vm.hooks[fn.Name()]; ok {
+					var err error
+					fn, args, err = hook(vm, fn, args)
+					if err != nil {
+						return err
+					}
+				}
+
+				res, err := fn.Invoke(args...)
+				if err != nil {
+					return err
+				}
+				vm.sp = vm.sp - argc - 1
+				if err := vm.push(res); err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("Object %s is not a function", vm.stack[vm.sp-1].String())
+			}
+
 		case code.OpReturn:
 			// Special handling of an empty function body:
 			// Example: `((fn []))`: this execution should return null.

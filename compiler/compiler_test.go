@@ -583,7 +583,7 @@ func TestCompileStep(t *testing.T) {
 				symbols = tt.symbols
 			}
 			c := NewWithState(symbols, consts)
-			err := c.compileStep(tt.input, tt.managed)
+			err := c.compileStep(tt.input, tt.managed, false)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
 				return
@@ -1108,7 +1108,7 @@ func TestFunctionExpr(t *testing.T) {
 					code.Make(code.OpGetLocal, 0), // x
 					code.Make(code.OpConst, 0),    // 1
 					code.Make(code.OpSub),
-					code.Make(code.OpCall, 1),
+					code.Make(code.OpTailCall, 1),
 					code.Make(code.OpReturn),
 				},
 				int64(1),
@@ -1141,7 +1141,7 @@ func TestFunctionExpr(t *testing.T) {
 					code.Make(code.OpGetLocal, 0), // x
 					code.Make(code.OpConst, 0),    // 1
 					code.Make(code.OpSub),
-					code.Make(code.OpCall, 1),
+					code.Make(code.OpTailCall, 1),
 					code.Make(code.OpReturn),
 				},
 				int64(1),
@@ -1151,7 +1151,7 @@ func TestFunctionExpr(t *testing.T) {
 					code.Make(code.OpPop),
 					code.Make(code.OpGetLocal, 0), // countdown
 					code.Make(code.OpConst, 2),    // 1
-					code.Make(code.OpCall, 1),
+					code.Make(code.OpTailCall, 1),
 					code.Make(code.OpReturn),
 				},
 			},
@@ -1186,6 +1186,8 @@ func TestFunctionExpr(t *testing.T) {
 	}
 }
 
+// This test is a bit fragile because builtin IDs are not guaranteed to be stable.
+// Yet it brings some value as builtins have a dedicated opcode and a unique code path.
 func TestBuiltinFunctionCall(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -1199,7 +1201,7 @@ func TestBuiltinFunctionCall(t *testing.T) {
 			input:      `(len "Hello")`,
 			wantConsts: []any{"Hello"},
 			wantInstrs: []code.Instructions{
-				code.Make(code.OpGetBuiltin, 2),
+				code.Make(code.OpGetBuiltin, 4),
 				code.Make(code.OpConst, 0),
 				code.Make(code.OpCall, 1),
 				code.Make(code.OpPop),
@@ -1347,7 +1349,7 @@ func TestFunctionCall(t *testing.T) {
 				},
 				[]code.Instructions{
 					code.Make(code.OpGetGlobal, 0),
-					code.Make(code.OpCall, 0),
+					code.Make(code.OpTailCall, 0),
 					code.Make(code.OpReturn),
 				},
 			},

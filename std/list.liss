@@ -201,7 +201,7 @@
 
 (fn test []
     (
-        (let vec (_mk_rand_vec 100))
+        (let vec (_mk_rand_vec 250))
         (print "list: ")
         (print vec)
         (print "\n\n")
