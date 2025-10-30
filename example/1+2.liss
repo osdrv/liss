@@ -1,1 +1,1 @@
-(print (str (+ 1 2)))
+(println (str (+ 1 2)))

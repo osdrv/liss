@@ -28,8 +28,8 @@ func init() {
 	builtins = []*BuiltinFunction{
 		mkBuiltin("time", builtinTime, false),
 		mkBuiltin("time_ms", builtinTimeMillis, false),
-		mkBuiltin("rand:int", builtinRandInt, false),
-		mkBuiltin("rand:intn", builtinRandIntN, false),
+		mkBuiltin("rand", builtinRandInt, false),
+		mkBuiltin("randn", builtinRandIntN, false),
 
 		mkBuiltin("len", builtinLen, false),
 		mkBuiltin("is_empty?", builtinEmpty, false), // TODO: is_empty?
@@ -51,7 +51,8 @@ func init() {
 		mkBuiltin("re", builtinReCompile, false),
 		mkBuiltin("match?", builtinReMatch, false),
 		mkBuiltin("match", builtinReCapture, false),
-		mkBuiltin("print", builtinPrint, false),
+		mkBuiltin("print", builtinPrint, true),
+		mkBuiltin("println", builtinPrintln, true),
 	}
 
 	for ix, b := range builtins {
@@ -485,22 +486,36 @@ func builtinReCapture(pat Object, str Object) (Object, error) {
 	return res, nil
 }
 
-func builtinPrint(f Object, obj Object) (Object, error) {
+func builtinPrint(args ...Object) (Object, error) {
+	if len(args) < 2 {
+		return nil, fmt.Errorf("print: expected at least 2 arguments, got %d", len(args))
+	}
+	f := args[0]
+	rest := args[1:]
 	if !f.IsFile() {
 		return nil, fmt.Errorf("print: expected file as first argument, got %s", f.String())
 	}
 	file := f.(*File)
 	var str string
-	switch obj.(type) {
-	case *String:
-		str = string(obj.(*String).Value)
-	default:
-		str = obj.String()
-	}
+	totBytes := 0
+	for _, obj := range rest {
+		switch obj.(type) {
+		case *String:
+			str = string(obj.(*String).Value)
+		default:
+			str = obj.String()
+		}
 
-	if n, err := file.fd.WriteString(str); err != nil {
-		return NewInteger(0), err
-	} else {
-		return NewInteger(int64(n)), nil
+		if n, err := file.fd.WriteString(str); err != nil {
+			return NewInteger(0), err
+		} else {
+			totBytes += n
+		}
 	}
+	return NewInteger(int64(totBytes)), nil
+}
+
+func builtinPrintln(args ...Object) (Object, error) {
+	args = append(args, NewString("\n"))
+	return builtinPrint(args...)
 }

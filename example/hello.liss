@@ -1,5 +1,5 @@
 (fn hello [s]
-    (+ "Hello, " s "!\n")
+    (+ "Hello, " s "!")
 )
 
-(print (hello "LISS"))
+(println (hello "LISS"))

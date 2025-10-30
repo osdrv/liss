@@ -23,6 +23,7 @@ const (
 	DictionaryType
 	RegexpType
 	FileType
+	ModuleType
 )
 
 func (t ObjectType) String() string {
@@ -69,6 +70,7 @@ type Object interface {
 	IsLenable() bool
 	IsRegexp() bool
 	IsFile() bool
+	IsModule() bool
 	Raw() any
 	Clone() Object
 }
@@ -112,6 +114,10 @@ func (d defaultObject) IsRegexp() bool {
 }
 
 func (d defaultObject) IsFile() bool {
+	return false
+}
+
+func (d defaultObject) IsModule() bool {
 	return false
 }
 

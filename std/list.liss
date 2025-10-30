@@ -1,32 +1,25 @@
-(fn list:head [arr]
-    (cond (or (is_null? arr) (is_empty? arr))
-        null
-        (get arr 0)
-    )
-)
-
-(fn list:push [arr v]
+(fn push [arr v]
     (+ arr [v])
 )
 
-(fn list:reduce [arr fun acc]
+(fn reduce [arr fun acc]
     (cond (or (is_null? arr) (is_empty? arr))
         acc
         (
-            (let _acc (fun acc (list:head arr)))
-            (list:reduce (tail arr) fun _acc)
+            (let _acc (fun acc (head arr)))
+            (reduce (tail arr) fun _acc)
         )
     )
 )
 
-(fn list:map [arr fun]
-    (list:reduce arr (fn [acc x]
+(fn map [arr fun]
+    (reduce arr (fn [acc x]
         (+ acc [(fun x)])
     ) [])
 )
 
-(fn list:filter [arr fun]
-    (list:reduce arr (fn [acc x] (
+(fn filter [arr fun]
+    (reduce arr (fn [acc x] (
         (+ acc (cond (fun x) [x] []))
     )) [])
 )
@@ -35,13 +28,13 @@
     (cond (or (< ix start) (>= ix end) (>= ix (len arr)))
         acc
         (
-            (let _acc (list:push acc (get arr ix)))
+            (let _acc (push acc (get arr ix)))
             (_range _acc (+ ix 1) arr start end)
         )
     )
 )
 
-(fn list:range [arr start end]
+(fn range [arr start end]
     (cond (is_null? arr)
         null
         (cond (>= start (len arr))
@@ -55,10 +48,10 @@
     (cond (is_empty? arr)
         acc
         (
-            (let _found (= (list:head arr) n))
+            (let _found (= (head arr) n))
             (let _acc
                 (cond _found
-                    (list:push acc ix)
+                    (push acc ix)
                     acc
                 )
             )
@@ -70,15 +63,15 @@
     )
 )
 
-(fn list:find [arr n]
+(fn find [arr n]
     (let _acc (_find [] 0 arr n true))
     (cond (is_empty? _acc)
         -1
-        (list:head _acc)
+        (head _acc)
     )
 )
 
-(fn list:find_all [arr n]
+(fn find_all [arr n]
     (let _res (_find [] 0 arr n false))
     _res
 )
@@ -92,7 +85,7 @@
         arr
         (
             (let _pivot (head arr))
-            (let _parts (list:reduce
+            (let _parts (reduce
                 (tail arr)
                 (fn [acc x]
                     (
@@ -100,12 +93,12 @@
                         (let _gt (get acc 1))
                         (cond (< x _pivot)
                             [
-                                (list:push _lt x)
+                                (push _lt x)
                                 _gt
                             ]
                             [
                                 _lt
-                                (list:push _gt x)
+                                (push _gt x)
                             ]
                         )
                     )
@@ -127,9 +120,9 @@
         (and (>= aix alen) (>= bix blen))
         []
         (cond (>= aix alen)
-            (list:range b bix blen)
+            (range b bix blen)
             (cond (>= bix blen)
-                (list:range a aix alen)
+                (range a aix alen)
                 (cond (< (get a aix) (get b bix))
                     (+ [(get a aix)] (_merge a (+ aix 1) alen b bix blen))
                     (+ [(get b bix)] (_merge a aix alen b (+ bix 1) blen))
@@ -150,8 +143,8 @@
             ]
             (
                 (let _mid (/ _len 2))
-                (let _a (list:range arr 0 _mid))
-                (let _b (list:range arr _mid _len))
+                (let _a (range arr 0 _mid))
+                (let _b (range arr _mid _len))
                 (_merge
                     (_mergesort _a)
                     0
@@ -166,7 +159,7 @@
 )
 
 
-(fn list:sort [arr]
+(fn sort [arr]
     (cond (is_null? arr)
         null
         (
@@ -184,76 +177,68 @@
     (let _res (fun))
     (let _end (time_ms))
     (print "Time taken (msec): ")
-    (print (- _end _start))
-    (print "\n\n")
+    (println (- _end _start) "\n")
     _res
 )
 
 (fn _mk_rand_vec [size]
-    (fn _next [ix] (
+    (fn _next [ix acc]
         (cond (>= ix size)
-            []
-            (+ [(rand:intn 100)] (_next (+ ix 1)))
+            acc
+            (
+                (let _acc (+ acc [(randn 100)]))
+                (_next (+ ix 1) _acc)
+            )
         )
-    ))
-    (_next 0)
+    )
+    (_next 0 [])
 )
 
 (fn test []
     (
         (let vec (_mk_rand_vec 250))
         (print "list: ")
-        (print vec)
-        (print "\n\n")
+        (println vec "\n")
 
         (_benchmark (fn [] (
-            (print "list:find: ")
-            (print (list:find vec 7))
-            (print "\n")
-            (print "list:find_all: ")
-            (print (list:find_all vec 7))
-            (print "\n")
+            (print "find: ")
+            (println (find vec 7))
+            (print "find_all: ")
+            (println (find_all vec 7))
         )))
 
         (_benchmark (fn [] (
             (print "range 0..2: ")
-            (print (list:range vec 0 2))
-            (print "\n")
+            (println (range vec 0 2))
             (print "range 2..10: ")
-            (print (list:range vec 2 10))
-            (print "\n")
+            (println (range vec 2 10))
         )))
 
         (_benchmark (fn [] (
             (print "merge-sorted: ")
-            (print (_mergesort vec))
-            (print "\n")
+            (println (_mergesort vec))
         )))
 
         (_benchmark (fn [] (
             (print "quick-sorted: ")
-            (print (_quicksort vec))
-            (print "\n")
+            (println (_quicksort vec))
         )))
 
         (_benchmark (fn [] (
             (print "filtered < 10: ")
-            (print (list:filter vec (fn [x] (< x 10))))
-            (print "\n")
+            (println (filter vec (fn [x] (< x 10))))
         )))
 
         (_benchmark (fn [] (
             (print "reduced < 10: ")
-            (print (list:reduce vec (fn [acc x] (
+            (println (reduce vec (fn [acc x] (
                 (+ acc (cond (< x 10) [x] []))
             )) []))
-            (print "\n")
         )))
 
         (_benchmark (fn [] (
             (print "mapped * 2: ")
-            (print (list:map vec (fn [x] (* x 2))))
-            (print "\n")
+            (println (map vec (fn [x] (* x 2))))
         )))
     )
 )

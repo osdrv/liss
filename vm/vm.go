@@ -37,20 +37,25 @@ func NewVMContext() *VMContext {
 
 type builtinHook func(*VM, *object.BuiltinFunction, []object.Object) (*object.BuiltinFunction, []object.Object, error)
 
+var appendStdoutHook builtinHook = func(
+	vm *VM, fn *object.BuiltinFunction, args []object.Object,
+) (*object.BuiltinFunction, []object.Object, error) {
+	if len(args) < 1 {
+		return nil, nil, fmt.Errorf("print expects at least 1 argument, got %d", len(args))
+	}
+	if !args[0].IsFile() {
+		newargs := make([]object.Object, len(args)+1)
+		newargs[0] = vm.ctx.files[STDOUT]
+		copy(newargs[1:], args)
+		args = newargs
+	}
+	return fn, args, nil
+}
+
 var (
 	DefaultHooks = map[string]builtinHook{
-		"print": func(vm *VM, fn *object.BuiltinFunction, args []object.Object) (*object.BuiltinFunction, []object.Object, error) {
-			if len(args) < 1 {
-				return nil, nil, fmt.Errorf("print expects at least 1 argument, got %d", len(args))
-			}
-			if !args[0].IsFile() {
-				newargs := make([]object.Object, len(args)+1)
-				newargs[0] = vm.ctx.files[STDOUT]
-				copy(newargs[1:], args)
-				args = newargs
-			}
-			return fn, args, nil
-		},
+		"print":   appendStdoutHook,
+		"println": appendStdoutHook,
 	}
 )
 

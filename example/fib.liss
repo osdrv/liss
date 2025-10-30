@@ -3,8 +3,7 @@
     (let _res (fun))
     (let _end (time_ms))
     (print "Time taken (msec): ")
-    (print (- _end _start))
-    (print "\n\n")
+    (println (- _end _start))
     _res
 )
 
@@ -21,4 +20,4 @@
 (let res (_benchmark (fn []
     (fib 30)
 )))
-(print (+ (str res) "\n"))
+(println res)

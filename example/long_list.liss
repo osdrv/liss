@@ -1,9 +1,9 @@
-(fn list:reduce [arr fun acc]
+(fn reduce [arr fun acc]
     (cond (or (is_null? arr) (is_empty? arr))
         acc
         (
             (let _acc (fun acc (head arr)))
-            (list:reduce (tail arr) fun _acc)
+            (reduce (tail arr) fun _acc)
         )
     )
 )
@@ -13,7 +13,7 @@
         (cond (>= ix size)
             acc
             (
-                (let _acc (+ acc [(rand:intn 100)]))
+                (let _acc (+ acc [(randn 100)]))
                 (_next (+ ix 1) _acc)
             )
         )
@@ -26,5 +26,4 @@
 "more than 1024 elements without tail recursion optimization would normally"
 "lead to a stack overflow. Here it works just fine."
 (let _big_vec (_mk_rand_vec 10000))
-(print _big_vec)
-(print "\n")
+(println _big_vec)
