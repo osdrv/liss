@@ -23,7 +23,7 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 	scanner := bufio.NewScanner(in)
 	consts := []object.Object{}
 	globs := make([]object.Object, vm.GlobalsSize)
-	symbols := compiler.NewSymbolTable()
+	symbols := object.NewSymbolTable()
 
 	for {
 		if opts.Interactive {

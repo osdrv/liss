@@ -1,8 +1,7 @@
-package compiler
+package object
 
 import (
 	"fmt"
-	"osdrv/liss/object"
 )
 
 type Scope uint8
@@ -22,42 +21,42 @@ type Symbol struct {
 }
 
 type SymbolTable struct {
-	outer *SymbolTable
-	free  []Symbol
+	Outer *SymbolTable
+	Free  []Symbol
 
-	vars    map[string]Symbol
-	numVars int
+	Vars    map[string]Symbol
+	NumVars int
 }
 
 func NewSymbolTable() *SymbolTable {
 	return &SymbolTable{
-		vars:    make(map[string]Symbol),
-		free:    []Symbol{},
-		numVars: 0,
+		Vars:    make(map[string]Symbol),
+		Free:    []Symbol{},
+		NumVars: 0,
 	}
 }
 
 func NewNestedSymbolTable(outer *SymbolTable) *SymbolTable {
 	return &SymbolTable{
-		outer:   outer,
-		vars:    make(map[string]Symbol),
-		free:    []Symbol{},
-		numVars: 0,
+		Outer:   outer,
+		Vars:    make(map[string]Symbol),
+		Free:    []Symbol{},
+		NumVars: 0,
 	}
 }
 
 func (st *SymbolTable) Define(name string) (Symbol, error) {
-	if _, exists := st.vars[name]; exists {
+	if _, exists := st.Vars[name]; exists {
 		return Symbol{}, fmt.Errorf("Symbol is already defined: %s", name)
 	}
-	symbol := Symbol{Name: name, Index: st.numVars}
-	if st.outer != nil {
+	symbol := Symbol{Name: name, Index: st.NumVars}
+	if st.Outer != nil {
 		symbol.Scope = LocalScope
 	} else {
 		symbol.Scope = GlobalScope
 	}
-	st.vars[name] = symbol
-	st.numVars++
+	st.Vars[name] = symbol
+	st.NumVars++
 	return symbol, nil
 }
 
@@ -67,28 +66,28 @@ func (st *SymbolTable) DefineFunctionName(name string) Symbol {
 		Index: 0,
 		Scope: FunctionScope,
 	}
-	st.vars[name] = sym
+	st.Vars[name] = sym
 	return sym
 }
 
 func (st *SymbolTable) defineFree(orig Symbol) Symbol {
-	st.free = append(st.free, orig)
+	st.Free = append(st.Free, orig)
 	symbol := Symbol{
 		Name:  orig.Name,
-		Index: len(st.free) - 1,
+		Index: len(st.Free) - 1,
 		Scope: FreeScope,
 	}
-	st.vars[orig.Name] = symbol
+	st.Vars[orig.Name] = symbol
 	return symbol
 }
 
 func (st *SymbolTable) Resolve(name string) (Symbol, bool) {
-	if _, ix, ok := object.GetBuiltinByName(name); ok {
+	if _, ix, ok := GetBuiltinByName(name); ok {
 		return Symbol{Name: name, Index: ix, Scope: BuiltinScope}, true
 	}
-	symbol, ok := st.vars[name]
-	if !ok && st.outer != nil {
-		symbol, ok = st.outer.Resolve(name)
+	symbol, ok := st.Vars[name]
+	if !ok && st.Outer != nil {
+		symbol, ok = st.Outer.Resolve(name)
 		if !ok {
 			return symbol, ok
 		}

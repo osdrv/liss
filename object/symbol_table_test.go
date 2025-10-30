@@ -1,4 +1,4 @@
-package compiler
+package object
 
 import (
 	"testing"
@@ -90,7 +90,7 @@ func TestResolveFree(t *testing.T) {
 				assert.Equal(t, FreeScope, sym.Scope, "Expected symbol %q to be free", w.Name)
 				assert.Equal(t, i, sym.Index, "Free symbol %q has wrong index: want: %d, got: %d", w.Name, i, sym.Index)
 			}
-			assert.Equal(t, tt.wantFree, tt.table.free, "Free symbols do not match: want: %v, got: %v", tt.wantFree, tt.table.free)
+			assert.Equal(t, tt.wantFree, tt.table.Free, "Free symbols do not match: want: %v, got: %v", tt.wantFree, tt.table.Free)
 		})
 	}
 }

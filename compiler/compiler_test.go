@@ -188,7 +188,7 @@ func TestCompileStep(t *testing.T) {
 		input      ast.Node
 		managed    bool
 		consts     []object.Object
-		symbols    *SymbolTable
+		symbols    *object.SymbolTable
 		wantInstrs []code.Instructions
 		wantConsts []any
 		wantErr    error
@@ -542,8 +542,8 @@ func TestCompileStep(t *testing.T) {
 			input: &ast.IdentifierExpr{
 				Name: "myVar",
 			},
-			symbols: (func() *SymbolTable {
-				s := NewSymbolTable()
+			symbols: (func() *object.SymbolTable {
+				s := object.NewSymbolTable()
 				s.Define("myVar")
 				return s
 			})(),
@@ -559,8 +559,8 @@ func TestCompileStep(t *testing.T) {
 			input: &ast.IdentifierExpr{
 				Name: "myVar",
 			},
-			symbols: (func() *SymbolTable {
-				s := NewSymbolTable()
+			symbols: (func() *object.SymbolTable {
+				s := object.NewSymbolTable()
 				s.Define("myVar")
 				return s
 			})(),
@@ -575,7 +575,7 @@ func TestCompileStep(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			consts := []object.Object{}
-			symbols := NewSymbolTable()
+			symbols := object.NewSymbolTable()
 			if tt.consts != nil {
 				consts = tt.consts
 			}

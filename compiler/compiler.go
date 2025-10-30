@@ -37,7 +37,7 @@ type CompilationScope struct {
 
 type Compiler struct {
 	consts  []object.Object
-	symbols *SymbolTable
+	symbols *object.SymbolTable
 
 	scopes  []CompilationScope
 	scopeix int
@@ -52,13 +52,13 @@ func New() *Compiler {
 
 	return &Compiler{
 		consts:  make([]object.Object, 0),
-		symbols: NewSymbolTable(),
+		symbols: object.NewSymbolTable(),
 		scopes:  []CompilationScope{s0},
 		scopeix: 0,
 	}
 }
 
-func NewWithState(symbols *SymbolTable, consts []object.Object) *Compiler {
+func NewWithState(symbols *object.SymbolTable, consts []object.Object) *Compiler {
 	c := New()
 	c.symbols = symbols
 	c.consts = consts
@@ -198,7 +198,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 			return err
 		}
 
-		if sym.Scope == GlobalScope {
+		if sym.Scope == object.GlobalScope {
 			c.emit(code.OpSetGlobal, sym.Index)
 			c.emit(code.OpGetGlobal, sym.Index)
 		} else {
@@ -220,7 +220,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 			c.emit(code.OpPop)
 		}
 	case *ast.FunctionExpression:
-		var fnsym *Symbol
+		var fnsym *object.Symbol
 		var name string
 		if n.Name != nil {
 			name = n.Name.Name
@@ -254,8 +254,8 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		}
 		c.emit(code.OpReturn)
 
-		free := c.symbols.free
-		numLocals := c.symbols.numVars
+		free := c.symbols.Free
+		numLocals := c.symbols.NumVars
 		instrs := c.leaveScope()
 
 		for _, f := range free {
@@ -271,7 +271,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		c.emit(code.OpClosure, c.addConst(fn), len(free))
 
 		if fnsym != nil {
-			if fnsym.Scope == GlobalScope {
+			if fnsym.Scope == object.GlobalScope {
 				c.emit(code.OpSetGlobal, fnsym.Index)
 			} else {
 				c.emit(code.OpSetLocal, fnsym.Index)
@@ -288,15 +288,15 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 				return fmt.Errorf("undefined function: %s", calleeIdent.Name)
 			}
 			switch sym.Scope {
-			case GlobalScope:
+			case object.GlobalScope:
 				c.emit(code.OpGetGlobal, sym.Index)
-			case LocalScope:
+			case object.LocalScope:
 				c.emit(code.OpGetLocal, sym.Index)
-			case BuiltinScope:
+			case object.BuiltinScope:
 				c.emit(code.OpGetBuiltin, sym.Index)
-			case FreeScope:
+			case object.FreeScope:
 				c.emit(code.OpGetFree, sym.Index)
-			case FunctionScope:
+			case object.FunctionScope:
 				c.emit(code.OpCurrentClosure)
 			default:
 				return fmt.Errorf("unsupported symbol scope: %v", sym.Scope)
@@ -333,17 +333,17 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 	return nil
 }
 
-func (c *Compiler) loadSymbol(sym Symbol) error {
+func (c *Compiler) loadSymbol(sym object.Symbol) error {
 	switch sym.Scope {
-	case GlobalScope:
+	case object.GlobalScope:
 		c.emit(code.OpGetGlobal, sym.Index)
-	case LocalScope:
+	case object.LocalScope:
 		c.emit(code.OpGetLocal, sym.Index)
-	case BuiltinScope:
+	case object.BuiltinScope:
 		c.emit(code.OpGetBuiltin, sym.Index)
-	case FreeScope:
+	case object.FreeScope:
 		c.emit(code.OpGetFree, sym.Index)
-	case FunctionScope:
+	case object.FunctionScope:
 		c.emit(code.OpCurrentClosure)
 	default:
 		return fmt.Errorf("unsupported symbol scope: %v", sym.Scope)
@@ -415,7 +415,7 @@ func (c *Compiler) enterScope() {
 		prev:   EmittedInstruction{},
 	}
 	c.scopes = append(c.scopes, scope)
-	c.symbols = NewNestedSymbolTable(c.symbols)
+	c.symbols = object.NewNestedSymbolTable(c.symbols)
 	c.scopeix++
 }
 
@@ -423,7 +423,7 @@ func (c *Compiler) leaveScope() code.Instructions {
 	instrs := c.currentInstrs()
 	c.scopes = c.scopes[:len(c.scopes)-1]
 	c.scopeix--
-	c.symbols = c.symbols.outer
+	c.symbols = c.symbols.Outer
 	return instrs
 }
 
