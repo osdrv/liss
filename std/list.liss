@@ -9,6 +9,28 @@
     (+ arr [v])
 )
 
+(fn list:reduce [arr fun acc]
+    (cond (or (is_null? arr) (is_empty? arr))
+        acc
+        (
+            (let _acc (fun acc (list:head arr)))
+            (list:reduce (tail arr) fun _acc)
+        )
+    )
+)
+
+(fn list:map [arr fun]
+    (list:reduce arr (fn [acc x]
+        (+ acc [(fun x)])
+    ) [])
+)
+
+(fn list:filter [arr fun]
+    (list:reduce arr (fn [acc x] (
+        (+ acc (cond (fun x) [x] []))
+    )) [])
+)
+
 (fn _range [acc ix arr start end]
     (cond (or (< ix start) (>= ix end) (>= ix (len arr)))
         acc
@@ -56,7 +78,7 @@
     )
 )
 
-(fn list:findAll [arr n]
+(fn list:find_all [arr n]
     (let _res (_find [] 0 arr n false))
     _res
 )
@@ -64,6 +86,11 @@
 (fn _min2 [a b] (cond (< a b) a b))
 
 (fn _max2 [a b] (cond (> a b) a b))
+
+(fn _quicksort [arr]
+    (let _pivot (head arr))
+    arr
+)
 
 (fn _merge [a aix alen b bix blen]
     (cond
@@ -134,8 +161,8 @@
         (print "list:find: ")
         (print (list:find vec 7))
         (print "\n")
-        (print "list:findAll: ")
-        (print (list:findAll vec 7))
+        (print "list:find_all: ")
+        (print (list:find_all vec 7))
         (print "\n")
 
         (print "range 0..2: ")
@@ -147,6 +174,24 @@
 
         (print "sorted: ")
         (print (list:sort vec))
+        (print "\n")
+
+        (print "quick-sorted: ")
+        (print (_quicksort vec))
+        (print "\n")
+
+        (print "filtered < 10: ")
+        (print (list:filter vec (fn [x] (< x 10))))
+        (print "\n")
+
+        (print "reduced < 10: ")
+        (print (list:reduce vec (fn [acc x] (
+            (+ acc (cond (< x 10) [x] []))
+        )) []))
+        (print "\n")
+
+        (print "mapped * 2: ")
+        (print (list:map vec (fn [x] (* x 2))))
         (print "\n")
     )
 )
