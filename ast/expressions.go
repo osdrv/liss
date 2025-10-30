@@ -131,6 +131,26 @@ func (e *CondExpression) String() string {
 
 func (e *CondExpression) expressionNode() {}
 
+type ImportExpression struct {
+	Token token.Token
+	Ref   Node
+}
+
+var _ Node = (*ImportExpression)(nil)
+
+func NewImportExpression(tok token.Token, ref Node) (*ImportExpression, error) {
+	return &ImportExpression{
+		Token: tok,
+		Ref:   ref,
+	}, nil
+}
+
+func (e *ImportExpression) String() string {
+	return "import " + e.Ref.String()
+}
+
+func (e *ImportExpression) expressionNode() {}
+
 type LetExpression struct {
 	Token      token.Token
 	Identifier *IdentifierExpr

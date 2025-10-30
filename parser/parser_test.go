@@ -464,6 +464,25 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "import expression",
+			input: `(import "list")`,
+			want: []ast.Node{
+				&ast.ImportExpression{
+					Token: token.Token{
+						Type:    token.Import,
+						Literal: "import",
+					},
+					Ref: &ast.StringLiteral{
+						Token: token.Token{
+							Type:    token.String,
+							Literal: `"list"`,
+						},
+						Value: "list",
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

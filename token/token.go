@@ -57,6 +57,7 @@ const (
 	Null
 	Cond
 	Let
+	Import
 )
 
 var (
@@ -85,31 +86,33 @@ var (
 		Or:                 "|",
 		Not:                "!",
 
-		Fn:    "fn",
-		True:  "true",
-		False: "false",
-		Null:  "null",
-		Cond:  "cond",
-		Let:   "let",
+		Fn:     "fn",
+		True:   "true",
+		False:  "false",
+		Null:   "null",
+		Cond:   "cond",
+		Let:    "let",
+		Import: "import",
 	}
 )
 
 var (
 	Keywords = map[string]TokenType{
-		"fn":    Fn,
-		"true":  True,
-		"false": False,
-		"null":  Null,
-		"cond":  Cond,
-		"let":   Let,
-		"and":   And,
-		"or":    Or,
-		"not":   Not,
-		"plus":  Plus,
-		"minus": Minus,
-		"mult":  Multiply,
-		"div":   Divide,
-		"mod":   Modulus,
+		"fn":     Fn,
+		"true":   True,
+		"false":  False,
+		"null":   Null,
+		"cond":   Cond,
+		"let":    Let,
+		"and":    And,
+		"or":     Or,
+		"not":    Not,
+		"plus":   Plus,
+		"minus":  Minus,
+		"mult":   Multiply,
+		"div":    Divide,
+		"mod":    Modulus,
+		"import": Import,
 	}
 )
 

@@ -93,7 +93,10 @@ func (p *Parser) parseNode() (ast.Node, error) {
 	case token.LBracket:
 		node, err = p.parseListExpression()
 	default:
-		return nil, fmt.Errorf("unexpected token type: %s", p.curToken.Type.String())
+		return nil, fmt.Errorf(
+			"unexpected token type: %s at %s",
+			p.curToken.Type.String(),
+			p.curToken.Pos())
 	}
 	return node, err
 }
@@ -159,6 +162,21 @@ func (p *Parser) parseLetExpression() (ast.Node, error) {
 	}
 
 	return ast.NewLetExpression(tok, id.(*ast.IdentifierExpr), val)
+}
+
+func (p *Parser) parseImportExpression() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.consume(token.Import); err != nil {
+		return nil, err
+	}
+	if p.curToken.Type != token.String {
+		return nil, fmt.Errorf("import expression requires a string path as argument")
+	}
+	ref, err := p.parseStringLiteral()
+	if err != nil {
+		return nil, err
+	}
+	return ast.NewImportExpression(tok, ref)
 }
 
 func (p *Parser) parseCondExpression() (ast.Node, error) {
@@ -236,6 +254,8 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 		token.Or,
 		token.Not:
 		node, err = p.parseOperatorExpression()
+	case token.Import:
+		node, err = p.parseImportExpression()
 	default:
 		tok := p.curToken
 		nodes := make([]ast.Node, 0, 1)

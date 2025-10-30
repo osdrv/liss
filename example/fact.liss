@@ -8,17 +8,15 @@
     _res
 )
 
-(fn fib [n]
+(fn fact [n]
     (cond (= n 0)
-        0
-        (cond (= n 1)
-            1
-            (+(fib (- n 1)) (fib (- n 2)))
-        )
+        1
+        ( * n (fact (- n 1)))
     )
 )
 
-(let res (_benchmark (fn []
-    (fib 30)
+(let _res (_benchmark (fn []
+    (fact 25)
 )))
-(print (+ (str res) "\n"))
+(print _res)
+(print "\n")

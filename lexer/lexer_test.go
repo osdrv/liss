@@ -435,7 +435,7 @@ func TestNextToken(t *testing.T) {
 		},
 		{
 			name:  "Keywords",
-			input: "fn true false null cond let and or not",
+			input: "fn true false null cond let and or not import",
 			match: TokenTypeMatch | TokenLiteralMatch,
 			want: []token.Token{
 				{
@@ -473,6 +473,10 @@ func TestNextToken(t *testing.T) {
 				{
 					Type:    token.Not,
 					Literal: "not",
+				},
+				{
+					Type:    token.Import,
+					Literal: "import",
 				},
 				{
 					Type: token.EOF,
