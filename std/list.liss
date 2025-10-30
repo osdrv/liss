@@ -149,50 +149,82 @@
     )
 )
 
+(fn _bench [fun]
+    (let _start (time_ms))
+    (let _res (fun))
+    (let _end (time_ms))
+    (print "Time taken (msec): ")
+    (print (- _end _start))
+    (print "\n\n")
+    _res
+)
+
+(fn _mk_rand_vec [size]
+    (fn _next [ix] (
+        (cond (>= ix size)
+            []
+            (+ [(rand:intn 100)] (_next (+ ix 1)))
+        )
+    ))
+    (_next 0)
+)
+
 (fn test []
     (
-        (let vec [
-            23 5 7 9 7 11 3 7 13 17
-            19 2 29 31 7 41 43 47 53
-            59 61 67 71 73 79 83 89 97])
+        (let vec (_mk_rand_vec 100))
         (print "list: ")
         (print vec)
-        (print "\n")
-        (print "list:find: ")
-        (print (list:find vec 7))
-        (print "\n")
-        (print "list:find_all: ")
-        (print (list:find_all vec 7))
-        (print "\n")
+        (print "\n\n")
 
-        (print "range 0..2: ")
-        (print (list:range vec 0 2))
-        (print "\n")
-        (print "range 2..10: ")
-        (print (list:range vec 2 10))
-        (print "\n")
+        (_bench (fn [] (
+            (print "list:find: ")
+            (print (list:find vec 7))
+            (print "\n")
+            (print "list:find_all: ")
+            (print (list:find_all vec 7))
+            (print "\n")
+        )))
 
-        (print "sorted: ")
-        (print (list:sort vec))
-        (print "\n")
+        (_bench (fn [] (
+            (print "range 0..2: ")
+            (print (list:range vec 0 2))
+            (print "\n")
+            (print "range 2..10: ")
+            (print (list:range vec 2 10))
+            (print "\n")
+        )))
 
-        (print "quick-sorted: ")
-        (print (_quicksort vec))
-        (print "\n")
+        (_bench (fn [] (
+            (print "sorted: ")
+            (print (list:sort vec))
+            (print "\n")
+        )))
 
-        (print "filtered < 10: ")
-        (print (list:filter vec (fn [x] (< x 10))))
-        (print "\n")
+        (_bench (fn [] (
+            (print "quick-sorted: ")
+            (print (_quicksort vec))
+            (print "\n")
+        )))
 
-        (print "reduced < 10: ")
-        (print (list:reduce vec (fn [acc x] (
-            (+ acc (cond (< x 10) [x] []))
-        )) []))
-        (print "\n")
+        (_bench (fn [] (
+            (print "filtered < 10: ")
+            (print (list:filter vec (fn [x] (< x 10))))
+            (print "\n")
+        )))
 
-        (print "mapped * 2: ")
-        (print (list:map vec (fn [x] (* x 2))))
-        (print "\n")
+        (_bench (fn [] (
+            (print "reduced < 10: ")
+            (print (list:reduce vec (fn [acc x] (
+                (+ acc (cond (< x 10) [x] []))
+            )) []))
+            (print "\n")
+        )))
+
+        (_bench (fn [] (
+            (print "mapped * 2: ")
+            (print (list:map vec (fn [x] (* x 2))))
+            (print "\n")
+        )))
     )
 )
 

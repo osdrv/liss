@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"osdrv/liss/regexp"
 	"reflect"
 	"time"
@@ -26,7 +27,9 @@ func mkBuiltin(name string, fn any, variadic bool) *BuiltinFunction {
 func init() {
 	builtins = []*BuiltinFunction{
 		mkBuiltin("time", builtinTime, false),
-		mkBuiltin("time_ml", builtinTimeMillis, false),
+		mkBuiltin("time_ms", builtinTimeMillis, false),
+		mkBuiltin("rand:int", builtinRandInt, false),
+		mkBuiltin("rand:intn", builtinRandIntN, false),
 
 		mkBuiltin("len", builtinLen, false),
 		mkBuiltin("is_empty?", builtinEmpty, false), // TODO: is_empty?
@@ -184,6 +187,23 @@ func builtinTime() (Object, error) {
 
 func builtinTimeMillis() (Object, error) {
 	return NewInteger(int64(time.Now().UnixMilli())), nil
+}
+
+func builtinRandInt() (Object, error) {
+	n := rand.Int64()
+	return NewInteger(n), nil
+}
+
+func builtinRandIntN(n Object) (Object, error) {
+	if n.Type() != IntegerType {
+		return nil, fmt.Errorf("rand:intn: expected integer argument, got %s", n.String())
+	}
+	nInt := n.(*Integer).Value
+	if nInt <= 0 {
+		return nil, fmt.Errorf("rand:intn: argument must be positive, got %d", nInt)
+	}
+	r := rand.Int64N(nInt)
+	return NewInteger(int64(r)), nil
 }
 
 func builtinLen(a Object) (Object, error) {
