@@ -88,8 +88,38 @@
 (fn _max2 [a b] (cond (> a b) a b))
 
 (fn _quicksort [arr]
-    (let _pivot (head arr))
-    arr
+    (cond (or (is_empty? arr) (< (len arr) 2))
+        arr
+        (
+            (let _pivot (head arr))
+            (let _parts (list:reduce
+                (tail arr)
+                (fn [acc x]
+                    (
+                        (let _lt (get acc 0))
+                        (let _gt (get acc 1))
+                        (cond (< x _pivot)
+                            [
+                                (list:push _lt x)
+                                _gt
+                            ]
+                            [
+                                _lt
+                                (list:push _gt x)
+                            ]
+                        )
+                    )
+                )
+                [[] []]
+            ))
+            (+
+                (_quicksort (get _parts 0))
+                [_pivot]
+                (_quicksort (get _parts 1))
+            )
+        )
+    )
+
 )
 
 (fn _merge [a aix alen b bix blen]
@@ -195,8 +225,8 @@
         )))
 
         (_bench (fn [] (
-            (print "sorted: ")
-            (print (list:sort vec))
+            (print "merge-sorted: ")
+            (print (_mergesort vec))
             (print "\n")
         )))
 
