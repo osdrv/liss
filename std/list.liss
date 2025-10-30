@@ -179,7 +179,7 @@
     )
 )
 
-(fn _bench [fun]
+(fn _benchmark [fun]
     (let _start (time_ms))
     (let _res (fun))
     (let _end (time_ms))
@@ -206,7 +206,7 @@
         (print vec)
         (print "\n\n")
 
-        (_bench (fn [] (
+        (_benchmark (fn [] (
             (print "list:find: ")
             (print (list:find vec 7))
             (print "\n")
@@ -215,7 +215,7 @@
             (print "\n")
         )))
 
-        (_bench (fn [] (
+        (_benchmark (fn [] (
             (print "range 0..2: ")
             (print (list:range vec 0 2))
             (print "\n")
@@ -224,25 +224,25 @@
             (print "\n")
         )))
 
-        (_bench (fn [] (
+        (_benchmark (fn [] (
             (print "merge-sorted: ")
             (print (_mergesort vec))
             (print "\n")
         )))
 
-        (_bench (fn [] (
+        (_benchmark (fn [] (
             (print "quick-sorted: ")
             (print (_quicksort vec))
             (print "\n")
         )))
 
-        (_bench (fn [] (
+        (_benchmark (fn [] (
             (print "filtered < 10: ")
             (print (list:filter vec (fn [x] (< x 10))))
             (print "\n")
         )))
 
-        (_bench (fn [] (
+        (_benchmark (fn [] (
             (print "reduced < 10: ")
             (print (list:reduce vec (fn [acc x] (
                 (+ acc (cond (< x 10) [x] []))
@@ -250,7 +250,7 @@
             (print "\n")
         )))
 
-        (_bench (fn [] (
+        (_benchmark (fn [] (
             (print "mapped * 2: ")
             (print (list:map vec (fn [x] (* x 2))))
             (print "\n")
