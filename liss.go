@@ -13,6 +13,7 @@ import (
 	"osdrv/liss/repl"
 	"osdrv/liss/vm"
 	"path"
+	"slices"
 	"strings"
 )
 
@@ -71,15 +72,21 @@ func Execute(src string, opts repl.Options) (Result, error) {
 	return Run(bytecode, opts)
 }
 
-func CompileModule(nameOrPath string, opts repl.Options, cache map[string]*compiler.Module) (*compiler.Module, error) {
+func CompileModule(nameOrPath string, opts repl.Options,
+	cache map[string]*compiler.Module, chain []string) (*compiler.Module, error) {
 	resolved, err := resolveModulePath(nameOrPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve module path: %w", err)
 	}
-	name := path.Base(resolved)
+	name := getModuleNameFromPath(nameOrPath)
 
 	if mod, ok := cache[resolved]; ok {
 		return mod, nil
+	}
+
+	if slices.Contains(chain, name) {
+		return nil, fmt.Errorf("circular module dependency detected: %s -> %s",
+			strings.Join(append(chain, name), " -> "), name)
 	}
 
 	// try to read the resolved path
@@ -95,6 +102,12 @@ func CompileModule(nameOrPath string, opts repl.Options, cache map[string]*compi
 		return nil, fmt.Errorf("failed to parse module %s: %w", name, err)
 	}
 
+	mod := &compiler.Module{
+		Name:    name,
+		Path:    resolved,
+		Symbols: object.NewSymbolTable(),
+	}
+
 	imports := ast.NewTreeWalker(prog).CollectNodes(func(node *ast.Node) bool {
 		_, ok := (*node).(*ast.ImportExpression)
 		return ok
@@ -102,24 +115,37 @@ func CompileModule(nameOrPath string, opts repl.Options, cache map[string]*compi
 	if opts.Debug {
 		fmt.Printf("Module %s imports: %+v\n", name, imports)
 	}
+	for _, imp := range imports {
+		impExpr := imp.(*ast.ImportExpression)
+		var wantSymbols []string
+		for _, sym := range impExpr.Symbols.Items {
+			wantSymbols = append(wantSymbols, sym.(*ast.StringLiteral).Value)
+		}
+		impmod, err := CompileModule(impExpr.Ref.(*ast.StringLiteral).Value, opts,
+			cache, append(chain, name))
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile imported module %s: %w",
+				impExpr.Ref.(*ast.StringLiteral).Value, err)
+		}
+		if err := ImportModule(mod, impmod, impmod.Name, wantSymbols); err != nil {
+			return nil, fmt.Errorf("failed to import module %s: %w", impmod.Name, err)
+		}
+	}
 
-	c := compiler.New()
+	c := compiler.NewWithState(mod.Symbols, []object.Object{})
 	if err := c.Compile(prog); err != nil {
 		return nil, fmt.Errorf("failed to compile module %s: %w", name, err)
 	}
 
-	mod := &compiler.Module{
-		Name:     name,
-		Path:     resolved,
-		Bytecode: c.Bytecode(),
-		Symbols:  c.Symbols(),
-	}
+	mod.Bytecode = c.Bytecode()
+	mod.Symbols = c.Symbols()
+
 	return mod, nil
 }
 
 func ExecutePath(srcPath string, opts repl.Options) (Result, error) {
 	cache := make(map[string]*compiler.Module)
-	mod, err := CompileModule(srcPath, opts, cache)
+	mod, err := CompileModule(srcPath, opts, cache, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -200,13 +226,21 @@ func main() {
 }
 
 func ImportModule(base, imp *compiler.Module, modName string, wantSymbols []string) error {
-	st := base.Symbols
-	for _, exp := range imp.Symbols.Export(wantSymbols) {
-		fname := fmt.Sprintf("%s:%s", modName, exp.Name)
-		if _, err := st.Define(fname); err != nil {
-			return fmt.Errorf("failed to define imported symbol %s: %w", fname, err)
+	impmod := object.NewModule(modName, imp.Bytecode.Instrs, imp.Symbols, imp.Bytecode.Consts)
+	base.Symbols.DefineModule(modName, impmod)
+
+	wantAll := len(wantSymbols) == 0
+	wantSet := make(map[string]bool)
+	for _, sym := range wantSymbols {
+		wantSet[sym] = true
+	}
+
+	for _, sym := range imp.Symbols.Export(wantSymbols) {
+		if wantAll || wantSet[sym.Name] {
+			base.Symbols.Define(modName, sym.Name)
 		}
 	}
+
 	return nil
 }
 
@@ -224,4 +258,9 @@ func resolveModulePath(p string) (string, error) {
 
 func looksLikeStdModule(path string) bool {
 	return !strings.Contains(path, "/") && !strings.Contains(path, "\\") && !strings.HasPrefix(path, ".")
+}
+
+func getModuleNameFromPath(p string) string {
+	bp := path.Base(p)
+	return strings.TrimSuffix(bp, path.Ext(bp))
 }

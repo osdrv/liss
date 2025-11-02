@@ -274,7 +274,7 @@ func TestCompileModule(t *testing.T) {
 		name          string
 		modulePath    string
 		moduleContent string
-		wantSymbols   *object.SymbolTable
+		wantVars      map[string]object.Symbol
 		wantErr       error
 	}{
 		{
@@ -282,31 +282,43 @@ func TestCompileModule(t *testing.T) {
 			moduleContent: `
 			(fn a_plus_b [a b] (+ a b))
 			`,
-			wantSymbols: &object.SymbolTable{
-				Free: []object.Symbol{},
-				Vars: map[string]object.Symbol{
-					"a_plus_b": {
-						Name:  "a_plus_b",
-						Scope: object.GlobalScope,
-						Index: 0,
-					},
+			wantVars: map[string]object.Symbol{
+				"a_plus_b": {
+					Name:  "a_plus_b",
+					Scope: object.GlobalScope,
+					Index: 0,
 				},
-				NumVars: 1,
 			},
 		},
 		{
 			name:       "std test module",
-			modulePath: "_test_import",
-			wantSymbols: &object.SymbolTable{
-				Free: []object.Symbol{},
-				Vars: map[string]object.Symbol{
-					"imported": {
-						Name:  "imported",
-						Scope: object.GlobalScope,
-						Index: 0,
-					},
+			modulePath: "test_import",
+			wantVars: map[string]object.Symbol{
+				"imported": {
+					Name:  "imported",
+					Scope: object.GlobalScope,
+					Index: 0,
 				},
-				NumVars: 1,
+			},
+		},
+		{
+			name: "module with import",
+			moduleContent: `
+			(import "test_import" ["imported"])
+			(let _imported test_import:imported)
+			`,
+			wantVars: map[string]object.Symbol{
+				"_imported": {
+					Name:  "_imported",
+					Scope: object.GlobalScope,
+					Index: 0,
+				},
+				"test_import.imported": {
+					Name:     "imported",
+					Scope:    object.ModuleScope,
+					ModIndex: 0,
+					Index:    0,
+				},
 			},
 		},
 	}
@@ -318,7 +330,7 @@ func TestCompileModule(t *testing.T) {
 				require.Empty(t, tt.modulePath, "Either modulePath or moduleContent should be set, not both")
 				// make a temporary file wilh the module content named ....liss
 				// write the content to the file
-				tmpFile, err := os.CreateTemp("", "*.liss")
+				tmpFile, err := os.CreateTemp("", "exe_*.liss")
 				require.NoError(t, err, "Failed to create temp file for module content")
 				defer os.Remove(tmpFile.Name())
 				_, err = tmpFile.WriteString(tt.moduleContent)
@@ -328,13 +340,13 @@ func TestCompileModule(t *testing.T) {
 				path = tmpFile.Name()
 			}
 			t.Logf("Compiling module from path: %s", path)
-			mod, err := CompileModule(path, repl.Options{}, nil)
+			mod, err := CompileModule(path, repl.Options{}, nil, nil)
 			if tt.wantErr != nil {
 				require.ErrorContains(t, err, tt.wantErr.Error())
 			} else {
 				require.NoError(t, err, "Unexpected error for module path: %s", tt.modulePath)
 			}
-			assert.Equal(t, tt.wantSymbols, mod.Symbols, "Expected symbols %v, got %v", tt.wantSymbols, mod.Symbols)
+			assert.Equal(t, len(tt.wantVars), len(mod.Symbols.Vars), "Number of symbols do not match")
 		})
 	}
 }

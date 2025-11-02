@@ -42,8 +42,9 @@ func (e *BlockExpression) expressionNode() {}
 
 type IdentifierExpr struct {
 	emptyNode
-	Token token.Token
-	Name  string
+	Token  token.Token
+	Module string
+	Name   string
 }
 
 var _ Node = (*IdentifierExpr)(nil)
@@ -52,14 +53,41 @@ func NewIdentifierExpr(tok token.Token) (*IdentifierExpr, error) {
 	if tok.Type != token.Identifier {
 		return nil, fmt.Errorf("expected token type Identifier, got %s", tok.Type.String())
 	}
+	module := ""
+	name := tok.Literal
+	if strings.Contains(name, ":") {
+		parts := strings.Split(name, ":")
+		if len(parts) > 2 {
+			return nil, fmt.Errorf("invalid identifier format: %q", name)
+		}
+		if len(parts) == 2 {
+			module = parts[0]
+			name = parts[1]
+		}
+	}
 	return &IdentifierExpr{
-		Token: tok,
-		Name:  tok.Literal,
+		Token:  tok,
+		Module: module,
+		Name:   name,
 	}, nil
 }
 
+func (e *IdentifierExpr) FullName() string {
+	var sb strings.Builder
+	if e.Module != "" {
+		sb.WriteString(e.Module)
+		sb.WriteByte(':')
+	}
+	sb.WriteString(e.Name)
+	return sb.String()
+}
+
+func (e *IdentifierExpr) HasModule() bool {
+	return e.Module != ""
+}
+
 func (e *IdentifierExpr) String() string {
-	return e.Name
+	return e.FullName()
 }
 
 type OperatorExpr struct {

@@ -544,7 +544,7 @@ func TestCompileStep(t *testing.T) {
 			},
 			symbols: (func() *object.SymbolTable {
 				s := object.NewSymbolTable()
-				s.Define("myVar")
+				s.Define(object.MODULE_SELF, "myVar")
 				return s
 			})(),
 			managed:    false,
@@ -561,7 +561,7 @@ func TestCompileStep(t *testing.T) {
 			},
 			symbols: (func() *object.SymbolTable {
 				s := object.NewSymbolTable()
-				s.Define("myVar")
+				s.Define(object.MODULE_SELF, "myVar")
 				return s
 			})(),
 			managed:    true,

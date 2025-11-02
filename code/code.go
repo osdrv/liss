@@ -50,6 +50,7 @@ const (
 	OpCurrentClosure
 	OpReturn
 	OpBreakpoint
+	OpGetModule
 )
 
 type Definition struct {
@@ -97,6 +98,7 @@ var definitions = map[OpCode]*Definition{
 	OpCurrentClosure: {"OpCurrentClosure", []int{}},
 	OpReturn:         {"OpReturn", []int{}},
 	OpBreakpoint:     {"OpBreakpoint", []int{2, 2}},
+	OpGetModule:      {"OpGetModule", []int{2, 2}},
 }
 
 func Lookup(op OpCode) (*Definition, error) {

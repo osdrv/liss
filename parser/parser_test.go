@@ -465,7 +465,7 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name:  "import expression",
+			name:  "Import expression",
 			input: `(import "list")`,
 			want: []ast.Node{
 				&ast.ImportExpression{
@@ -484,7 +484,7 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name:  "import expression with symbols",
+			name:  "Import expression with symbols",
 			input: `(import "list" ["map" "reduce"])`,
 			want: []ast.Node{
 				&ast.ImportExpression{
@@ -523,6 +523,25 @@ func TestParse(t *testing.T) {
 					},
 				},
 			},
+		},
+		{
+			name:  "Valid identifier expression with module",
+			input: "math:pi",
+			want: []ast.Node{
+				&ast.IdentifierExpr{
+					Token: token.Token{
+						Type:    token.Identifier,
+						Literal: "math:pi",
+					},
+					Module: "math",
+					Name:   "pi",
+				},
+			},
+		},
+		{
+			name:    "Invalid identifier with multiple colons",
+			input:   "math:pi:value",
+			wantErr: errors.New("invalid identifier format: \"math:pi:value\""),
 		},
 	}
 

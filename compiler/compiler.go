@@ -199,7 +199,10 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 			c.emit(code.OpPop)
 		}
 	case *ast.LetExpression:
-		sym, err := c.symbols.Define(n.Identifier.Name)
+		if n.Identifier.HasModule() {
+			return fmt.Errorf("cannot define variable with module prefix: %s", n.Identifier.FullName())
+		}
+		sym, err := c.symbols.Define(object.MODULE_SELF, n.Identifier.FullName())
 		if err != nil {
 			return err
 		}
@@ -218,9 +221,9 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 			c.emit(code.OpPop)
 		}
 	case *ast.IdentifierExpr:
-		sym, ok := c.symbols.Resolve(n.Name)
+		sym, ok := c.symbols.Resolve(n.Module, n.Name)
 		if !ok {
-			return fmt.Errorf("undefined variable: %s", n.Name)
+			return fmt.Errorf("undefined variable: %s", n.FullName())
 		}
 		if err := c.loadSymbol(sym); err != nil {
 			return err
@@ -234,7 +237,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		if n.Name != nil {
 			name = n.Name.Name
 			if len(name) > 0 {
-				sym, err := c.symbols.Define(name)
+				sym, err := c.symbols.Define(object.MODULE_SELF, name)
 				if err != nil {
 					return err
 				}
@@ -251,7 +254,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		}
 
 		for _, arg := range n.Args {
-			c.symbols.Define(arg.Name)
+			c.symbols.Define(object.MODULE_SELF, arg.Name)
 		}
 
 		err := c.compileStep(ast.NewBlockExpression(n.Body), true, true)
@@ -292,7 +295,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 	case *ast.CallExpression:
 		callee := n.Callee
 		if calleeIdent, ok := callee.(*ast.IdentifierExpr); ok {
-			sym, ok := c.symbols.Resolve(calleeIdent.Name)
+			sym, ok := c.symbols.Resolve(calleeIdent.Module, calleeIdent.Name)
 			if !ok {
 				return fmt.Errorf("undefined function: %s", calleeIdent.Name)
 			}
@@ -307,6 +310,8 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 				c.emit(code.OpGetFree, sym.Index)
 			case object.FunctionScope:
 				c.emit(code.OpCurrentClosure)
+			case object.ModuleScope:
+				c.emit(code.OpGetModule, sym.ModIndex, sym.Index)
 			default:
 				return fmt.Errorf("unsupported symbol scope: %v", sym.Scope)
 			}
@@ -340,6 +345,8 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		bp := node.(*ast.BreakpointExpression)
 		c.emit(code.OpBreakpoint,
 			bp.Token.Location.Line, bp.Token.Location.Column)
+	case *ast.ImportExpression:
+		// TODO
 	default:
 		return fmt.Errorf("unsupported node type: %T", node)
 	}
@@ -359,6 +366,8 @@ func (c *Compiler) loadSymbol(sym object.Symbol) error {
 		c.emit(code.OpGetFree, sym.Index)
 	case object.FunctionScope:
 		c.emit(code.OpCurrentClosure)
+	case object.ModuleScope:
+		c.emit(code.OpGetModule, sym.ModIndex, sym.Index)
 	default:
 		return fmt.Errorf("unsupported symbol scope: %v", sym.Scope)
 	}
