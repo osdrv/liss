@@ -483,6 +483,47 @@ func TestParse(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "import expression with symbols",
+			input: `(import "list" ["map" "reduce"])`,
+			want: []ast.Node{
+				&ast.ImportExpression{
+					Token: token.Token{
+						Type:    token.Import,
+						Literal: "import",
+					},
+					Ref: &ast.StringLiteral{
+						Token: token.Token{
+							Type:    token.String,
+							Literal: `"list"`,
+						},
+						Value: "list",
+					},
+					Symbols: &ast.ListExpression{
+						Token: token.Token{
+							Type:    token.LBracket,
+							Literal: "[",
+						},
+						Items: []ast.Node{
+							&ast.StringLiteral{
+								Token: token.Token{
+									Type:    token.String,
+									Literal: `"map"`,
+								},
+								Value: "map",
+							},
+							&ast.StringLiteral{
+								Token: token.Token{
+									Type:    token.String,
+									Literal: `"reduce"`,
+								},
+								Value: "reduce",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

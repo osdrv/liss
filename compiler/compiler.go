@@ -24,6 +24,13 @@ type Bytecode struct {
 	Consts []object.Object
 }
 
+type Module struct {
+	Name     string
+	Path     string
+	Bytecode *Bytecode
+	Symbols  *object.SymbolTable
+}
+
 type EmittedInstruction struct {
 	OpCode   code.OpCode
 	Position int
@@ -370,6 +377,10 @@ func (c *Compiler) Bytecode() *Bytecode {
 		Instrs: c.currentInstrs(),
 		Consts: c.consts,
 	}
+}
+
+func (c *Compiler) Symbols() *object.SymbolTable {
+	return c.symbols
 }
 
 func (c *Compiler) currentInstrs() code.Instructions {

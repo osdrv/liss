@@ -176,7 +176,16 @@ func (p *Parser) parseImportExpression() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ast.NewImportExpression(tok, ref)
+	// list of symbols to import (optional). By default, all symbols are imported
+	var symbols *ast.ListExpression
+	if p.curToken.Type == token.LBracket {
+		symnode, err := p.parseListExpression()
+		if err != nil {
+			return nil, err
+		}
+		symbols = symnode.(*ast.ListExpression)
+	}
+	return ast.NewImportExpression(tok, ref, symbols)
 }
 
 func (p *Parser) parseBreakpointExpression() (ast.Node, error) {

@@ -11,6 +11,7 @@ import (
 	"osdrv/liss/parser"
 	"osdrv/liss/repl"
 	"osdrv/liss/vm"
+	"path"
 	"strings"
 )
 
@@ -142,4 +143,54 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+func CompileModule(nameOrPath string, opts repl.Options) (*compiler.Module, error) {
+	resolved, err := resolveModulePath(nameOrPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve module path: %w", err)
+	}
+	// try to read the resolved path
+	data, err := os.ReadFile(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read module file %s: %w", resolved, err)
+	}
+
+	name := path.Base(resolved)
+
+	lex := lexer.NewLexer(string(data))
+	par := parser.NewParser(lex)
+	prog, err := par.Parse()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse module %s: %w", name, err)
+	}
+
+	c := compiler.New()
+	if err := c.Compile(prog); err != nil {
+		return nil, fmt.Errorf("failed to compile module %s: %w", name, err)
+	}
+
+	mod := &compiler.Module{
+		Name:     name,
+		Path:     resolved,
+		Bytecode: c.Bytecode(),
+		Symbols:  c.Symbols(),
+	}
+	return mod, nil
+}
+
+func resolveModulePath(p string) (string, error) {
+	var resolved string
+	// If the path looks like a standard module name, search in ./std/{import_path}.liss
+	if looksLikeStdModule(p) {
+		resolved = path.Join(".", "std", p+".liss")
+	} else {
+		// Otherwise, treat it as a file path
+		resolved = p
+	}
+	return resolved, nil
+}
+
+func looksLikeStdModule(path string) bool {
+	return !strings.Contains(path, "/") && !strings.Contains(path, "\\") && !strings.HasPrefix(path, ".")
 }

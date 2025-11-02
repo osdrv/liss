@@ -1,0 +1,4 @@
+(import "list" ["sort"])
+
+(let arr [5 3 8 1 2])
+(println "sorted: " (list:sort arr))

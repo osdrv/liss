@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"osdrv/liss/token"
-	"strings"
+	"slices"
 )
 
 type LexerMode uint8
@@ -15,7 +15,7 @@ const (
 )
 
 type Lexer struct {
-	Source string
+	Source []rune
 	Tokens []token.Token
 
 	pos    int
@@ -27,7 +27,7 @@ type Lexer struct {
 
 func NewLexer(source string) *Lexer {
 	return &Lexer{
-		Source: source,
+		Source: []rune(source),
 		Tokens: make([]token.Token, 0),
 		pos:    0,
 		line:   1,
@@ -74,7 +74,7 @@ func (l *Lexer) emitEOF() token.Token {
 	}
 }
 
-func (l *Lexer) advance(mode LexerMode) {
+func (l *Lexer) advance(mode LexerMode) bool {
 	l.pos++
 	l.column++
 	if mode != LexerModeString {
@@ -82,8 +82,10 @@ func (l *Lexer) advance(mode LexerMode) {
 			l.pos++
 			l.line++
 			l.column = 1
+			return true
 		}
 	}
+	return false
 }
 
 func (l *Lexer) emitString() token.Token {
@@ -125,10 +127,10 @@ func (l *Lexer) emitString() token.Token {
 			case 'v':
 				b.WriteByte('\v')
 			default:
-				b.WriteByte(ch)
+				b.WriteRune(ch)
 			}
 		} else {
-			b.WriteByte(ch)
+			b.WriteRune(ch)
 		}
 	}
 	return token.Token{
@@ -176,7 +178,7 @@ func (l *Lexer) emitNumeric() token.Token {
 		to++
 		l.advance(LexerModeDefault)
 	}
-	tok.Literal = l.Source[from:to]
+	tok.Literal = string(l.Source[from:to])
 	return tok
 }
 
@@ -232,7 +234,7 @@ func (l *Lexer) emitOperator() token.Token {
 		return l.emitError("Unknown operator `" + string(l.Source[from]) + "`")
 	}
 	tok.Type = typ
-	tok.Literal = l.Source[from:l.pos]
+	tok.Literal = string(l.Source[from:l.pos])
 	return tok
 }
 
@@ -283,11 +285,12 @@ func (l *Lexer) emitKWOrIdentifier() token.Token {
 	}
 
 	lit := l.Source[from:to]
-	if strings.ContainsRune(lit[:len(lit)-1], '?') {
+
+	if slices.Contains(lit[:len(lit)-1], '?') {
 		return l.emitError("Invalid character '?' in the middle of an identifier: it is only allowed at the end")
 	}
 
-	tok.Literal = lit
+	tok.Literal = string(lit)
 	if kwType, ok := token.Keywords[tok.Literal]; ok {
 		tok.Type = kwType
 	} else {
@@ -322,7 +325,7 @@ func (l *Lexer) emitAccessor() token.Token {
 			break
 		}
 	}
-	tok.Literal = l.Source[from:to]
+	tok.Literal = string(l.Source[from:to])
 
 	return tok
 }
@@ -396,11 +399,9 @@ func (l *Lexer) isAccessor() bool {
 
 func (l *Lexer) skipComment() {
 	for !l.isEOF() {
-		ch := l.Source[l.pos]
-		if isNewline(ch) {
+		if nl := l.advance(LexerModeDefault); nl {
 			break
 		}
-		l.advance(LexerModeDefault)
 	}
 }
 
@@ -414,34 +415,34 @@ func (l *Lexer) skipWhitespace() {
 	}
 }
 
-func isQuote(ch byte) bool {
+func isQuote(ch rune) bool {
 	return ch == '"' || ch == '\''
 }
 
-func isSign(ch byte) bool {
+func isSign(ch rune) bool {
 	return ch == '+' || ch == '-'
 }
 
-func isExponent(ch byte) bool {
+func isExponent(ch rune) bool {
 	return ch == 'e' || ch == 'E'
 }
 
-func isDigit(ch byte) bool {
+func isDigit(ch rune) bool {
 	return ch >= '0' && ch <= '9'
 }
 
-func isWhitespace(ch byte) bool {
+func isWhitespace(ch rune) bool {
 	return ch == ' ' || ch == '\t' || isNewline(ch)
 }
 
-func isNewline(ch byte) bool {
+func isNewline(ch rune) bool {
 	return ch == '\n' || ch == '\r'
 }
 
-func isAlpha(ch byte) bool {
+func isAlpha(ch rune) bool {
 	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
 }
 
-func isBracket(ch byte) bool {
+func isBracket(ch rune) bool {
 	return ch == '[' || ch == ']'
 }

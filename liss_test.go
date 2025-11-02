@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"osdrv/liss/object"
 	"osdrv/liss/repl"
 	"osdrv/liss/test"
@@ -264,6 +265,76 @@ func TestExecute(t *testing.T) {
 			assert.Equal(t, tt.wantErr, err, "Expected error %v, got %v", tt.wantErr, err)
 			test.AssertObjectEql(t, res.(object.Object), tt.want)
 			//assert.Equal(t, tt.want, res, "Expected result %v, got %v", tt.want, res)
+		})
+	}
+}
+
+func TestCompileModule(t *testing.T) {
+	tests := []struct {
+		name          string
+		modulePath    string
+		moduleContent string
+		wantSymbols   *object.SymbolTable
+		wantErr       error
+	}{
+		{
+			name: "simple module with a single function",
+			moduleContent: `
+			(fn a_plus_b [a b] (+ a b))
+			`,
+			wantSymbols: &object.SymbolTable{
+				Free: []object.Symbol{},
+				Vars: map[string]object.Symbol{
+					"a_plus_b": {
+						Name:  "a_plus_b",
+						Scope: object.GlobalScope,
+						Index: 0,
+					},
+				},
+				NumVars: 1,
+			},
+		},
+		{
+			name:       "std test module",
+			modulePath: "_test_import",
+			wantSymbols: &object.SymbolTable{
+				Free: []object.Symbol{},
+				Vars: map[string]object.Symbol{
+					"imported": {
+						Name:  "imported",
+						Scope: object.GlobalScope,
+						Index: 0,
+					},
+				},
+				NumVars: 1,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := tt.modulePath
+			if tt.moduleContent != "" {
+				require.Empty(t, tt.modulePath, "Either modulePath or moduleContent should be set, not both")
+				// make a temporary file wilh the module content named ....liss
+				// write the content to the file
+				tmpFile, err := os.CreateTemp("", "*.liss")
+				require.NoError(t, err, "Failed to create temp file for module content")
+				defer os.Remove(tmpFile.Name())
+				_, err = tmpFile.WriteString(tt.moduleContent)
+				require.NoError(t, err, "Failed to write module content to temp file")
+				err = tmpFile.Close()
+				require.NoError(t, err, "Failed to close temp file")
+				path = tmpFile.Name()
+			}
+			t.Logf("Compiling module from path: %s", path)
+			mod, err := CompileModule(path, repl.Options{})
+			if tt.wantErr != nil {
+				require.ErrorContains(t, err, tt.wantErr.Error())
+			} else {
+				require.NoError(t, err, "Unexpected error for module path: %s", tt.modulePath)
+			}
+			assert.Equal(t, tt.wantSymbols, mod.Symbols, "Expected symbols %v, got %v", tt.wantSymbols, mod.Symbols)
 		})
 	}
 }

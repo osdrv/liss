@@ -132,21 +132,36 @@ func (e *CondExpression) String() string {
 func (e *CondExpression) expressionNode() {}
 
 type ImportExpression struct {
-	Token token.Token
-	Ref   Node
+	Token   token.Token
+	Ref     Node
+	Symbols *ListExpression
 }
 
 var _ Node = (*ImportExpression)(nil)
 
-func NewImportExpression(tok token.Token, ref Node) (*ImportExpression, error) {
+func NewImportExpression(tok token.Token, ref Node, symbols *ListExpression) (*ImportExpression, error) {
 	return &ImportExpression{
-		Token: tok,
-		Ref:   ref,
+		Token:   tok,
+		Ref:     ref,
+		Symbols: symbols,
 	}, nil
 }
 
 func (e *ImportExpression) String() string {
-	return "import " + e.Ref.String()
+	var sb strings.Builder
+	sb.WriteString("import ")
+	sb.WriteString(e.Ref.String())
+	if e.Symbols != nil {
+		sb.WriteString(" [")
+		for i, sym := range e.Symbols.Items {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			sb.WriteString(sym.String())
+		}
+		sb.WriteByte(']')
+	}
+	return sb.String()
 }
 
 func (e *ImportExpression) expressionNode() {}

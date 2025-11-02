@@ -80,7 +80,7 @@
 
 (fn _max2 [a b] (cond (> a b) a b))
 
-(fn _quicksort [arr]
+(fn quicksort [arr]
     (cond (or (is_empty? arr) (< (len arr) 2))
         arr
         (
@@ -106,9 +106,9 @@
                 [[] []]
             ))
             (+
-                (_quicksort (get _parts 0))
+                (quicksort (get _parts 0))
                 [_pivot]
-                (_quicksort (get _parts 1))
+                (quicksort (get _parts 1))
             )
         )
     )
@@ -162,7 +162,7 @@
             (let _len (len arr))
             (cond (<= _len 1)
                 arr
-                (_quicksort arr)
+                (quicksort arr)
             )
         )
     )
@@ -217,7 +217,7 @@
 
         (_benchmark (fn [] (
             (print "quick-sorted: ")
-            (println (_quicksort vec))
+            (println (quicksort vec))
         )))
 
         (_benchmark (fn [] (
