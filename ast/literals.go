@@ -7,6 +7,7 @@ import (
 )
 
 type NullLiteral struct {
+	emptyNode
 	Token token.Token
 }
 
@@ -24,9 +25,8 @@ func (n *NullLiteral) String() string {
 	return "null"
 }
 
-func (n *NullLiteral) expressionNode() {}
-
 type IntegerLiteral struct {
+	emptyNode
 	Token token.Token
 	Value int64
 }
@@ -49,9 +49,8 @@ func (i *IntegerLiteral) String() string {
 	return strconv.FormatInt(i.Value, 10)
 }
 
-func (i *IntegerLiteral) expressionNode() {}
-
 type FloatLiteral struct {
+	emptyNode
 	Token token.Token
 	Value float64
 }
@@ -74,9 +73,8 @@ func (f *FloatLiteral) String() string {
 	return strconv.FormatFloat(f.Value, 'f', -1, 64)
 }
 
-func (f *FloatLiteral) expressionNode() {}
-
 type StringLiteral struct {
+	emptyNode
 	Token token.Token
 	Value string
 }
@@ -95,9 +93,8 @@ func (s *StringLiteral) String() string {
 	return s.Value
 }
 
-func (s *StringLiteral) expressionNode() {}
-
 type BooleanLiteral struct {
+	emptyNode
 	Token token.Token
 	Value bool
 }
@@ -118,5 +115,3 @@ func (b *BooleanLiteral) String() string {
 	}
 	return "false"
 }
-
-func (b *BooleanLiteral) expressionNode() {}

@@ -328,7 +328,7 @@ func TestCompileModule(t *testing.T) {
 				path = tmpFile.Name()
 			}
 			t.Logf("Compiling module from path: %s", path)
-			mod, err := CompileModule(path, repl.Options{})
+			mod, err := CompileModule(path, repl.Options{}, nil)
 			if tt.wantErr != nil {
 				require.ErrorContains(t, err, tt.wantErr.Error())
 			} else {

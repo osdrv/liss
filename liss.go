@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"osdrv/liss/ast"
 	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/lexer"
@@ -70,6 +71,64 @@ func Execute(src string, opts repl.Options) (Result, error) {
 	return Run(bytecode, opts)
 }
 
+func CompileModule(nameOrPath string, opts repl.Options, cache map[string]*compiler.Module) (*compiler.Module, error) {
+	resolved, err := resolveModulePath(nameOrPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve module path: %w", err)
+	}
+	name := path.Base(resolved)
+
+	if mod, ok := cache[resolved]; ok {
+		return mod, nil
+	}
+
+	// try to read the resolved path
+	data, err := os.ReadFile(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read module file %s: %w", resolved, err)
+	}
+
+	lex := lexer.NewLexer(string(data))
+	par := parser.NewParser(lex)
+	prog, err := par.Parse()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse module %s: %w", name, err)
+	}
+
+	imports := ast.NewTreeWalker(prog).CollectNodes(func(node *ast.Node) bool {
+		_, ok := (*node).(*ast.ImportExpression)
+		return ok
+	})
+	if opts.Debug {
+		fmt.Printf("Module %s imports: %+v\n", name, imports)
+	}
+
+	c := compiler.New()
+	if err := c.Compile(prog); err != nil {
+		return nil, fmt.Errorf("failed to compile module %s: %w", name, err)
+	}
+
+	mod := &compiler.Module{
+		Name:     name,
+		Path:     resolved,
+		Bytecode: c.Bytecode(),
+		Symbols:  c.Symbols(),
+	}
+	return mod, nil
+}
+
+func ExecutePath(srcPath string, opts repl.Options) (Result, error) {
+	cache := make(map[string]*compiler.Module)
+	mod, err := CompileModule(srcPath, opts, cache)
+	if err != nil {
+		return nil, err
+	}
+	if opts.Verbose {
+		printBytecode(mod.Bytecode)
+	}
+	return Run(mod.Bytecode, opts)
+}
+
 func printBytecode(bc *compiler.Bytecode) {
 	shift := func(s string, pref string) string {
 		var b strings.Builder
@@ -132,12 +191,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	data, err := os.ReadFile(*src)
-	if err != nil {
-		fmt.Fprintf(er, "Error reading file %s: %v\n", *src, err)
-		os.Exit(1)
-	}
-	if _, err := Execute(string(data), opts); err != nil {
+	if _, err := ExecutePath(*src, opts); err != nil {
 		fmt.Fprintf(er, "Error executing file %s: %v\n", *src, err)
 		os.Exit(1)
 	}
@@ -145,38 +199,15 @@ func main() {
 	os.Exit(0)
 }
 
-func CompileModule(nameOrPath string, opts repl.Options) (*compiler.Module, error) {
-	resolved, err := resolveModulePath(nameOrPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve module path: %w", err)
+func ImportModule(base, imp *compiler.Module, modName string, wantSymbols []string) error {
+	st := base.Symbols
+	for _, exp := range imp.Symbols.Export(wantSymbols) {
+		fname := fmt.Sprintf("%s:%s", modName, exp.Name)
+		if _, err := st.Define(fname); err != nil {
+			return fmt.Errorf("failed to define imported symbol %s: %w", fname, err)
+		}
 	}
-	// try to read the resolved path
-	data, err := os.ReadFile(resolved)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read module file %s: %w", resolved, err)
-	}
-
-	name := path.Base(resolved)
-
-	lex := lexer.NewLexer(string(data))
-	par := parser.NewParser(lex)
-	prog, err := par.Parse()
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse module %s: %w", name, err)
-	}
-
-	c := compiler.New()
-	if err := c.Compile(prog); err != nil {
-		return nil, fmt.Errorf("failed to compile module %s: %w", name, err)
-	}
-
-	mod := &compiler.Module{
-		Name:     name,
-		Path:     resolved,
-		Bytecode: c.Bytecode(),
-		Symbols:  c.Symbols(),
-	}
-	return mod, nil
+	return nil
 }
 
 func resolveModulePath(p string) (string, error) {

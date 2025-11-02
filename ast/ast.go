@@ -7,7 +7,16 @@ import (
 
 type Node interface {
 	String() string
+	Children() []Node
 	expressionNode()
+}
+
+type emptyNode struct{}
+
+func (n *emptyNode) expressionNode() {}
+
+func (n *emptyNode) Children() []Node {
+	return nil
 }
 
 type Operator uint8

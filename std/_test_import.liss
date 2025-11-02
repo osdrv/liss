@@ -1,2 +1,2 @@
-; This
+; This module is used to test import functionality
 (let imported true)

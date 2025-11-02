@@ -34,9 +34,14 @@ func (e *BlockExpression) String() string {
 	return b.String()
 }
 
+func (e *BlockExpression) Children() []Node {
+	return e.Nodes
+}
+
 func (e *BlockExpression) expressionNode() {}
 
 type IdentifierExpr struct {
+	emptyNode
 	Token token.Token
 	Name  string
 }
@@ -56,8 +61,6 @@ func NewIdentifierExpr(tok token.Token) (*IdentifierExpr, error) {
 func (e *IdentifierExpr) String() string {
 	return e.Name
 }
-
-func (e *IdentifierExpr) expressionNode() {}
 
 type OperatorExpr struct {
 	Token    token.Token
@@ -96,6 +99,10 @@ func (e *OperatorExpr) String() string {
 	return b.String()
 }
 
+func (e *OperatorExpr) Children() []Node {
+	return e.Operands
+}
+
 func (e *OperatorExpr) expressionNode() {}
 
 type CondExpression struct {
@@ -129,9 +136,17 @@ func (e *CondExpression) String() string {
 	return b.String()
 }
 
+func (e *CondExpression) Children() []Node {
+	if e.Else != nil {
+		return []Node{e.Cond, e.Then, e.Else}
+	}
+	return []Node{e.Cond, e.Then}
+}
+
 func (e *CondExpression) expressionNode() {}
 
 type ImportExpression struct {
+	emptyNode
 	Token   token.Token
 	Ref     Node
 	Symbols *ListExpression
@@ -164,9 +179,8 @@ func (e *ImportExpression) String() string {
 	return sb.String()
 }
 
-func (e *ImportExpression) expressionNode() {}
-
 type LetExpression struct {
+	emptyNode
 	Token      token.Token
 	Identifier *IdentifierExpr
 	Value      Node
@@ -192,8 +206,6 @@ func (e *LetExpression) String() string {
 
 	return b.String()
 }
-
-func (e *LetExpression) expressionNode() {}
 
 type FunctionExpression struct {
 	Token token.Token
@@ -239,6 +251,15 @@ func (e *FunctionExpression) String() string {
 	return b.String()
 }
 
+func (e *FunctionExpression) Children() []Node {
+	nodes := make([]Node, 0, len(e.Args)+len(e.Body))
+	for _, arg := range e.Args {
+		nodes = append(nodes, arg)
+	}
+	nodes = append(nodes, e.Body...)
+	return nodes
+}
+
 func (e *FunctionExpression) expressionNode() {}
 
 type CallExpression struct {
@@ -267,6 +288,13 @@ func (e *CallExpression) String() string {
 	}
 	b.WriteByte(')')
 	return b.String()
+}
+
+func (e *CallExpression) Children() []Node {
+	nodes := make([]Node, 0, 1+len(e.Args))
+	nodes = append(nodes, e.Callee)
+	nodes = append(nodes, e.Args...)
+	return nodes
 }
 
 func (e *CallExpression) expressionNode() {}
@@ -298,9 +326,14 @@ func (e *ListExpression) String() string {
 	return b.String()
 }
 
+func (e *ListExpression) Children() []Node {
+	return e.Items
+}
+
 func (e *ListExpression) expressionNode() {}
 
 type BreakpointExpression struct {
+	emptyNode
 	Token token.Token
 }
 
@@ -315,5 +348,3 @@ func NewBreakpointExpression(tok token.Token) (*BreakpointExpression, error) {
 func (e *BreakpointExpression) String() string {
 	return "breakpoint"
 }
-
-func (e *BreakpointExpression) expressionNode() {}

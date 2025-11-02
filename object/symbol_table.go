@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"strings"
 )
 
 type Scope uint8
@@ -12,6 +13,7 @@ const (
 	BuiltinScope
 	FreeScope
 	FunctionScope
+	ModuleScope
 )
 
 type Symbol struct {
@@ -26,6 +28,8 @@ type SymbolTable struct {
 
 	Vars    map[string]Symbol
 	NumVars int
+
+	Modules map[string]*SymbolTable
 }
 
 func NewSymbolTable() *SymbolTable {
@@ -98,4 +102,27 @@ func (st *SymbolTable) Resolve(name string) (Symbol, bool) {
 		return free, true
 	}
 	return symbol, ok
+}
+
+func (st *SymbolTable) Export(list []string) []Symbol {
+	wantAll := len(list) == 0
+	wantSet := make(map[string]bool)
+	for _, name := range list {
+		wantSet[name] = true
+	}
+	exp := []Symbol{}
+	for _, sym := range st.Vars {
+		if !isPublicSymbol(sym) {
+			continue
+		}
+		if wantAll || wantSet[sym.Name] {
+			exp = append(exp, sym)
+		}
+	}
+	return exp
+}
+
+func isPublicSymbol(sym Symbol) bool {
+	// We import all global symbols that do not start with an underscore
+	return sym.Scope == GlobalScope && !strings.HasPrefix(sym.Name, "_")
 }
