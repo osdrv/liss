@@ -116,50 +116,42 @@
 )
 
 (fn mergesort [arr]
-    (cond (or (is_null? arr) (< (len arr) 2))
-        arr
-        (
-            (fn _merge2 [acc a aix b bix] (
-                (cond (>= aix (len a))
-                    (+ acc (range b bix (len b)))
-                    (cond (>= bix (len b))
-                        (+ acc (range a aix (len a)))
-                        (
-                            (cond (< (get a aix) (get b bix))
-                                (println (+ acc [(get a aix)]) a (+ aix 1) b bix)
-                                (println (+ acc [(get b bix)]) a aix b (+ bix 1))
-                            )
-                            (cond (< (get a aix) (get b bix))
-                                (_merge2 (+ acc [(get a aix)]) a (+ aix 1) b bix)
-                                (_merge2 (+ acc [(get b bix)]) a aix b (+ bix 1))
-                            )
-                        )
-                    )
+    (fn _merge2 [acc a aix b bix]
+        (cond (>= aix (len a))
+            (+ acc (range b bix (len b)))
+            (cond (>= bix (len b))
+                (+ acc (range a aix (len a)))
+                (cond (< (get a aix) (get b bix))
+                    (_merge2 (+ acc [(get a aix)]) a (+ aix 1) b bix)
+                    (_merge2 (+ acc [(get b bix)]) a aix b (+ bix 1))
                 )
-            ))
-            (fn _mergesort [arr] (
-                (cond (< (len arr) 2)
-                    arr
+            )
+        )
+    )
+    (fn _mergesort [arr]
+        (cond (< (len arr) 2)
+            arr
+            (
+                (cond (= (len arr) 2)
+                    [
+                        (_min2 (get arr 0) (get arr 1))
+                        (_max2 (get arr 0) (get arr 1))
+                    ]
                     (
-                        (cond (= (len arr) 2)
-                            [
-                                (_min2 (get arr 0) (get arr 1))
-                                (_max2 (get arr 0) (get arr 1))
-                            ]
-                            (
-                                (let _mid (/ (len arr) 2))
-                                (let _a (range arr 0 _mid))
-                                (let _b (range arr _mid (len arr)))
-                                (_merge2 [] (_mergesort _a) 0 (_mergesort _b) 0)
-                            )
-                        )
+                        (let _mid (/ (len arr) 2))
+                        (let _a (range arr 0 _mid))
+                        (let _b (range arr _mid (len arr)))
+                        (_merge2 [] (_mergesort _a) 0 (_mergesort _b) 0)
                     )
                 )
-            ))
-            (_mergesort arr)
+            )
         )
     )
 
+    (cond (or (is_null? arr) (< (len arr) 2))
+        arr
+        (_mergesort arr)
+    )
 )
 
 
@@ -200,7 +192,7 @@
 
 (fn test []
     (
-        (let vec (_mk_rand_vec 10))
+        (let vec (_mk_rand_vec 1000))
         (print "list: ")
         (println vec "\n")
 
