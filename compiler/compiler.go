@@ -183,7 +183,9 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		}
 	case *ast.ListExpression:
 		for _, item := range n.Items {
-			c.compileStep(item, true, false)
+			if err := c.compileStep(item, true, false); err != nil {
+				return err
+			}
 		}
 		c.emit(code.OpList, len(n.Items))
 		if !managed {
@@ -277,9 +279,9 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 				c.emit(code.OpSetLocal, fnsym.Index)
 			}
 		}
-		if !managed {
-			c.emit(code.OpPop)
-		}
+		// if !managed {
+		// 	c.emit(code.OpPop)
+		// }
 	case *ast.CallExpression:
 		callee := n.Callee
 		if calleeIdent, ok := callee.(*ast.IdentifierExpr); ok {
@@ -307,8 +309,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 				}
 			}
 		} else if calleeFn, ok := callee.(*ast.FunctionExpression); ok {
-			err := c.compileStep(calleeFn, true, false)
-			if err != nil {
+			if err := c.compileStep(calleeFn, true, false); err != nil {
 				return err
 			}
 			for _, arg := range n.Args {
@@ -328,6 +329,12 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		if !managed {
 			c.emit(code.OpPop)
 		}
+	case *ast.BreakpointExpression:
+		bp := node.(*ast.BreakpointExpression)
+		c.emit(code.OpBreakpoint,
+			bp.Token.Location.Line, bp.Token.Location.Column)
+	default:
+		return fmt.Errorf("unsupported node type: %T", node)
 	}
 
 	return nil

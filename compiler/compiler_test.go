@@ -1116,7 +1116,6 @@ func TestFunctionExpr(t *testing.T) {
 			wantInstrs: []code.Instructions{
 				code.Make(code.OpClosure, 1, 0),
 				code.Make(code.OpSetGlobal, 0),
-				code.Make(code.OpPop),
 				code.Make(code.OpGetGlobal, 0),
 				code.Make(code.OpConst, 2),
 				code.Make(code.OpCall, 1),
@@ -1148,7 +1147,6 @@ func TestFunctionExpr(t *testing.T) {
 				[]code.Instructions{
 					code.Make(code.OpClosure, 1, 0),
 					code.Make(code.OpSetLocal, 0), // countdown
-					code.Make(code.OpPop),
 					code.Make(code.OpGetLocal, 0), // countdown
 					code.Make(code.OpConst, 2),    // 1
 					code.Make(code.OpTailCall, 1),
@@ -1158,9 +1156,7 @@ func TestFunctionExpr(t *testing.T) {
 			wantInstrs: []code.Instructions{
 				code.Make(code.OpClosure, 3, 0), // wrapper
 				code.Make(code.OpSetGlobal, 0),  // wrapper
-				// TODO: optimize away pops for last expr in function
-				code.Make(code.OpPop),
-				code.Make(code.OpGetGlobal, 0), // wrapper
+				code.Make(code.OpGetGlobal, 0),  // wrapper
 				code.Make(code.OpCall, 0),
 				code.Make(code.OpPop),
 			},
@@ -1297,7 +1293,6 @@ func TestFunctionCall(t *testing.T) {
 			wantInstrs: []code.Instructions{
 				code.Make(code.OpClosure, 2, 0),
 				code.Make(code.OpSetGlobal, 0),
-				code.Make(code.OpPop),
 				code.Make(code.OpGetGlobal, 0),
 				code.Make(code.OpCall, 0),
 				code.Make(code.OpPop),
@@ -1323,7 +1318,6 @@ func TestFunctionCall(t *testing.T) {
 			wantInstrs: []code.Instructions{
 				code.Make(code.OpClosure, 0, 0),
 				code.Make(code.OpSetGlobal, 0),
-				code.Make(code.OpPop),
 				code.Make(code.OpGetGlobal, 0),
 				code.Make(code.OpConst, 1),
 				code.Make(code.OpConst, 2),
@@ -1356,10 +1350,8 @@ func TestFunctionCall(t *testing.T) {
 			wantInstrs: []code.Instructions{
 				code.Make(code.OpClosure, 2, 0),
 				code.Make(code.OpSetGlobal, 0),
-				code.Make(code.OpPop),
 				code.Make(code.OpClosure, 3, 0),
 				code.Make(code.OpSetGlobal, 1),
-				code.Make(code.OpPop),
 				code.Make(code.OpGetGlobal, 1),
 				code.Make(code.OpCall, 0),
 				code.Make(code.OpPop),

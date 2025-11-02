@@ -143,7 +143,7 @@ func TestRun(t *testing.T) {
 		{
 			name:    "comparison with incompatible types",
 			input:   "(= 42 true)",
-			wantErr: NewTypeMismatchError("Integer Vs Bool"),
+			wantErr: NewTypeMismatchError("Integer Vs Bool with comparator OpEql"),
 		},
 		{
 			name:  "comparison: unequal ints",
@@ -173,7 +173,7 @@ func TestRun(t *testing.T) {
 		{
 			name:    "comparison with incompatible types: int + bool",
 			input:   "(!= 42 true)",
-			wantErr: NewTypeMismatchError("Integer Vs Bool"),
+			wantErr: NewTypeMismatchError("Integer Vs Bool with comparator OpNotEql"),
 		},
 		{
 			name:  "comparison: unequal null vs int",

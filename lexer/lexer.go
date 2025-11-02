@@ -56,6 +56,9 @@ func (l *Lexer) NextToken() token.Token {
 		return l.emitKWOrIdentifier()
 	case l.isAccessor():
 		return l.emitAccessor()
+	case l.isComment():
+		l.skipComment()
+		return l.NextToken()
 	default:
 		return l.emitError("Unexpected character `" + string(l.Source[l.pos]) + "`")
 	}
@@ -368,6 +371,10 @@ func (l *Lexer) isOperator() bool {
 		ch == '<'
 }
 
+func (l *Lexer) isComment() bool {
+	return !l.isEOF() && l.Source[l.pos] == ';'
+}
+
 func (l *Lexer) isParenthesis() bool {
 	return !l.isEOF() && (l.Source[l.pos] == '(' ||
 		l.Source[l.pos] == ')' ||
@@ -385,6 +392,16 @@ func (l *Lexer) isKWOrIdentifier() bool {
 
 func (l *Lexer) isAccessor() bool {
 	return !l.isEOF() && l.Source[l.pos] == '.'
+}
+
+func (l *Lexer) skipComment() {
+	for !l.isEOF() {
+		ch := l.Source[l.pos]
+		if isNewline(ch) {
+			break
+		}
+		l.advance(LexerModeDefault)
+	}
 }
 
 func (l *Lexer) skipWhitespace() {

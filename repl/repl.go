@@ -15,6 +15,7 @@ import (
 type Options struct {
 	Debug       bool
 	Interactive bool
+	Verbose     bool
 }
 
 const Prompt = "liss> "

@@ -284,3 +284,21 @@ func (e *ListExpression) String() string {
 }
 
 func (e *ListExpression) expressionNode() {}
+
+type BreakpointExpression struct {
+	Token token.Token
+}
+
+var _ Node = (*BreakpointExpression)(nil)
+
+func NewBreakpointExpression(tok token.Token) (*BreakpointExpression, error) {
+	return &BreakpointExpression{
+		Token: tok,
+	}, nil
+}
+
+func (e *BreakpointExpression) String() string {
+	return "breakpoint"
+}
+
+func (e *BreakpointExpression) expressionNode() {}

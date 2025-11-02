@@ -79,7 +79,7 @@ func compare(a, b object.Object, cmp code.OpCode) (bool, error) {
 
 	if ac.Type() != bc.Type() {
 		return false, NewTypeMismatchError(
-			fmt.Sprintf("%s Vs %s", ac.Type().String(), bc.Type().String()))
+			fmt.Sprintf("%s Vs %s with comparator %s", ac.Type().String(), bc.Type().String(), code.PrintOpCode(cmp)))
 	}
 
 	switch ac.Type() {

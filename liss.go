@@ -4,8 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/lexer"
+	"osdrv/liss/object"
 	"osdrv/liss/parser"
 	"osdrv/liss/repl"
 	"osdrv/liss/vm"
@@ -17,25 +19,38 @@ type Result interface {
 }
 
 func Run(bc *compiler.Bytecode, opts repl.Options) (Result, error) {
-	vm := vm.New(bc)
-	defer vm.Shutdown()
-	if err := vm.Run(); err != nil {
+	var vmopts vm.VMOptions
+	if opts.Debug {
+		vmopts.Debug = 1
+		if opts.Verbose {
+			vmopts.Debug++
+		}
+	}
+	vminst := vm.New(bc).WithOptions(vmopts)
+
+	defer vminst.Shutdown()
+	if err := vminst.Run(); err != nil {
 		return nil, fmt.Errorf("failed to run bytecode: %w", err)
 	}
-	top := vm.LastPopped()
+	top := vminst.LastPopped()
 	if opts.Debug {
-		fmt.Printf("VM stack: %s\n", vm.PrintStack())
+		fmt.Printf("VM stack: %s\n", vminst.PrintStack())
 	}
 	return top, nil
 }
 
-func Compile(src string) (*compiler.Bytecode, error) {
+func Compile(src string, opts repl.Options) (*compiler.Bytecode, error) {
 	lex := lexer.NewLexer(src)
 	par := parser.NewParser(lex)
 	prog, err := par.Parse()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse program: %w", err)
 	}
+
+	if opts.Debug {
+		fmt.Printf("AST:\n%s\n", prog.String())
+	}
+
 	c := compiler.New()
 	if err := c.Compile(prog); err != nil {
 		return nil, fmt.Errorf("failed to compile program: %w", err)
@@ -44,11 +59,42 @@ func Compile(src string) (*compiler.Bytecode, error) {
 }
 
 func Execute(src string, opts repl.Options) (Result, error) {
-	bytecode, err := Compile(src)
+	bytecode, err := Compile(src, opts)
 	if err != nil {
 		return nil, err
 	}
+	if opts.Verbose {
+		printBytecode(bytecode)
+	}
 	return Run(bytecode, opts)
+}
+
+func printBytecode(bc *compiler.Bytecode) {
+	shift := func(s string, pref string) string {
+		var b strings.Builder
+		for line := range strings.SplitSeq(s, "\n") {
+			if line != "" {
+				b.WriteString(pref)
+			}
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
+		return b.String()
+	}
+
+	fmt.Printf("Constants:\n")
+	for i, cnst := range bc.Consts {
+		switch cnst := cnst.(type) {
+		case *object.Function:
+			fmt.Printf("%04d: %s\n", i, cnst.String())
+			fmt.Printf("  NumLocals: %d\n", cnst.NumLocals)
+			fmt.Printf("  Instructions:\n%s\n", shift(code.PrintInstr(cnst.Instrs), "    "))
+		default:
+			fmt.Printf("%04d: %s\n", i, cnst.String())
+		}
+	}
+	fmt.Print("\n")
+	fmt.Printf("Instructions:\n%s\n", shift(code.PrintInstr(bc.Instrs), "  "))
 }
 
 func main() {
@@ -58,12 +104,14 @@ func main() {
 	defer er.Close()
 
 	debug := flag.Bool("debug", false, "Enables debug mode with stack dumps and traces")
+	verbose := flag.Bool("v", false, "Enables verbose output")
 	src := flag.String("src", "", "Source file to execute")
 	exec := flag.String("exec", "", "Execute source code and exit")
 	flag.Parse()
 	opts := repl.Options{
 		Debug:       *debug,
 		Interactive: *exec == "",
+		Verbose:     *verbose,
 	}
 	if opts.Debug {
 		fmt.Printf("Runtime flags: %+v\n", opts)

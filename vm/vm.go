@@ -7,6 +7,7 @@ import (
 	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/object"
+	"runtime"
 	"strings"
 )
 
@@ -59,6 +60,10 @@ var (
 	}
 )
 
+type VMOptions struct {
+	Debug int
+}
+
 type VM struct {
 	consts []object.Object
 	//instrs code.Instructions
@@ -74,6 +79,8 @@ type VM struct {
 	hooks map[string]builtinHook
 
 	ctx *VMContext
+
+	opts VMOptions
 }
 
 func New(bc *compiler.Bytecode) *VM {
@@ -119,6 +126,11 @@ func NewWithGlobals(bc *compiler.Bytecode, globals []object.Object) *VM {
 	return vm
 }
 
+func (vm *VM) WithOptions(opts VMOptions) *VM {
+	vm.opts = opts
+	return vm
+}
+
 func (vm *VM) StackTop() object.Object {
 	if vm.sp == 0 {
 		return nil
@@ -138,16 +150,15 @@ func (vm *VM) Run() error {
 		instrs = vm.currentFrame().Instructions()
 		op = code.OpCode(instrs[ip])
 
-		// fmt.Printf("Current frame:\n%s\n", code.PrintInstr(vm.currentFrame().Instructions()))
-		// fmt.Printf("Curtrent instruction pointer: %d\n", ip)
-		// fmt.Printf("VM is executing operation: %d\n", op)
+		if vm.opts.Debug > 0 {
+			fmt.Printf("Current frame:\n%s\n", code.PrintInstr(vm.currentFrame().Instructions()))
+			fmt.Printf("Curtrent instruction pointer: %d\n", ip)
+			fmt.Printf("VM is executing operation: %s (%d)\n", code.PrintOpCode(op), op)
+		}
 
 		switch op {
 		case code.OpConst:
-			//fmt.Printf("Fetching constant\n")
 			ix := code.ReadUint16(instrs[ip+1:])
-			//fmt.Printf("Read const: %d\n", ix)
-			//fmt.Printf("const: %+v\n", vm.consts)
 			vm.currentFrame().ip += 2
 			if err := vm.push(vm.consts[ix]); err != nil {
 				return err
@@ -443,8 +454,7 @@ func (vm *VM) Run() error {
 				if len(fn.Fn.Args) != argc {
 					return fmt.Errorf("Function %s expects %d arguments, got %d", fn.Fn.Name, len(fn.Fn.Args), argc)
 				}
-
-				for i := 0; i < argc; i++ {
+				for i := range argc {
 					vm.stack[vm.currentFrame().bptr+i] = vm.stack[vm.sp-argc+i]
 				}
 
@@ -474,9 +484,19 @@ func (vm *VM) Run() error {
 					return err
 				}
 			default:
-				return fmt.Errorf("Object %s is not a function", vm.stack[vm.sp-1].String())
+				msg := fmt.Sprintf("Object %s is not a function", vm.stack[vm.sp-1].String())
+				if vm.opts.Debug > 0 {
+					msg += "\n\n" + fmt.Sprintf("Stack dump:\n%s\n\nClosure:\n  %s\n\nInstructions:\n%s\n\nInstruction pointer: %d\n\nStack trace:\n%s\n\nLocal vars: %s\n",
+						vm.PrintStack(),
+						vm.currentFrame().cl.String(),
+						code.PrintInstr(vm.currentFrame().Instructions()),
+						vm.currentFrame().ip,
+						vm.PrintStackTrace(),
+						vm.PrintLocalVariables(),
+					)
+				}
+				return errors.New(msg)
 			}
-
 		case code.OpReturn:
 			// Special handling of an empty function body:
 			// Example: `((fn []))`: this execution should return null.
@@ -511,6 +531,14 @@ func (vm *VM) Run() error {
 			cur := vm.currentFrame().cl
 			if err := vm.push(cur); err != nil {
 				return err
+			}
+		case code.OpBreakpoint:
+			line := code.ReadUint16(instrs[ip+1:])
+			col := code.ReadUint16(instrs[ip+3:])
+			vm.currentFrame().ip += 4
+			if vm.opts.Debug > 0 {
+				fmt.Printf("Breakpoint reached at: line: %d, column: %d\n", line, col)
+				runtime.Breakpoint()
 			}
 		default:
 			return fmt.Errorf("unknown opcode %s at position %d", code.PrintOpCode(op), ip)
@@ -588,6 +616,27 @@ func (vm *VM) PrintStack() string {
 		}
 	}
 	b.WriteByte(']')
+	return b.String()
+}
+
+func (vm *VM) PrintStackTrace() string {
+	var b strings.Builder
+	for i := vm.framesix - 1; i >= 0; i-- {
+		frame := vm.frames[i]
+		b.WriteString(fmt.Sprintf("Frame %d: %s (ip=%d)\n", i, frame.cl.Fn.String(), frame.ip))
+	}
+	return b.String()
+}
+
+func (vm *VM) PrintLocalVariables() string {
+	var b strings.Builder
+	frame := vm.currentFrame()
+	b.WriteString("{\n")
+	for i := range frame.cl.Fn.NumLocals {
+		localVar := vm.stack[frame.bptr+i]
+		b.WriteString(fmt.Sprintf("  %d: %s\n", i, localVar.String()))
+	}
+	b.WriteString("}")
 	return b.String()
 }
 

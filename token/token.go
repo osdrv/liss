@@ -58,6 +58,7 @@ const (
 	Cond
 	Let
 	Import
+	Breakpoint
 )
 
 var (
@@ -86,33 +87,35 @@ var (
 		Or:                 "|",
 		Not:                "!",
 
-		Fn:     "fn",
-		True:   "true",
-		False:  "false",
-		Null:   "null",
-		Cond:   "cond",
-		Let:    "let",
-		Import: "import",
+		Fn:         "fn",
+		True:       "true",
+		False:      "false",
+		Null:       "null",
+		Cond:       "cond",
+		Let:        "let",
+		Import:     "import",
+		Breakpoint: "breakpoint",
 	}
 )
 
 var (
 	Keywords = map[string]TokenType{
-		"fn":     Fn,
-		"true":   True,
-		"false":  False,
-		"null":   Null,
-		"cond":   Cond,
-		"let":    Let,
-		"and":    And,
-		"or":     Or,
-		"not":    Not,
-		"plus":   Plus,
-		"minus":  Minus,
-		"mult":   Multiply,
-		"div":    Divide,
-		"mod":    Modulus,
-		"import": Import,
+		"fn":         Fn,
+		"true":       True,
+		"false":      False,
+		"null":       Null,
+		"cond":       Cond,
+		"let":        Let,
+		"and":        And,
+		"or":         Or,
+		"not":        Not,
+		"plus":       Plus,
+		"minus":      Minus,
+		"mult":       Multiply,
+		"div":        Divide,
+		"mod":        Modulus,
+		"import":     Import,
+		"breakpoint": Breakpoint,
 	}
 )
 
