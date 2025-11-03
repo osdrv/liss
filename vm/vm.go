@@ -63,7 +63,6 @@ type VM struct {
 
 	hooks map[string]builtinHook
 
-	env   *object.Environment
 	files map[string]*object.File
 
 	opts VMOptions
@@ -95,7 +94,6 @@ func New(bc *compiler.Bytecode) *VM {
 
 		hooks: DefaultHooks,
 
-		env:   env,
 		files: files,
 	}
 }
@@ -108,9 +106,16 @@ func (vm *VM) Shutdown() {
 	}
 }
 
+// DEPRECATED: use NewWithEnv instead
 func NewWithGlobals(bc *compiler.Bytecode, globals []object.Object) *VM {
 	vm := New(bc)
-	vm.env.Globals = globals
+	vm.currentFrame().cl.Env.Globals = globals
+	return vm
+}
+
+func NewWithEnv(bc *compiler.Bytecode, env *object.Environment) *VM {
+	vm := New(bc)
+	vm.currentFrame().cl.Env = env
 	return vm
 }
 
@@ -136,12 +141,8 @@ func (vm *VM) Run() error {
 
 		ip = vm.currentFrame().ip
 		instrs = vm.currentFrame().Instructions()
+		env := vm.currentFrame().cl.Env
 		op = code.OpCode(instrs[ip])
-		consts := vm.env.Consts
-		// TODO: rework this using the context that would be enclosed in the closure
-		if cl := vm.currentFrame().cl; cl != nil && cl.Consts != nil {
-			consts = cl.Consts
-		}
 
 		if vm.opts.Debug > 0 {
 			fmt.Printf("Current frame:\n%s\n", code.PrintInstr(vm.currentFrame().Instructions()))
@@ -153,7 +154,7 @@ func (vm *VM) Run() error {
 		case code.OpConst:
 			ix := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
-			if err := vm.push(consts[ix]); err != nil {
+			if err := vm.push(env.Consts[ix]); err != nil {
 				return err
 			}
 		case code.OpAdd:
@@ -402,11 +403,11 @@ func (vm *VM) Run() error {
 		case code.OpSetGlobal:
 			gix := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
-			vm.env.Globals[gix] = vm.pop()
+			env.Globals[gix] = vm.pop()
 		case code.OpGetGlobal:
 			gix := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
-			if err := vm.push(vm.env.Globals[gix]); err != nil {
+			if err := vm.push(env.Globals[gix]); err != nil {
 				return err
 			}
 		case code.OpSetLocal:
@@ -538,9 +539,9 @@ func (vm *VM) Run() error {
 			vm.currentFrame().ip += 2
 		case code.OpGetModule:
 			modix := code.ReadUint16(instrs[ip+1:])
-			constix := code.ReadUint16(instrs[ip+3:])
+			globix := code.ReadUint16(instrs[ip+3:])
 			vm.currentFrame().ip += 4
-			if err := vm.pushModuleSymbol(int(modix), int(constix)); err != nil {
+			if err := vm.pushModuleSymbol(int(modix), int(globix)); err != nil {
 				return err
 			}
 		default:
@@ -552,18 +553,18 @@ func (vm *VM) Run() error {
 }
 
 func (vm *VM) pushModuleSymbol(modix int, constix int) error {
-	mod := vm.env.Consts[modix]
+	mod := vm.currentFrame().cl.Env.Consts[modix]
 	modObj, ok := mod.(*object.Module)
 	if !ok {
 		return fmt.Errorf("constant at index %d is not a module", modix)
 	}
-	item := modObj.Consts[constix]
+	item := modObj.Env.Globals[constix]
 	switch item := item.(type) {
 	case *object.Function:
-		closure := object.NewClosureWithConsts(item, nil, modObj.Env, modObj.Consts)
+		closure := object.NewClosureWithConsts(item, nil, modObj.Env, modObj.Env.Consts)
 		return vm.push(closure)
 	case *object.Closure:
-		closure := object.NewClosureWithConsts(item.Fn, item.Free, modObj.Env, modObj.Consts)
+		closure := object.NewClosureWithConsts(item.Fn, item.Free, modObj.Env, modObj.Env.Consts)
 		return vm.push(closure)
 	default:
 		return vm.push(item)
@@ -571,7 +572,8 @@ func (vm *VM) pushModuleSymbol(modix int, constix int) error {
 }
 
 func (vm *VM) pushClosure(cix int, numfree int) error {
-	cnst := vm.env.Consts[cix]
+	env := vm.currentFrame().cl.Env
+	cnst := env.Consts[cix]
 	fn, ok := cnst.(*object.Function)
 	if !ok {
 		return fmt.Errorf("constant at index %d is not a function", cix)
@@ -663,12 +665,12 @@ func (vm *VM) PrintLocalVariables() string {
 }
 
 func (vm *VM) Env() *object.Environment {
-	return vm.env
+	return vm.currentFrame().cl.Env
 }
 
 // DEPRECATED: use Env().Consts instead
 func (vm *VM) Consts() []object.Object {
-	return vm.env.Consts
+	return vm.currentFrame().cl.Consts
 }
 
 func (vm *VM) LastPopped() object.Object {

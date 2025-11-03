@@ -72,6 +72,15 @@ func Execute(src string, opts repl.Options) (Result, error) {
 	return Run(bytecode, opts)
 }
 
+func InstantiateModule(mod *compiler.Module) (*object.Environment, error) {
+	vm := vm.New(mod.Bytecode)
+	err := vm.Run()
+	if err != nil {
+		return nil, err
+	}
+	return vm.Env(), nil
+}
+
 func CompileModule(nameOrPath string, opts repl.Options,
 	cache map[string]*compiler.Module, chain []string) (*compiler.Module, error) {
 	resolved, err := resolveModulePath(nameOrPath)
@@ -128,6 +137,12 @@ func CompileModule(nameOrPath string, opts repl.Options,
 			return nil, fmt.Errorf("failed to compile imported module %s: %w",
 				impExpr.Ref.(*ast.StringLiteral).Value, err)
 		}
+		env, err := InstantiateModule(impmod)
+		if err != nil {
+			return nil, fmt.Errorf("failed to instantiate imported module %s: %w",
+				impmod.Name, err)
+		}
+		impmod.Env = env
 		if _, err := c.ImportModule(ref, impmod, wantSymbols); err != nil {
 			return nil, fmt.Errorf("failed to import module %s: %w", impmod.Name, err)
 		}
