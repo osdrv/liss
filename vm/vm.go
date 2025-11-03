@@ -70,10 +70,14 @@ type VM struct {
 }
 
 func New(bc *compiler.Bytecode) *VM {
+	env := object.NewEnvironment()
+	env.Globals = make([]object.Object, GlobalsSize)
+	env.Consts = bc.Consts
+
 	mainfn := &object.Function{
 		Instrs: bc.Instrs,
 	}
-	maincl := object.NewClosure(mainfn, nil)
+	maincl := object.NewClosure(mainfn, nil, env)
 	mframe := NewFrame(maincl, 0)
 	frames := make([]*Frame, MaxFrames)
 	frames[0] = mframe
@@ -81,10 +85,6 @@ func New(bc *compiler.Bytecode) *VM {
 	files := make(map[string]*object.File)
 	files[STDOUT] = object.NewFile(os.Stdout, STDOUT)
 	files[STDERR] = object.NewFile(os.Stderr, STDERR)
-
-	env := object.NewEnvironment()
-	env.Globals = make([]object.Object, GlobalsSize)
-	env.Consts = bc.Consts
 
 	return &VM{
 		stack: make([]object.Object, StackSize),
@@ -560,10 +560,10 @@ func (vm *VM) pushModuleSymbol(modix int, constix int) error {
 	item := modObj.Consts[constix]
 	switch item := item.(type) {
 	case *object.Function:
-		closure := object.NewClosureWithConsts(item, nil, modObj.Consts)
+		closure := object.NewClosureWithConsts(item, nil, modObj.Env, modObj.Consts)
 		return vm.push(closure)
 	case *object.Closure:
-		closure := object.NewClosureWithConsts(item.Fn, item.Free, modObj.Consts)
+		closure := object.NewClosureWithConsts(item.Fn, item.Free, modObj.Env, modObj.Consts)
 		return vm.push(closure)
 	default:
 		return vm.push(item)
@@ -581,7 +581,7 @@ func (vm *VM) pushClosure(cix int, numfree int) error {
 		free[i] = vm.stack[vm.sp-numfree+i]
 	}
 	vm.sp = vm.sp - numfree
-	closure := object.NewClosure(fn, free)
+	closure := object.NewClosure(fn, free, vm.currentFrame().cl.Env)
 	return vm.push(closure)
 }
 

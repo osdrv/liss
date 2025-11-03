@@ -29,6 +29,7 @@ type Module struct {
 	Path     string
 	Bytecode *Bytecode
 	Symbols  *object.SymbolTable
+	Env      *object.Environment
 }
 
 type EmittedInstruction struct {
@@ -399,7 +400,7 @@ func (c *Compiler) Symbols() *object.SymbolTable {
 
 func (c *Compiler) ImportModule(ref string, mod *Module, symbols []string) (*object.Module, error) {
 	objmod := object.NewModule(mod.Name, mod.Bytecode.Instrs,
-		mod.Symbols, mod.Bytecode.Consts)
+		mod.Symbols, mod.Bytecode.Consts, mod.Env)
 
 	modix := c.addConst(objmod)
 	if err := c.symbols.DefineModule(ref, objmod.Name, objmod, modix); err != nil {

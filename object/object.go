@@ -519,15 +519,16 @@ type Closure struct {
 
 var _ Object = (*Closure)(nil)
 
-func NewClosure(fn *Function, free []Object) *Closure {
+func NewClosure(fn *Function, free []Object, env *Environment) *Closure {
 	return &Closure{
 		Fn:   fn,
 		Free: free,
+		Env:  env,
 	}
 }
 
-func NewClosureWithConsts(fn *Function, free []Object, consts []Object) *Closure {
-	cl := NewClosure(fn, free)
+func NewClosureWithConsts(fn *Function, free []Object, env *Environment, consts []Object) *Closure {
+	cl := NewClosure(fn, free, env)
 	cl.Consts = consts
 	return cl
 }

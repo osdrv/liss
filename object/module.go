@@ -7,18 +7,21 @@ type Module struct {
 	Name    string
 	Instrs  code.Instructions
 	Symbols *SymbolTable
-	Consts  []Object
+	// DEPRECATED: use Env.Consts instead
+	Consts []Object
+	Env    *Environment
 }
 
 var _ Object = (*Module)(nil)
 
 func NewModule(name string, instrs code.Instructions,
-	symbols *SymbolTable, consts []Object) *Module {
+	symbols *SymbolTable, consts []Object, env *Environment) *Module {
 	return &Module{
 		Name:    name,
 		Instrs:  instrs,
 		Symbols: symbols,
 		Consts:  consts,
+		Env:     env,
 	}
 }
 
