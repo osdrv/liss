@@ -50,6 +50,7 @@ const (
 	OpCurrentClosure
 	OpReturn
 	OpBreakpoint
+	OpLoadModule
 	OpGetModule
 )
 
@@ -98,6 +99,7 @@ var definitions = map[OpCode]*Definition{
 	OpCurrentClosure: {"OpCurrentClosure", []int{}},
 	OpReturn:         {"OpReturn", []int{}},
 	OpBreakpoint:     {"OpBreakpoint", []int{2, 2}},
+	OpLoadModule:     {"OpLoadModule", []int{2}},
 	OpGetModule:      {"OpGetModule", []int{2, 2}},
 }
 

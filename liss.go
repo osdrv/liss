@@ -112,33 +112,35 @@ func CompileModule(nameOrPath string, opts repl.Options,
 		_, ok := (*node).(*ast.ImportExpression)
 		return ok
 	})
-	if opts.Debug {
-		fmt.Printf("Module %s imports: %+v\n", name, imports)
-	}
+	c := compiler.NewWithState(mod.Symbols, []object.Object{})
 	for _, imp := range imports {
 		impExpr := imp.(*ast.ImportExpression)
 		var wantSymbols []string
 		for _, sym := range impExpr.Symbols.Items {
 			wantSymbols = append(wantSymbols, sym.(*ast.StringLiteral).Value)
 		}
-		impmod, err := CompileModule(impExpr.Ref.(*ast.StringLiteral).Value, opts,
-			cache, append(chain, name))
+		ref := impExpr.Ref.(*ast.StringLiteral).Value
+		if opts.Debug {
+			fmt.Printf("Compiling imported module %s for module %s\n", ref, name)
+		}
+		impmod, err := CompileModule(ref, opts, cache, append(chain, name))
 		if err != nil {
 			return nil, fmt.Errorf("failed to compile imported module %s: %w",
 				impExpr.Ref.(*ast.StringLiteral).Value, err)
 		}
-		if err := ImportModule(mod, impmod, impmod.Name, wantSymbols); err != nil {
+		if _, err := c.ImportModule(ref, impmod, wantSymbols); err != nil {
 			return nil, fmt.Errorf("failed to import module %s: %w", impmod.Name, err)
 		}
 	}
 
-	c := compiler.NewWithState(mod.Symbols, []object.Object{})
 	if err := c.Compile(prog); err != nil {
 		return nil, fmt.Errorf("failed to compile module %s: %w", name, err)
 	}
 
 	mod.Bytecode = c.Bytecode()
 	mod.Symbols = c.Symbols()
+
+	cache[resolved] = mod
 
 	return mod, nil
 }
@@ -225,24 +227,24 @@ func main() {
 	os.Exit(0)
 }
 
-func ImportModule(base, imp *compiler.Module, modName string, wantSymbols []string) error {
-	impmod := object.NewModule(modName, imp.Bytecode.Instrs, imp.Symbols, imp.Bytecode.Consts)
-	base.Symbols.DefineModule(modName, impmod)
-
-	wantAll := len(wantSymbols) == 0
-	wantSet := make(map[string]bool)
-	for _, sym := range wantSymbols {
-		wantSet[sym] = true
-	}
-
-	for _, sym := range imp.Symbols.Export(wantSymbols) {
-		if wantAll || wantSet[sym.Name] {
-			base.Symbols.Define(modName, sym.Name)
-		}
-	}
-
-	return nil
-}
+// func ImportModule(base, imp *compiler.Module, modName string, wantSymbols []string) error {
+// 	impmod := object.NewModule(modName, imp.Bytecode.Instrs, imp.Symbols, imp.Bytecode.Consts)
+// 	base.Symbols.DefineModule(modName, impmod)
+//
+// 	wantAll := len(wantSymbols) == 0
+// 	wantSet := make(map[string]bool)
+// 	for _, sym := range wantSymbols {
+// 		wantSet[sym] = true
+// 	}
+//
+// 	for _, sym := range imp.Symbols.Export(wantSymbols) {
+// 		if wantAll || wantSet[sym.Name] {
+// 			base.Symbols.Define(modName, sym.Name)
+// 		}
+// 	}
+//
+// 	return nil
+// }
 
 func resolveModulePath(p string) (string, error) {
 	var resolved string

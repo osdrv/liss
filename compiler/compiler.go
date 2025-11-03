@@ -346,7 +346,12 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		c.emit(code.OpBreakpoint,
 			bp.Token.Location.Line, bp.Token.Location.Column)
 	case *ast.ImportExpression:
-		// TODO
+		ref := n.Ref.(*ast.StringLiteral).Value
+		modix, ok := c.symbols.LookupModule(ref)
+		if !ok {
+			return fmt.Errorf("module could not be found: %s", ref)
+		}
+		c.emit(code.OpLoadModule, modix)
 	default:
 		return fmt.Errorf("unsupported node type: %T", node)
 	}
@@ -390,6 +395,31 @@ func (c *Compiler) Bytecode() *Bytecode {
 
 func (c *Compiler) Symbols() *object.SymbolTable {
 	return c.symbols
+}
+
+func (c *Compiler) ImportModule(ref string, mod *Module, symbols []string) (*object.Module, error) {
+	objmod := object.NewModule(mod.Name, mod.Bytecode.Instrs,
+		mod.Symbols, mod.Bytecode.Consts)
+
+	modix := c.addConst(objmod)
+	if err := c.symbols.DefineModule(ref, objmod.Name, objmod, modix); err != nil {
+		return nil, err
+	}
+
+	for _, sym := range mod.Symbols.Export(symbols) {
+		c.Symbols().Define(objmod.Name, sym.Name)
+	}
+
+	return objmod, nil
+}
+
+func (c *Compiler) lookupModule(path *ast.StringLiteral) (*object.Module, error) {
+	ref := path.Value
+	modix, ok := c.symbols.LookupModule(ref)
+	if !ok {
+		return nil, fmt.Errorf("module not found: %s", ref)
+	}
+	return c.consts[modix].(*object.Module), nil
 }
 
 func (c *Compiler) currentInstrs() code.Instructions {

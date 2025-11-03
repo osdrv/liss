@@ -55,19 +55,21 @@ func NewNestedSymbolTable(outer *SymbolTable) *SymbolTable {
 	}
 }
 
-func (st *SymbolTable) DefineModule(name string, mod *Module) (int, error) {
-	for _, m := range st.Modules {
-		if m.Name == name {
-			return -1, fmt.Errorf("Module is already defined: %s", name)
-		}
-	}
-	st.Modules = append(st.Modules, mod)
-	mix := len(st.Modules) - 1
+func (st *SymbolTable) DefineModule(ref, name string, mod *Module, modix int) error {
 	if st.modix == nil {
 		st.modix = make(map[string]int)
 	}
-	st.modix[name] = mix
-	return mix, nil
+	if _, ok := st.modix[ref]; ok {
+		return fmt.Errorf("Module is already defined: %s", name)
+	}
+	st.Modules = append(st.Modules, mod)
+	st.modix[ref] = modix
+	return nil
+}
+
+func (st *SymbolTable) LookupModule(ref string) (int, bool) {
+	mix, ok := st.modix[ref]
+	return mix, ok
 }
 
 func (st *SymbolTable) Define(module string, name string) (Symbol, error) {

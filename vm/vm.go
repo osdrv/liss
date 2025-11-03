@@ -26,16 +26,6 @@ var True = object.NewBool(true)
 var False = object.NewBool(false)
 var Null = object.NewNull()
 
-type VMContext struct {
-	files map[string]*object.File
-}
-
-func NewVMContext() *VMContext {
-	return &VMContext{
-		files: make(map[string]*object.File),
-	}
-}
-
 type builtinHook func(*VM, *object.BuiltinFunction, []object.Object) (*object.BuiltinFunction, []object.Object, error)
 
 var appendStdoutHook builtinHook = func(
@@ -46,7 +36,7 @@ var appendStdoutHook builtinHook = func(
 	}
 	if !args[0].IsFile() {
 		newargs := make([]object.Object, len(args)+1)
-		newargs[0] = vm.ctx.files[STDOUT]
+		newargs[0] = vm.files[STDOUT]
 		copy(newargs[1:], args)
 		args = newargs
 	}
@@ -65,20 +55,16 @@ type VMOptions struct {
 }
 
 type VM struct {
-	consts []object.Object
-	//instrs code.Instructions
-
 	stack []object.Object
 	sp    int // program counter
-
-	globals []object.Object
 
 	frames   []*Frame
 	framesix int
 
 	hooks map[string]builtinHook
 
-	ctx *VMContext
+	env   *object.Environment
+	files map[string]*object.File
 
 	opts VMOptions
 }
@@ -92,28 +78,30 @@ func New(bc *compiler.Bytecode) *VM {
 	frames := make([]*Frame, MaxFrames)
 	frames[0] = mframe
 
-	ctx := NewVMContext()
-	ctx.files[STDOUT] = object.NewFile(os.Stdout, STDOUT)
-	ctx.files[STDERR] = object.NewFile(os.Stderr, STDERR)
+	files := make(map[string]*object.File)
+	files[STDOUT] = object.NewFile(os.Stdout, STDOUT)
+	files[STDERR] = object.NewFile(os.Stderr, STDERR)
+
+	env := object.NewEnvironment()
+	env.Globals = make([]object.Object, GlobalsSize)
+	env.Consts = bc.Consts
 
 	return &VM{
-		consts: bc.Consts,
-		stack:  make([]object.Object, StackSize),
-		sp:     0,
-
-		globals: make([]object.Object, GlobalsSize),
+		stack: make([]object.Object, StackSize),
+		sp:    0,
 
 		frames:   frames,
 		framesix: 1,
 
 		hooks: DefaultHooks,
 
-		ctx: ctx,
+		env:   env,
+		files: files,
 	}
 }
 
 func (vm *VM) Shutdown() {
-	for _, f := range vm.ctx.files {
+	for _, f := range vm.files {
 		if f != nil && f.Path() != STDOUT && f.Path() != STDERR {
 			f.Close()
 		}
@@ -122,7 +110,7 @@ func (vm *VM) Shutdown() {
 
 func NewWithGlobals(bc *compiler.Bytecode, globals []object.Object) *VM {
 	vm := New(bc)
-	vm.globals = globals
+	vm.env.Globals = globals
 	return vm
 }
 
@@ -149,6 +137,11 @@ func (vm *VM) Run() error {
 		ip = vm.currentFrame().ip
 		instrs = vm.currentFrame().Instructions()
 		op = code.OpCode(instrs[ip])
+		consts := vm.env.Consts
+		// TODO: rework this using the context that would be enclosed in the closure
+		if cl := vm.currentFrame().cl; cl != nil && cl.Consts != nil {
+			consts = cl.Consts
+		}
 
 		if vm.opts.Debug > 0 {
 			fmt.Printf("Current frame:\n%s\n", code.PrintInstr(vm.currentFrame().Instructions()))
@@ -160,7 +153,7 @@ func (vm *VM) Run() error {
 		case code.OpConst:
 			ix := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
-			if err := vm.push(vm.consts[ix]); err != nil {
+			if err := vm.push(consts[ix]); err != nil {
 				return err
 			}
 		case code.OpAdd:
@@ -409,11 +402,11 @@ func (vm *VM) Run() error {
 		case code.OpSetGlobal:
 			gix := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
-			vm.globals[gix] = vm.pop()
+			vm.env.Globals[gix] = vm.pop()
 		case code.OpGetGlobal:
 			gix := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
-			if err := vm.push(vm.globals[gix]); err != nil {
+			if err := vm.push(vm.env.Globals[gix]); err != nil {
 				return err
 			}
 		case code.OpSetLocal:
@@ -540,6 +533,16 @@ func (vm *VM) Run() error {
 				fmt.Printf("Breakpoint reached at: line: %d, column: %d\n", line, col)
 				runtime.Breakpoint()
 			}
+		case code.OpLoadModule:
+			// Nothing at the moment: modules are loaded during compilation
+			vm.currentFrame().ip += 2
+		case code.OpGetModule:
+			modix := code.ReadUint16(instrs[ip+1:])
+			constix := code.ReadUint16(instrs[ip+3:])
+			vm.currentFrame().ip += 4
+			if err := vm.pushModuleSymbol(int(modix), int(constix)); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unknown opcode %s at position %d", code.PrintOpCode(op), ip)
 		}
@@ -548,8 +551,27 @@ func (vm *VM) Run() error {
 	return nil
 }
 
+func (vm *VM) pushModuleSymbol(modix int, constix int) error {
+	mod := vm.env.Consts[modix]
+	modObj, ok := mod.(*object.Module)
+	if !ok {
+		return fmt.Errorf("constant at index %d is not a module", modix)
+	}
+	item := modObj.Consts[constix]
+	switch item := item.(type) {
+	case *object.Function:
+		closure := object.NewClosureWithConsts(item, nil, modObj.Consts)
+		return vm.push(closure)
+	case *object.Closure:
+		closure := object.NewClosureWithConsts(item.Fn, item.Free, modObj.Consts)
+		return vm.push(closure)
+	default:
+		return vm.push(item)
+	}
+}
+
 func (vm *VM) pushClosure(cix int, numfree int) error {
-	cnst := vm.consts[cix]
+	cnst := vm.env.Consts[cix]
 	fn, ok := cnst.(*object.Function)
 	if !ok {
 		return fmt.Errorf("constant at index %d is not a function", cix)
@@ -640,8 +662,13 @@ func (vm *VM) PrintLocalVariables() string {
 	return b.String()
 }
 
+func (vm *VM) Env() *object.Environment {
+	return vm.env
+}
+
+// DEPRECATED: use Env().Consts instead
 func (vm *VM) Consts() []object.Object {
-	return vm.consts
+	return vm.env.Consts
 }
 
 func (vm *VM) LastPopped() object.Object {

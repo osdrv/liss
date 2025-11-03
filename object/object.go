@@ -486,7 +486,7 @@ func NewRegexp(pat string) (*Regexp, error) {
 }
 
 func (r *Regexp) Match(s string) bool {
-	// TODO: optimize to avoid captures if not needed
+	// TODO: optimize to skip capturing groups: these are not needed
 	_, ok := r.re.MatchString(s)
 	return ok
 }
@@ -495,10 +495,26 @@ func (r *Regexp) Capture(s string) ([]string, bool) {
 	return r.re.MatchString(s)
 }
 
+type Environment struct {
+	Globals []Object
+	Consts  []Object
+	Store   map[string]Object
+}
+
+func NewEnvironment() *Environment {
+	return &Environment{
+		Globals: make([]Object, 0),
+		Consts:  make([]Object, 0),
+		Store:   make(map[string]Object),
+	}
+}
+
 type Closure struct {
 	defaultObject
-	Fn   *Function
-	Free []Object
+	Fn     *Function
+	Free   []Object
+	Consts []Object
+	Env    *Environment
 }
 
 var _ Object = (*Closure)(nil)
@@ -508,6 +524,12 @@ func NewClosure(fn *Function, free []Object) *Closure {
 		Fn:   fn,
 		Free: free,
 	}
+}
+
+func NewClosureWithConsts(fn *Function, free []Object, consts []Object) *Closure {
+	cl := NewClosure(fn, free)
+	cl.Consts = consts
+	return cl
 }
 
 func (c *Closure) Type() ObjectType {

@@ -221,6 +221,11 @@
         )))
 
         (_benchmark (fn [] (
+            (print "sorted: ")
+            (println (sort vec))
+        )))
+
+        (_benchmark (fn [] (
             (print "filtered < 10: ")
             (println (filter vec (fn [x] (< x 10))))
         )))
@@ -239,4 +244,4 @@
     )
 )
 
-(test)
+; (test)

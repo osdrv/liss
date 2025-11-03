@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"osdrv/liss/compiler"
 	"osdrv/liss/object"
 	"osdrv/liss/repl"
 	"osdrv/liss/test"
@@ -328,19 +329,12 @@ func TestCompileModule(t *testing.T) {
 			path := tt.modulePath
 			if tt.moduleContent != "" {
 				require.Empty(t, tt.modulePath, "Either modulePath or moduleContent should be set, not both")
-				// make a temporary file wilh the module content named ....liss
-				// write the content to the file
-				tmpFile, err := os.CreateTemp("", "exe_*.liss")
-				require.NoError(t, err, "Failed to create temp file for module content")
-				defer os.Remove(tmpFile.Name())
-				_, err = tmpFile.WriteString(tt.moduleContent)
-				require.NoError(t, err, "Failed to write module content to temp file")
-				err = tmpFile.Close()
-				require.NoError(t, err, "Failed to close temp file")
-				path = tmpFile.Name()
+				path = writeTmpModule(t, tt.moduleContent)
+				defer os.Remove(path)
 			}
 			t.Logf("Compiling module from path: %s", path)
-			mod, err := CompileModule(path, repl.Options{}, nil, nil)
+			cache := make(map[string]*compiler.Module)
+			mod, err := CompileModule(path, repl.Options{}, cache, nil)
 			if tt.wantErr != nil {
 				require.ErrorContains(t, err, tt.wantErr.Error())
 			} else {
@@ -349,4 +343,14 @@ func TestCompileModule(t *testing.T) {
 			assert.Equal(t, len(tt.wantVars), len(mod.Symbols.Vars), "Number of symbols do not match")
 		})
 	}
+}
+
+func writeTmpModule(t *testing.T, content string) string {
+	tmpFile, err := os.CreateTemp("", "exe_*.liss")
+	require.NoError(t, err, "Failed to create temp file for module content")
+	_, err = tmpFile.WriteString(content)
+	require.NoError(t, err, "Failed to write module content to temp file")
+	err = tmpFile.Close()
+	require.NoError(t, err, "Failed to close temp file")
+	return tmpFile.Name()
 }
