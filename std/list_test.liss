@@ -1,0 +1,78 @@
+(import "test_utils" ["benchmark"])
+(import "list") ; import all because this file is supposed to test all public functions
+
+(fn _mk_rand_vec [size]
+    (fn _next [ix acc]
+        (cond (>= ix size)
+            acc
+            (
+                (let _acc (+ acc [(randn 100)]))
+                (_next (+ ix 1) _acc)
+            )
+        )
+    )
+    (_next 0 [])
+)
+
+(fn _test []
+    (
+        (let vec (_mk_rand_vec 1000))
+        (print "list: ")
+        (println vec "\n")
+
+        (test_utils:benchmark (fn [] (
+            (print "find: ")
+            (println (list:find vec 7))
+            (print "find_all: ")
+            (println (list:find_all vec 7))
+        )))
+
+        (test_utils:benchmark (fn [] (
+            (print "range 0..2: ")
+            (println (list:range vec 0 2))
+            (print "range 2..10: ")
+            (println (list:range vec 2 10))
+        )))
+
+        (test_utils:benchmark (fn [] (
+            (print "merge-sorted: ")
+            (println (list:mergesort vec))
+        )))
+
+        (test_utils:benchmark (fn [] (
+            (print "quick-sorted: ")
+            (println (list:quicksort vec))
+        )))
+
+        (test_utils:benchmark (fn [] (
+            (print "sorted: ")
+            (println (list:sort vec))
+        )))
+
+        (test_utils:benchmark (fn [] (
+            (print "filtered < 10: ")
+            (println (list:filter vec (fn [x] (< x 10))))
+        )))
+
+        (test_utils:benchmark (fn [] (
+            (print "reduced < 10: ")
+            (println (list:reduce vec (fn [acc x] (
+                (+ acc (cond (< x 10) [x] []))
+            )) []))
+        )))
+
+        (test_utils:benchmark (fn [] (
+            (print "mapped * 2: ")
+            (println (list:map vec (fn [x] (* x 2))))
+        )))
+
+        (test_utils:benchmark (fn [] (
+            (let _lookup (_mk_rand_vec 100))
+            (list:map _lookup (fn [x]
+                (list:contains? vec x)
+            ))
+        )))
+    )
+)
+
+(_test)

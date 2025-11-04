@@ -125,8 +125,10 @@ func CompileModule(nameOrPath string, opts repl.Options,
 	for _, imp := range imports {
 		impExpr := imp.(*ast.ImportExpression)
 		var wantSymbols []string
-		for _, sym := range impExpr.Symbols.Items {
-			wantSymbols = append(wantSymbols, sym.(*ast.StringLiteral).Value)
+		if impExpr.Symbols != nil {
+			for _, sym := range impExpr.Symbols.Items {
+				wantSymbols = append(wantSymbols, sym.(*ast.StringLiteral).Value)
+			}
 		}
 		ref := impExpr.Ref.(*ast.StringLiteral).Value
 		if opts.Debug {
