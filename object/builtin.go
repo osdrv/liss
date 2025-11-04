@@ -2,7 +2,9 @@ package object
 
 import (
 	"fmt"
+	"io"
 	"math/rand/v2"
+	"os"
 	"osdrv/liss/regexp"
 	"reflect"
 	"time"
@@ -53,6 +55,10 @@ func init() {
 		mkBuiltin("match", builtinReCapture, false),
 		mkBuiltin("print", builtinPrint, true),
 		mkBuiltin("println", builtinPrintln, true),
+
+		mkBuiltin("fopen", builtinFOpen, false),
+		mkBuiltin("fclose", builtinFClose, false),
+		mkBuiltin("fread_all", builtinFReadAll, false),
 	}
 
 	for ix, b := range builtins {
@@ -518,4 +524,43 @@ func builtinPrint(args ...Object) (Object, error) {
 func builtinPrintln(args ...Object) (Object, error) {
 	args = append(args, NewString("\n"))
 	return builtinPrint(args...)
+}
+
+// TODO: add modes (read, write, append, etc.)
+func builtinFOpen(path Object) (Object, error) {
+	if !path.IsString() {
+		return nil, fmt.Errorf("fopen: expected string as argument, got %s", path.String())
+	}
+	strPath := path.(*String)
+	// open file for reading
+	fd, err := os.Open(string(strPath.Value))
+	if err != nil {
+		return nil, err
+	}
+	return &File{fd: fd}, nil
+}
+
+func builtinFClose(f Object) (Object, error) {
+	if !f.IsFile() {
+		return nil, fmt.Errorf("fclose: expected file as argument, got %s", f.String())
+	}
+	file := f.(*File)
+	err := file.fd.Close()
+	if err != nil {
+		return nil, err
+	}
+	return &Null{}, nil
+}
+
+func builtinFReadAll(f Object) (Object, error) {
+	if !f.IsFile() {
+		return nil, fmt.Errorf("fread_all: expected file as argument, got %s", f.String())
+	}
+	file := f.(*File)
+	data, err := io.ReadAll(file.fd)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: implement blobs
+	return &String{Value: []rune(string(data))}, nil
 }

@@ -1,0 +1,20 @@
+(fn abs [n]
+    (cond (< n 0)
+        (- 0 n)
+        n
+    )
+)
+
+(fn min [a b]
+    (cond (< a b)
+        a
+        b
+    )
+)
+
+(fn max [a b]
+    (cond (> a b)
+        a
+        b
+    )
+)

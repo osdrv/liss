@@ -1,0 +1,73 @@
+(import "list" ["push" "range"])
+
+(fn join [arr delim]
+    (list:reduce arr (fn [acc chunk]
+        (cond (is_empty? acc)
+            chunk
+            (+ acc (+ delim chunk))
+        )
+    ) "")
+)
+
+(fn split [s delim]
+    (let _len (len s))
+    (fn _next [acc start ix]
+        (cond (>= ix _len)
+            (cond (> _len start)
+                (list:push acc (list:range s start _len))
+                acc
+            )
+            (
+                (cond (= (get s ix) delim)
+                    (
+                        (let _chunk (list:range s start ix))
+                        (let _acc (list:push acc _chunk))
+                        (_next _acc (+ ix 1) (+ ix 1))
+                    )
+                    (_next acc start (+ ix 1))
+                )
+            )
+        )
+    )
+    (let _res (_next [] 0 0))
+    (list:reduce _res (fn [acc chunk] (list:push acc (join chunk "")) ) [])
+)
+
+(fn atoi [s]
+    (list:reduce s (fn [acc ch]
+        (+
+            (* acc 10)
+            (cond (= ch "0")
+                0
+                (cond (= ch "1")
+                    1
+                    (cond (= ch "2")
+                        2
+                        (cond (= ch "3")
+                            3
+                            (cond (= ch "4")
+                                4
+                                (cond (= ch "5")
+                                    5
+                                    (cond (= ch "6")
+                                        6
+                                        (cond (= ch "7")
+                                            7
+                                            (cond (= ch "8")
+                                                8
+                                                (cond (= ch "9")
+                                                    9
+                                                    0
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    ) 0)
+)

@@ -24,17 +24,16 @@
     )) [])
 )
 
-(fn _range [acc ix arr start end]
-    (cond (or (< ix start) (>= ix end) (>= ix (len arr)))
-        acc
-        (
-            (let _acc (push acc (get arr ix)))
-            (_range _acc (+ ix 1) arr start end)
+(fn range [arr start end]
+    (fn _range [acc ix arr start end]
+        (cond (or (< ix start) (>= ix end) (>= ix (len arr)))
+            acc
+            (
+                (let _acc (push acc (get arr ix)))
+                (_range _acc (+ ix 1) arr start end)
+            )
         )
     )
-)
-
-(fn range [arr start end]
     (cond (is_null? arr)
         null
         (cond (>= start (len arr))
@@ -83,10 +82,6 @@
     _res
 )
 
-(fn _min2 [a b] (cond (< a b) a b))
-
-(fn _max2 [a b] (cond (> a b) a b))
-
 (fn quicksort [arr]
     (cond (or (is_empty? arr) (< (len arr) 2))
         arr
@@ -123,6 +118,8 @@
 )
 
 (fn mergesort [arr]
+    (fn _min2 [a b] (cond (< a b) a b))
+    (fn _max2 [a b] (cond (> a b) a b))
     (fn _merge2 [acc a aix b bix]
         (cond (>= aix (len a))
             (+ acc (range b bix (len b)))
