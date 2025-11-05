@@ -11,7 +11,7 @@ The current VM implementation is based on Thorsten Ball's book "Writing a Compil
 *   **Lisp-like Syntax:** Uses S-expressions for a simple and consistent syntax.
 *   **Functional:** Emphasizes a functional programming style.
 *   **Compiler and VM:** Compiles to bytecode that runs on a custom virtual machine.
-*   **Tail Call Optimisation**: A proper handling for deep recursive calls.
+*   **Tail Call Optimization**: A proper handling for deep recursive calls.
 *   **REPL:** Includes an interactive Read-Eval-Print Loop for experimentation.
 *   **Regexp Support:** Built-in support for regular expressions (Thompson's construction).
 *   **Closures:** Supports first-class functions and closures.
