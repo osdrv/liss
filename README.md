@@ -28,7 +28,7 @@ Here is an example of a LISS program that computes the factorial of a number:
         (* n (fact (- n 1)))
   )
 )
-( println "the result is: " (fact 30))
+(println "the result is: " (fact 30))
 ```
 
 ## References
