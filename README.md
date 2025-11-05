@@ -8,7 +8,7 @@ The current VM implementation is based on Thorsten Ball's book "Writing a Compil
 
 ## Features
 
-*   **Lisp-like Syntax:** Uses S-expressions for a simple and consistent syntax.
+*   **Lisp-inspired Syntax:** Uses S-expressions for a simple and consistent syntax.
 *   **Functional:** Emphasizes a functional programming style.
 *   **Compiler and VM:** Compiles to bytecode that runs on a custom virtual machine.
 *   **Tail Call Optimization**: A proper handling for deep recursive calls.
