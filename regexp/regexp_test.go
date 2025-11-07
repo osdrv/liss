@@ -201,6 +201,17 @@ func TestMatchWithCaptures(t *testing.T) {
 			},
 			wantOk: true,
 		},
+		{
+			name:    "capture inside escaped parenthesis",
+			pattern: "mul\\((\\d+),(\\d+)\\)",
+			input:   "mul(12,34)",
+			wantCaptures: []string{
+				"mul(12,34)",
+				"12",
+				"34",
+			},
+			wantOk: true,
+		},
 	}
 
 	for _, tt := range tests {

@@ -65,7 +65,7 @@ func (p *parser) parseAtom() (*ASTNode, error) {
 	start := p.pos
 	for {
 		r := p.peek()
-		if r == 0 || strings.ContainsRune("()|*+?.", r) {
+		if r == 0 || strings.ContainsRune("()|*+?.\\", r) {
 			break
 		}
 		p.consume()

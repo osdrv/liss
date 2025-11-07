@@ -33,6 +33,8 @@
     (list:reduce _res (fn [acc chunk] (list:push acc (join chunk "")) ) [])
 )
 
+; TODO: implement proper atoi with error handling
+; one of the ideas is to allow rune subtraction
 (fn atoi [s]
     (list:reduce s (fn [acc ch]
         (+

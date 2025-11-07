@@ -73,6 +73,32 @@ func TestParseAlternate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:  "escaped parenthesis",
+			input: "\\(\\d+\\)",
+			want: &ASTNode{
+				Type: NodeTypeConcat,
+				Children: []*ASTNode{
+					&ASTNode{
+						Type:  NodeTypeLiteral,
+						Value: "(",
+					},
+					&ASTNode{
+						Type: NodeTypePlus,
+						Children: []*ASTNode{
+							&ASTNode{
+								Type:  NodeTypeClass,
+								Value: "d",
+							},
+						},
+					},
+					&ASTNode{
+						Type:  NodeTypeLiteral,
+						Value: ")",
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

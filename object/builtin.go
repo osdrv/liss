@@ -167,10 +167,12 @@ func (b *BuiltinFunction) Invoke(args ...Object) (Object, error) {
 		return nil, fmt.Errorf("builtin function %s should return two values (Object, error)", b.name)
 	}
 
-	res := out[0].Interface().(Object)
 	var err error
+	var res Object
 	if out[1].Interface() != nil {
 		err = out[1].Interface().(error)
+	} else {
+		res = out[0].Interface().(Object)
 	}
 
 	return res, err
