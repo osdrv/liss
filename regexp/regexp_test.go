@@ -237,3 +237,47 @@ func TestMatchWithCaptures(t *testing.T) {
 		})
 	}
 }
+
+func TestMatchStringIx(t *testing.T) {
+	tests := []struct {
+		name        string
+		pattern     string
+		input       string
+		wantIndices [][]int
+		wantOk      bool
+	}{
+		{
+			name:    "group match",
+			pattern: "(he)(ll)o",
+			input:   "hello",
+			wantIndices: [][]int{
+				{0, 5},
+				{0, 2},
+				{2, 4},
+			},
+			wantOk: true,
+		},
+		{
+			name:    "capture first match",
+			pattern: ".*(\\d+).*",
+			input:   "abc 123 def 456",
+			wantIndices: [][]int{
+				{0, 15},
+				{4, 7},
+			},
+			wantOk: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			re, err := Compile(tt.pattern)
+			require.NoError(t, err, "Compile(%q) failed", tt.pattern)
+			indices, ok := re.MatchStringIx(tt.input)
+			assert.Equal(t, tt.wantOk, ok, "MatchStringIx(%q) with pattern %q", tt.input, tt.pattern)
+			if ok {
+				assert.Equal(t, tt.wantIndices, indices, "Capture indices for input %q with pattern %q", tt.input, tt.pattern)
+			}
+		})
+	}
+}

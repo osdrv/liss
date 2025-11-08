@@ -9,6 +9,12 @@
     ) "")
 )
 
+(fn match_all [pat str]
+    (fn _next [acc ix]
+        (let _match (match_ix pat str))
+    )
+)
+
 (fn split [s delim]
     (let _len (len s))
     (fn _next [acc start ix]

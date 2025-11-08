@@ -42,7 +42,7 @@ func init() {
 		mkBuiltin("str", builtinStr, false),
 
 		mkBuiltin("list", builtinList, true),
-		// mkBuiltin("range", builtinRange, false),
+		mkBuiltin("range", builtinRange, false),
 		mkBuiltin("dict", builtinDict, true),
 		mkBuiltin("get", builtinGet, false),
 		mkBuiltin("put", builtinPut, false),
@@ -53,6 +53,7 @@ func init() {
 		mkBuiltin("re", builtinReCompile, false),
 		mkBuiltin("match?", builtinReMatch, false),
 		mkBuiltin("match", builtinReCapture, false),
+		mkBuiltin("match_ix", builtinReCaptureIx, false),
 		mkBuiltin("print", builtinPrint, true),
 		mkBuiltin("println", builtinPrintln, true),
 
@@ -295,6 +296,36 @@ func builtinList(args ...Object) (Object, error) {
 	return &List{items: args}, nil
 }
 
+func builtinRange(arrObj, fromObj, toObj Object) (Object, error) {
+	if _, ok := fromObj.(*Integer); !ok {
+		return nil, fmt.Errorf("range: expected integer as from argument, got %s", fromObj.String())
+	}
+	if _, ok := toObj.(*Integer); !ok {
+		return nil, fmt.Errorf("range: expected integer as to argument, got %s", toObj.String())
+	}
+	from := fromObj.(*Integer).Value
+	to := toObj.(*Integer).Value
+
+	switch arr := arrObj.(type) {
+	case *List:
+		if from < 0 || to > int64(len(arr.items)) || from > to {
+			return nil, fmt.Errorf("range: invalid range [%d:%d] for list of length %d", from, to, len(arr.items))
+		}
+		cp := make([]Object, to-from)
+		copy(cp, arr.items[from:to])
+		return &List{items: cp}, nil
+	case *String:
+		if from < 0 || to > int64(len(arr.Value)) || from > to {
+			return nil, fmt.Errorf("range: invalid range [%d:%d] for string of length %d", from, to, len(arr.Value))
+		}
+		cp := make([]rune, to-from)
+		copy(cp, arr.Value[from:to])
+		return &String{Value: cp}, nil
+	default:
+		return nil, fmt.Errorf("range: expected list or string as first argument, got %s", arrObj.String())
+	}
+}
+
 func builtinDict(pairs ...Object) (Object, error) {
 	dict := make(map[any]Object)
 	for _, pair := range pairs {
@@ -464,9 +495,37 @@ func builtinReMatch(pat Object, str Object) (Object, error) {
 	return nil, fmt.Errorf("match: expected regexp or string as first argument, got %s", pat.String())
 }
 
-func builtinReCapture(pat Object, str Object) (Object, error) {
+func finalizerMatchString(re *regexp.Regexp, str string) (Object, error) {
+	capts, ok := re.MatchString(str)
+	res := &List{items: []Object{}}
+	if ok {
+		for _, match := range capts {
+			res.items = append(res.items, NewString(match))
+		}
+	}
+	return res, nil
+}
+
+func finalizerMatchStringIx(re *regexp.Regexp, str string) (Object, error) {
+	ixs, ok := re.MatchStringIx(str)
+	items := make([]Object, 0, len(ixs))
+	res := &List{}
+	if ok {
+		for _, pair := range ixs {
+			sublist := &List{items: []Object{
+				NewInteger(int64(pair[0])),
+				NewInteger(int64(pair[1])),
+			}}
+			items = append(items, sublist)
+		}
+	}
+	res.items = items
+	return res, nil
+}
+
+func prepareMatchArgs(pat Object, str Object) (*regexp.Regexp, string, error) {
 	if !str.IsString() {
-		return nil, fmt.Errorf("capture: expected string as second argument, got %s", str.String())
+		return nil, "", fmt.Errorf("capture: expected string as second argument, got %s", str.String())
 	}
 	sstr := string(str.(*String).Value)
 	// pat could be a Regexp object or a string
@@ -478,20 +537,28 @@ func builtinReCapture(pat Object, str Object) (Object, error) {
 		var err error
 		re, err = regexp.Compile(string(strPat.Value))
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	} else {
-		return nil, fmt.Errorf("capture: expected regexp or string as first argument, got %s", pat.String())
+		return nil, "", fmt.Errorf("capture: expected regexp or string as first argument, got %s", pat.String())
 	}
+	return re, sstr, nil
+}
 
-	capts, ok := re.MatchString(sstr)
-	res := &List{items: []Object{}}
-	if ok {
-		for _, match := range capts {
-			res.items = append(res.items, NewString(match))
-		}
+func builtinReCapture(pat Object, str Object) (Object, error) {
+	re, sstr, err := prepareMatchArgs(pat, str)
+	if err != nil {
+		return nil, err
 	}
-	return res, nil
+	return finalizerMatchString(re, sstr)
+}
+
+func builtinReCaptureIx(pat Object, str Object) (Object, error) {
+	re, sstr, err := prepareMatchArgs(pat, str)
+	if err != nil {
+		return nil, err
+	}
+	return finalizerMatchStringIx(re, sstr)
 }
 
 func builtinPrint(args ...Object) (Object, error) {

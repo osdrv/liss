@@ -22,20 +22,40 @@ func Compile(pattern string) (*Regexp, error) {
 	}, nil
 }
 
-func (r *Regexp) MatchString(s string) ([]string, bool) {
+func (r *Regexp) MatchStringIx(s string) ([][]int, bool) {
 	rr := []rune(s)
 	caps, ok := r.Prog.Match(s)
 	if !ok {
 		return nil, false
 	}
-	matches := make([]string, len(caps)/2)
-	for i := 0; i < len(caps); i += 2 {
-		start := caps[i]
-		end := caps[i+1]
-		if start >= 0 && end >= 0 && start <= end && end <= len(s) {
-			matches[i/2] = string(rr[start:end])
+	numGroups := len(caps) / 2
+	matches := make([][]int, numGroups)
+	for i := range numGroups {
+		start := caps[2*i]
+		end := caps[2*i+1]
+		if start >= 0 && end >= 0 && start <= end && end <= len(rr) {
+			matches[i] = []int{start, end}
 		} else {
-			matches[i/2] = ""
+			matches[i] = []int{-1, -1}
+		}
+	}
+	return matches, true
+}
+
+func (r *Regexp) MatchString(s string) ([]string, bool) {
+	idxs, ok := r.MatchStringIx(s)
+	if !ok {
+		return nil, false
+	}
+	rr := []rune(s)
+	matches := make([]string, len(idxs))
+	for i, pair := range idxs {
+		start := pair[0]
+		end := pair[1]
+		if start >= 0 && end >= 0 && start <= end && end <= len(rr) {
+			matches[i] = string(rr[start:end])
+		} else {
+			matches[i] = ""
 		}
 	}
 	return matches, true

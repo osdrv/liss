@@ -25,20 +25,11 @@
 )
 
 (fn range [arr start end]
-    (fn _range [acc ix arr start end]
-        (cond (or (< ix start) (>= ix end) (>= ix (len arr)))
-            acc
-            (
-                (let _acc (push acc (get arr ix)))
-                (_range _acc (+ ix 1) arr start end)
-            )
-        )
-    )
     (cond (is_null? arr)
         null
         (cond (>= start (len arr))
             []
-            (_range [] start arr start end)
+            (range arr start end)
         )
     )
 )

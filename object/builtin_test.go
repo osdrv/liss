@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetFuncNumArgs(t *testing.T) {
@@ -373,4 +374,54 @@ func TestBuiltinGet(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuiltinMatchIx(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   Object
+		pattern Object
+		want    [][]int64
+		wantErr error
+	}{
+		{
+			name:    "Simple match with captures",
+			input:   &String{Value: []rune("hello world")},
+			pattern: &String{Value: []rune("(hello) (world)")},
+			want: [][]int64{
+				{0, 11},
+				{0, 5},
+				{6, 11},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := builtinReCaptureIx(tt.pattern, tt.input)
+			if tt.wantErr != nil {
+				assert.ErrorContains(t, err, tt.wantErr.Error(), "BuiltinReCaptureIx() unexpected error")
+				return
+			}
+			require.Nil(t, err, "BuiltinReCaptureIx() unexpected error: %v", err)
+			assertListEqual(t, got, tt.want, "BuiltinReCaptureIx() = %v, want %v", got, tt.want)
+		})
+	}
+}
+
+func assertListEqual(t *testing.T, got Object, want [][]int64, msgAndArgs ...any) {
+	gotList, ok := got.(*List)
+	require.True(t, ok, "Expected List object, got %T", got)
+	plainList := make([][]int64, len(gotList.items))
+	for i, item := range gotList.items {
+		intList, ok := item.(*List)
+		require.True(t, ok, "Expected List object at index %d, got %T", i, item)
+		require.Len(t, intList.items, 2, "Expected list of length 2 at index %d, got length %d", i, len(intList.items))
+		fromObj, ok := intList.items[0].(*Integer)
+		require.True(t, ok, "Expected Integer object at index %d, got %T", i, intList.items[0])
+		toObj, ok := intList.items[1].(*Integer)
+		require.True(t, ok, "Expected Integer object at index %d, got %T", i, intList.items[1])
+		plainList[i] = []int64{fromObj.Value, toObj.Value}
+	}
+	assert.Equal(t, want, plainList, msgAndArgs...)
 }
