@@ -56,7 +56,7 @@ func TestCompile(t *testing.T) {
 				},
 			},
 			wantInsts: []Inst{
-				{Op: ReOpSplit, Out: 1, Out1: 0},
+				{Op: ReOpSplit, Out: 0, Out1: 1},
 				{Op: ReOpRuneClass, Arg: RuneClassDigit},
 			},
 		},

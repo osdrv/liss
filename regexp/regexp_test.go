@@ -212,6 +212,16 @@ func TestMatchWithCaptures(t *testing.T) {
 			},
 			wantOk: true,
 		},
+		{
+			name:    "captures first match",
+			pattern: ".*(\\d+).*",
+			input:   "abc 123 def 456",
+			wantCaptures: []string{
+				"abc 123 def 456",
+				"123",
+			},
+			wantOk: true,
+		},
 	}
 
 	for _, tt := range tests {

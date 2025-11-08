@@ -66,7 +66,7 @@ func (c *compiler) compile(node *ASTNode, next int) int {
 	case NodeTypeStar:
 		split := c.addInst(Inst{Op: ReOpSplit})
 		body := c.compile(node.Children[0], split)
-		c.parchSplit(split, body, next)
+		c.parchSplit(split, next, body)
 		return split
 	case NodeTypeQuestion:
 		split := c.addInst(Inst{Op: ReOpSplit})
