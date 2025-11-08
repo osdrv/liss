@@ -9,9 +9,34 @@
     ) "")
 )
 
-(fn match_all [pat str]
+(fn match_all [pat s]
+    (fn _collect [_s acc mtch ix]
+        (cond (>= ix (len mtch))
+            acc
+            (
+                (let _m (get mtch ix))
+                (let _subs (range _s (get _m 0) (get _m 1)))
+                (let _acc (list:push acc _subs))
+                (_collect _s _acc mtch (+ ix 1))
+            )
+        )
+    )
     (fn _next [acc ix]
-        (let _match (match_ix pat str))
+        (let _substr (range s ix (len s)))
+        (let _match (match_ix pat _substr))
+        (cond (or (is_null? _match) (is_empty? _match))
+            acc
+            (
+                (let _acc (+ acc (_collect _substr [] _match 1)))
+                (let _nix (get (last _match) 1))
+                (_next _acc (+ ix _nix))
+            )
+        )
+    )
+    (let _res (_next [] 0))
+    (cond (is_empty? _res)
+        _res
+        (+ [s] _res)
     )
 )
 
