@@ -88,6 +88,10 @@ func (c *compiler) compile(node *ASTNode, next int) int {
 		innerStart := c.compile(node.Children[0], end)
 		start := c.addInst(Inst{Op: ReOpCaptureStart, Arg: numCaps, Out: innerStart})
 		return start
+	case NodeTypeStartOfString:
+		return c.addInst(Inst{Op: ReOpStartOfString, Out: next})
+	case NodeTypeEndOfString:
+		return c.addInst(Inst{Op: ReOpEndOfString, Out: next})
 	default:
 		panic("unknown AST node type")
 	}

@@ -13,6 +13,8 @@ const (
 	NodeTypeQuestion
 	NodeTypeGroup
 	NodeTypeCapture
+	NodeTypeStartOfString
+	NodeTypeEndOfString
 )
 
 type ASTNode struct {

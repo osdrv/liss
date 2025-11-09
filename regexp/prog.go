@@ -38,6 +38,8 @@ const (
 	ReOpCaptureStart
 	ReOpCaptureEnd
 	ReOpJump
+	ReOpStartOfString
+	ReOpEndOfString
 )
 
 type Inst struct {
@@ -66,7 +68,7 @@ func NewProg(insts []Inst, start int) *Prog {
 	}
 }
 
-func (p *Prog) addThread(list []Thread, t Thread, ix int) []Thread {
+func (p *Prog) addThread(list []Thread, t Thread, ix int, rr []rune) []Thread {
 	// worklist is a stack of threads to process
 	workList := []Thread{t}
 
@@ -97,6 +99,14 @@ func (p *Prog) addThread(list []Thread, t Thread, ix int) []Thread {
 			gid := p.NumCaps - inst.Arg
 			newCaps[gid*2+1] = ix
 			workList = append(workList, Thread{inst.Out, newCaps})
+		case ReOpStartOfString:
+			if ix == 0 {
+				workList = append(workList, Thread{inst.Out, t.Caps})
+			}
+		case ReOpEndOfString:
+			if ix == len(rr) {
+				workList = append(workList, Thread{inst.Out, t.Caps})
+			}
 		}
 	}
 
@@ -105,47 +115,66 @@ func (p *Prog) addThread(list []Thread, t Thread, ix int) []Thread {
 
 func (p *Prog) Match(s string) ([]int, bool) {
 	capsLen := (p.NumCaps + 1) * 2 // +1 for group 0
-	var clist []Thread
-	var nlist []Thread
-
-	initialCaps := make([]int, capsLen)
-	initialCaps[0] = 0 // Group 0 starts at position 0
-	clist = p.addThread(nil, Thread{p.Start, initialCaps}, 0)
-	var ix int
-
 	rr := []rune(s)
-	for i, r := range rr {
-		ix = i
-		nlist = nil
 
+	for start_ix := 0; start_ix <= len(rr); start_ix++ {
+		var clist []Thread
+		var nlist []Thread
+		var bestCaps []int
+
+		initialCaps := make([]int, capsLen)
+		for j := range initialCaps {
+			initialCaps[j] = -1
+		}
+		initialCaps[0] = start_ix
+		clist = p.addThread(nil, Thread{p.Start, initialCaps}, start_ix, rr)
+
+		// Check for zero-length match at start_ix
 		for _, t := range clist {
-			inst := p.Insts[t.PC]
-			switch inst.Op {
-			case ReOpRune, ReOpRuneClass:
-				if matchRune(r, inst) {
-					nlist = p.addThread(nlist, Thread{inst.Out, t.Caps}, i+1)
-				}
-			case ReOpAny:
-				nlist = p.addThread(nlist, Thread{inst.Out, t.Caps}, i+1)
+			if p.Insts[t.PC].Op == ReOpMatch {
+				finalCaps := make([]int, capsLen)
+				copy(finalCaps, t.Caps)
+				finalCaps[1] = start_ix
+				bestCaps = finalCaps
+				break
 			}
 		}
-		clist = nlist
 
-		if len(clist) == 0 {
-			// No match
-			return nil, false
+		// The original loop over the string characters, but starting from start_ix
+		for i, r := range rr[start_ix:] {
+			ix := start_ix + i
+			nlist = nil
+
+			for _, t := range clist {
+				inst := p.Insts[t.PC]
+				switch inst.Op {
+				case ReOpRune, ReOpRuneClass:
+					if matchRune(r, inst) {
+						nlist = p.addThread(nlist, Thread{inst.Out, t.Caps}, ix+1, rr)
+					}
+				case ReOpAny:
+					nlist = p.addThread(nlist, Thread{inst.Out, t.Caps}, ix+1, rr)
+				}
+			}
+			clist = nlist
+
+			if len(clist) == 0 {
+				break
+			}
+
+			for _, t := range clist {
+				if p.Insts[t.PC].Op == ReOpMatch {
+					finalCaps := make([]int, capsLen)
+					copy(finalCaps, t.Caps)
+					finalCaps[1] = ix + 1
+					bestCaps = finalCaps
+					break
+				}
+			}
 		}
-	}
-	ix = len(rr)
 
-	for _, t := range clist {
-		inst := p.Insts[t.PC]
-		if inst.Op == ReOpMatch {
-			// Complete the group 0 capture end
-			finalCaps := make([]int, capsLen)
-			copy(finalCaps, t.Caps)
-			finalCaps[1] = ix
-			return finalCaps, true
+		if bestCaps != nil {
+			return bestCaps, true
 		}
 	}
 
@@ -200,6 +229,10 @@ func (p *Prog) String() string {
 			b.WriteString(fmt.Sprintf("CAPTURE_END (group %d) -> %d\n", gid, inst.Out))
 		case ReOpJump:
 			b.WriteString(fmt.Sprintf("JUMP -> %d\n", inst.Out))
+		case ReOpStartOfString:
+			b.WriteString(fmt.Sprintf("START_OF_STRING -> %d\n", inst.Out))
+		case ReOpEndOfString:
+			b.WriteString(fmt.Sprintf("END_OF_STRING -> %d\n", inst.Out))
 		}
 	}
 	return b.String()

@@ -24,7 +24,7 @@ func TestMatchString(t *testing.T) {
 			name:    "non-empty string empty pattern",
 			input:   "abc",
 			pattern: "",
-			want:    false,
+			want:    true,
 		},
 		{
 			name:    "match single rune",
@@ -54,7 +54,13 @@ func TestMatchString(t *testing.T) {
 			name:    "string partial match",
 			input:   "hello",
 			pattern: "hell",
-			want:    false,
+			want:    true,
+		},
+		{
+			name:    "string partial match in the middle",
+			input:   "hello world",
+			pattern: "lo wo",
+			want:    true,
 		},
 		{
 			name:    "string under match",
@@ -115,6 +121,54 @@ func TestMatchString(t *testing.T) {
 			input:   "123 456 789",
 			pattern: "(\\d+) (\\d+) (\\d+)",
 			want:    true,
+		},
+		{
+			name:    "starts with anchor",
+			input:   "abc",
+			pattern: "^a",
+			want:    true,
+		},
+		{
+			name:    "starts with anchor no match",
+			input:   "bac",
+			pattern: "^a",
+			want:    false,
+		},
+		{
+			name:    "ends with anchor",
+			input:   "abc",
+			pattern: "c$",
+			want:    true,
+		},
+		{
+			name:    "ends with anchor no match",
+			input:   "cba",
+			pattern: "c$",
+			want:    false,
+		},
+		{
+			name:    "starts and ends with anchor",
+			input:   "abc",
+			pattern: "^abc$",
+			want:    true,
+		},
+		{
+			name:    "starts and ends with anchor no match",
+			input:   "xabc",
+			pattern: "^abc$",
+			want:    false,
+		},
+		{
+			name:    "starts and ends with anchor no match 2",
+			input:   "abcx",
+			pattern: "^abc$",
+			want:    false,
+		},
+		{
+			name:    "anchor in the middle",
+			input:   "a^c",
+			pattern: "a^c",
+			want:    false,
 		},
 	}
 

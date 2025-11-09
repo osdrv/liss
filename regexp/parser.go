@@ -28,6 +28,14 @@ func (p *parser) consume() rune {
 
 // Handles literals and groups
 func (p *parser) parseAtom() (*ASTNode, error) {
+	if p.peek() == '^' {
+		p.consume()
+		return &ASTNode{Type: NodeTypeStartOfString}, nil
+	}
+	if p.peek() == '$' {
+		p.consume()
+		return &ASTNode{Type: NodeTypeEndOfString}, nil
+	}
 	if p.peek() == '.' {
 		p.consume() // consume '.'
 		return &ASTNode{Type: NodeTypeAny}, nil
@@ -65,7 +73,7 @@ func (p *parser) parseAtom() (*ASTNode, error) {
 	start := p.pos
 	for {
 		r := p.peek()
-		if r == 0 || strings.ContainsRune("()|*+?.\\", r) {
+		if r == 0 || strings.ContainsRune("()|*+?.\\^$", r) {
 			break
 		}
 		p.consume()
