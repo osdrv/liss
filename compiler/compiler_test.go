@@ -653,6 +653,19 @@ func TestCompile(t *testing.T) {
 			},
 		},
 		{
+			name:       "or with 3+ operands",
+			input:      "(or false false false true)",
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpFalse),
+				code.Make(code.OpFalse),
+				code.Make(code.OpFalse),
+				code.Make(code.OpTrue),
+				code.Make(code.OpOr, 4),
+				code.Make(code.OpPop),
+			},
+		},
+		{
 			name:       "emit stack pop",
 			input:      "(+ 1 2 5)(+ 3 4)",
 			wantConsts: []any{int64(1), int64(2), int64(5), int64(3), int64(4)},

@@ -18,7 +18,7 @@ func TestNewIdentifierExpr(t *testing.T) {
 		{
 			name:  "Valid identifier",
 			input: token.Token{Type: token.Identifier, Literal: "foo"},
-			want:  &IdentifierExpr{Token: token.Token{Type: token.Identifier, Literal: "foo"}, Name: "foo"},
+			want:  &IdentifierExpr{Tok: token.Token{Type: token.Identifier, Literal: "foo"}, Name: "foo"},
 		},
 		{
 			name:    "Invalid token type",

@@ -147,21 +147,21 @@ func TestParse(t *testing.T) {
 			input: "(>= 1 2)",
 			want: []ast.Node{
 				&ast.OperatorExpr{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.GreaterThanOrEqual,
 						Literal: ">=",
 					},
 					Operator: ast.OperatorGreaterThanOrEqual,
 					Operands: []ast.Node{
 						&ast.IntegerLiteral{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Numeric,
 								Literal: "1",
 							},
 							Value: int64(1),
 						},
 						&ast.IntegerLiteral{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Numeric,
 								Literal: "2",
 							},
@@ -176,19 +176,19 @@ func TestParse(t *testing.T) {
 			input: "(cond true 123)",
 			want: []ast.Node{
 				&ast.CondExpression{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.Cond,
 						Literal: "cond",
 					},
 					Cond: &ast.BooleanLiteral{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.True,
 							Literal: "true",
 						},
 						Value: true,
 					},
 					Then: &ast.IntegerLiteral{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.Numeric,
 							Literal: "123",
 						},
@@ -202,26 +202,26 @@ func TestParse(t *testing.T) {
 			input: "(cond true 123 456)",
 			want: []ast.Node{
 				&ast.CondExpression{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.Cond,
 						Literal: "cond",
 					},
 					Cond: &ast.BooleanLiteral{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.True,
 							Literal: "true",
 						},
 						Value: true,
 					},
 					Then: &ast.IntegerLiteral{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.Numeric,
 							Literal: "123",
 						},
 						Value: int64(123),
 					},
 					Else: &ast.IntegerLiteral{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.Numeric,
 							Literal: "456",
 						},
@@ -240,12 +240,12 @@ func TestParse(t *testing.T) {
 			input: "(fn add [a b] (+ a b))",
 			want: []ast.Node{
 				&ast.FunctionExpression{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.Fn,
 						Literal: "fn",
 					},
 					Name: &ast.IdentifierExpr{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.Identifier,
 							Literal: "add",
 						},
@@ -253,14 +253,14 @@ func TestParse(t *testing.T) {
 					},
 					Args: []*ast.IdentifierExpr{
 						&ast.IdentifierExpr{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Identifier,
 								Literal: "a",
 							},
 							Name: "a",
 						},
 						&ast.IdentifierExpr{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Identifier,
 								Literal: "b",
 							},
@@ -269,21 +269,21 @@ func TestParse(t *testing.T) {
 					},
 					Body: []ast.Node{
 						&ast.OperatorExpr{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Plus,
 								Literal: "+",
 							},
 							Operator: ast.OperatorPlus,
 							Operands: []ast.Node{
 								&ast.IdentifierExpr{
-									Token: token.Token{
+									Tok: token.Token{
 										Type:    token.Identifier,
 										Literal: "a",
 									},
 									Name: "a",
 								},
 								&ast.IdentifierExpr{
-									Token: token.Token{
+									Tok: token.Token{
 										Type:    token.Identifier,
 										Literal: "b",
 									},
@@ -300,19 +300,19 @@ func TestParse(t *testing.T) {
 			input: "(let x 42)",
 			want: []ast.Node{
 				&ast.LetExpression{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.Let,
 						Literal: "let",
 					},
 					Identifier: &ast.IdentifierExpr{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.Identifier,
 							Literal: "x",
 						},
 						Name: "x",
 					},
 					Value: &ast.IntegerLiteral{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.Numeric,
 							Literal: "42",
 						},
@@ -326,33 +326,33 @@ func TestParse(t *testing.T) {
 			input: "(let x (+ 1 2))",
 			want: []ast.Node{
 				&ast.LetExpression{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.Let,
 						Literal: "let",
 					},
 					Identifier: &ast.IdentifierExpr{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.Identifier,
 							Literal: "x",
 						},
 						Name: "x",
 					},
 					Value: &ast.OperatorExpr{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.Plus,
 							Literal: "+",
 						},
 						Operator: ast.OperatorPlus,
 						Operands: []ast.Node{
 							&ast.IntegerLiteral{
-								Token: token.Token{
+								Tok: token.Token{
 									Type:    token.Numeric,
 									Literal: "1",
 								},
 								Value: int64(1),
 							},
 							&ast.IntegerLiteral{
-								Token: token.Token{
+								Tok: token.Token{
 									Type:    token.Numeric,
 									Literal: "2",
 								},
@@ -368,12 +368,12 @@ func TestParse(t *testing.T) {
 			input: "(add 1 2)",
 			want: []ast.Node{
 				&ast.CallExpression{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.Identifier,
 						Literal: "add",
 					},
 					Callee: &ast.IdentifierExpr{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.Identifier,
 							Literal: "add",
 						},
@@ -381,14 +381,14 @@ func TestParse(t *testing.T) {
 					},
 					Args: []ast.Node{
 						&ast.IntegerLiteral{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Numeric,
 								Literal: "1",
 							},
 							Value: int64(1),
 						},
 						&ast.IntegerLiteral{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Numeric,
 								Literal: "2",
 							},
@@ -405,21 +405,21 @@ func TestParse(t *testing.T) {
 				&ast.BlockExpression{
 					Nodes: []ast.Node{
 						&ast.IntegerLiteral{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Numeric,
 								Literal: "1",
 							},
 							Value: int64(1),
 						},
 						&ast.IntegerLiteral{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Numeric,
 								Literal: "2",
 							},
 							Value: int64(2),
 						},
 						&ast.IntegerLiteral{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Numeric,
 								Literal: "3",
 							},
@@ -434,27 +434,27 @@ func TestParse(t *testing.T) {
 			input: "[1 2 3]",
 			want: []ast.Node{
 				&ast.ListExpression{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.LBracket,
 						Literal: "[",
 					},
 					Items: []ast.Node{
 						&ast.IntegerLiteral{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Numeric,
 								Literal: "1",
 							},
 							Value: int64(1),
 						},
 						&ast.IntegerLiteral{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Numeric,
 								Literal: "2",
 							},
 							Value: int64(2),
 						},
 						&ast.IntegerLiteral{
-							Token: token.Token{
+							Tok: token.Token{
 								Type:    token.Numeric,
 								Literal: "3",
 							},
@@ -469,12 +469,12 @@ func TestParse(t *testing.T) {
 			input: `(import "list")`,
 			want: []ast.Node{
 				&ast.ImportExpression{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.Import,
 						Literal: "import",
 					},
 					Ref: &ast.StringLiteral{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.String,
 							Literal: `"list"`,
 						},
@@ -488,32 +488,32 @@ func TestParse(t *testing.T) {
 			input: `(import "list" ["map" "reduce"])`,
 			want: []ast.Node{
 				&ast.ImportExpression{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.Import,
 						Literal: "import",
 					},
 					Ref: &ast.StringLiteral{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.String,
 							Literal: `"list"`,
 						},
 						Value: "list",
 					},
 					Symbols: &ast.ListExpression{
-						Token: token.Token{
+						Tok: token.Token{
 							Type:    token.LBracket,
 							Literal: "[",
 						},
 						Items: []ast.Node{
 							&ast.StringLiteral{
-								Token: token.Token{
+								Tok: token.Token{
 									Type:    token.String,
 									Literal: `"map"`,
 								},
 								Value: "map",
 							},
 							&ast.StringLiteral{
-								Token: token.Token{
+								Tok: token.Token{
 									Type:    token.String,
 									Literal: `"reduce"`,
 								},
@@ -529,7 +529,7 @@ func TestParse(t *testing.T) {
 			input: "math:pi",
 			want: []ast.Node{
 				&ast.IdentifierExpr{
-					Token: token.Token{
+					Tok: token.Token{
 						Type:    token.Identifier,
 						Literal: "math:pi",
 					},

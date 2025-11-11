@@ -8,7 +8,7 @@ import (
 
 type NullLiteral struct {
 	emptyNode
-	Token token.Token
+	Tok token.Token
 }
 
 var _ Node = (*NullLiteral)(nil)
@@ -18,7 +18,11 @@ func NewNullLiteral(tok token.Token) (*NullLiteral, error) {
 		return nil, fmt.Errorf("expected token type Null, got %s", tok.Type.String())
 	}
 
-	return &NullLiteral{Token: tok}, nil
+	return &NullLiteral{Tok: tok}, nil
+}
+
+func (n *NullLiteral) Token() token.Token {
+	return n.Tok
 }
 
 func (n *NullLiteral) String() string {
@@ -27,7 +31,7 @@ func (n *NullLiteral) String() string {
 
 type IntegerLiteral struct {
 	emptyNode
-	Token token.Token
+	Tok   token.Token
 	Value int64
 }
 
@@ -42,7 +46,11 @@ func NewIntegerLiteral(tok token.Token) (*IntegerLiteral, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &IntegerLiteral{Token: tok, Value: v}, nil
+	return &IntegerLiteral{Tok: tok, Value: v}, nil
+}
+
+func (i *IntegerLiteral) Token() token.Token {
+	return i.Tok
 }
 
 func (i *IntegerLiteral) String() string {
@@ -51,7 +59,7 @@ func (i *IntegerLiteral) String() string {
 
 type FloatLiteral struct {
 	emptyNode
-	Token token.Token
+	Tok   token.Token
 	Value float64
 }
 
@@ -66,7 +74,11 @@ func NewFloatLiteral(tok token.Token) (*FloatLiteral, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FloatLiteral{Token: tok, Value: v}, nil
+	return &FloatLiteral{Tok: tok, Value: v}, nil
+}
+
+func (f *FloatLiteral) Token() token.Token {
+	return f.Tok
 }
 
 func (f *FloatLiteral) String() string {
@@ -75,7 +87,7 @@ func (f *FloatLiteral) String() string {
 
 type StringLiteral struct {
 	emptyNode
-	Token token.Token
+	Tok   token.Token
 	Value string
 }
 
@@ -86,7 +98,11 @@ func NewStringLiteral(tok token.Token) (*StringLiteral, error) {
 		return nil, fmt.Errorf("expected token type String, got %s", tok.Type.String())
 	}
 
-	return &StringLiteral{Token: tok, Value: tok.Literal}, nil
+	return &StringLiteral{Tok: tok, Value: tok.Literal}, nil
+}
+
+func (s *StringLiteral) Token() token.Token {
+	return s.Tok
 }
 
 func (s *StringLiteral) String() string {
@@ -95,7 +111,7 @@ func (s *StringLiteral) String() string {
 
 type BooleanLiteral struct {
 	emptyNode
-	Token token.Token
+	Tok   token.Token
 	Value bool
 }
 
@@ -106,7 +122,11 @@ func NewBooleanLiteral(tok token.Token) (*BooleanLiteral, error) {
 		return nil, fmt.Errorf("expected token type Boolean, got %s", tok.Type.String())
 	}
 
-	return &BooleanLiteral{Token: tok, Value: tok.Type == token.True}, nil
+	return &BooleanLiteral{Tok: tok, Value: tok.Type == token.True}, nil
+}
+
+func (b *BooleanLiteral) Token() token.Token {
+	return b.Tok
 }
 
 func (b *BooleanLiteral) String() string {

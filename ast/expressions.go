@@ -8,13 +8,15 @@ import (
 )
 
 type BlockExpression struct {
+	Tok   token.Token
 	Nodes []Node
 }
 
 var _ Node = (*BlockExpression)(nil)
 
-func NewBlockExpression(nodes []Node) *BlockExpression {
+func NewBlockExpression(tok token.Token, nodes []Node) *BlockExpression {
 	return &BlockExpression{
+		Tok:   tok,
 		Nodes: nodes,
 	}
 }
@@ -38,11 +40,15 @@ func (e *BlockExpression) Children() []Node {
 	return e.Nodes
 }
 
+func (e *BlockExpression) Token() token.Token {
+	return e.Tok
+}
+
 func (e *BlockExpression) expressionNode() {}
 
 type IdentifierExpr struct {
 	emptyNode
-	Token  token.Token
+	Tok    token.Token
 	Module string
 	Name   string
 }
@@ -66,10 +72,14 @@ func NewIdentifierExpr(tok token.Token) (*IdentifierExpr, error) {
 		}
 	}
 	return &IdentifierExpr{
-		Token:  tok,
+		Tok:    tok,
 		Module: module,
 		Name:   name,
 	}, nil
+}
+
+func (e *IdentifierExpr) Token() token.Token {
+	return e.Tok
 }
 
 func (e *IdentifierExpr) FullName() string {
@@ -91,7 +101,7 @@ func (e *IdentifierExpr) String() string {
 }
 
 type OperatorExpr struct {
-	Token    token.Token
+	Tok      token.Token
 	Operator Operator
 	Operands []Node
 }
@@ -101,12 +111,16 @@ var _ Node = (*OperatorExpr)(nil)
 func NewOperatorExpr(tok token.Token, operands []Node) (*OperatorExpr, error) {
 	if op, ok := tokenToOperator[tok.Type]; ok {
 		return &OperatorExpr{
-			Token:    tok,
+			Tok:      tok,
 			Operator: op,
 			Operands: operands,
 		}, nil
 	}
 	return nil, fmt.Errorf("unexpected token type: %s", tok.Type.String())
+}
+
+func (e *OperatorExpr) Token() token.Token {
+	return e.Tok
 }
 
 func (e *OperatorExpr) String() string {
@@ -134,21 +148,25 @@ func (e *OperatorExpr) Children() []Node {
 func (e *OperatorExpr) expressionNode() {}
 
 type CondExpression struct {
-	Token token.Token
-	Cond  Node
-	Then  Node
-	Else  Node
+	Tok  token.Token
+	Cond Node
+	Then Node
+	Else Node
 }
 
 var _ Node = (*CondExpression)(nil)
 
 func NewCondExpression(tok token.Token, cond Node, th Node, el Node) (*CondExpression, error) {
 	return &CondExpression{
-		Cond:  cond,
-		Token: tok,
-		Then:  th,
-		Else:  el,
+		Cond: cond,
+		Tok:  tok,
+		Then: th,
+		Else: el,
 	}, nil
+}
+
+func (e *CondExpression) Token() token.Token {
+	return e.Tok
 }
 
 func (e *CondExpression) String() string {
@@ -175,7 +193,7 @@ func (e *CondExpression) expressionNode() {}
 
 type ImportExpression struct {
 	emptyNode
-	Token   token.Token
+	Tok     token.Token
 	Ref     Node
 	Symbols *ListExpression
 }
@@ -184,10 +202,14 @@ var _ Node = (*ImportExpression)(nil)
 
 func NewImportExpression(tok token.Token, ref Node, symbols *ListExpression) (*ImportExpression, error) {
 	return &ImportExpression{
-		Token:   tok,
+		Tok:     tok,
 		Ref:     ref,
 		Symbols: symbols,
 	}, nil
+}
+
+func (e *ImportExpression) Token() token.Token {
+	return e.Tok
 }
 
 func (e *ImportExpression) String() string {
@@ -209,7 +231,7 @@ func (e *ImportExpression) String() string {
 
 type LetExpression struct {
 	emptyNode
-	Token      token.Token
+	Tok        token.Token
 	Identifier *IdentifierExpr
 	Value      Node
 }
@@ -218,10 +240,14 @@ var _ Node = (*LetExpression)(nil)
 
 func NewLetExpression(tok token.Token, id *IdentifierExpr, value Node) (*LetExpression, error) {
 	return &LetExpression{
-		Token:      tok,
+		Tok:        tok,
 		Identifier: id,
 		Value:      value,
 	}, nil
+}
+
+func (e *LetExpression) Token() token.Token {
+	return e.Tok
 }
 
 func (e *LetExpression) String() string {
@@ -236,21 +262,25 @@ func (e *LetExpression) String() string {
 }
 
 type FunctionExpression struct {
-	Token token.Token
-	Name  *IdentifierExpr // Optional, can be nil
-	Args  []*IdentifierExpr
-	Body  []Node
+	Tok  token.Token
+	Name *IdentifierExpr // Optional, can be nil
+	Args []*IdentifierExpr
+	Body []Node
 }
 
 var _ Node = (*FunctionExpression)(nil)
 
 func NewFunctionExpression(tok token.Token, name *IdentifierExpr, args []*IdentifierExpr, body []Node) (*FunctionExpression, error) {
 	return &FunctionExpression{
-		Token: tok,
-		Name:  name,
-		Args:  args,
-		Body:  body,
+		Tok:  tok,
+		Name: name,
+		Args: args,
+		Body: body,
 	}, nil
+}
+
+func (e *FunctionExpression) Token() token.Token {
+	return e.Tok
 }
 
 func (e *FunctionExpression) String() string {
@@ -291,7 +321,7 @@ func (e *FunctionExpression) Children() []Node {
 func (e *FunctionExpression) expressionNode() {}
 
 type CallExpression struct {
-	Token  token.Token
+	Tok    token.Token
 	Callee Node
 	Args   []Node
 }
@@ -300,10 +330,14 @@ var _ Node = (*CallExpression)(nil)
 
 func NewCallExpression(tok token.Token, callee Node, args []Node) (*CallExpression, error) {
 	return &CallExpression{
-		Token:  tok,
+		Tok:    tok,
 		Callee: callee,
 		Args:   args,
 	}, nil
+}
+
+func (e *CallExpression) Token() token.Token {
+	return e.Tok
 }
 
 func (e *CallExpression) String() string {
@@ -328,7 +362,7 @@ func (e *CallExpression) Children() []Node {
 func (e *CallExpression) expressionNode() {}
 
 type ListExpression struct {
-	Token token.Token
+	Tok   token.Token
 	Items []Node
 }
 
@@ -336,9 +370,13 @@ var _ Node = (*ListExpression)(nil)
 
 func NewListExpression(tok token.Token, items []Node) (*ListExpression, error) {
 	return &ListExpression{
-		Token: tok,
+		Tok:   tok,
 		Items: items,
 	}, nil
+}
+
+func (e *ListExpression) Token() token.Token {
+	return e.Tok
 }
 
 func (e *ListExpression) String() string {
@@ -362,15 +400,19 @@ func (e *ListExpression) expressionNode() {}
 
 type BreakpointExpression struct {
 	emptyNode
-	Token token.Token
+	Tok token.Token
 }
 
 var _ Node = (*BreakpointExpression)(nil)
 
 func NewBreakpointExpression(tok token.Token) (*BreakpointExpression, error) {
 	return &BreakpointExpression{
-		Token: tok,
+		Tok: tok,
 	}, nil
+}
+
+func (e *BreakpointExpression) Token() token.Token {
+	return e.Tok
 }
 
 func (e *BreakpointExpression) String() string {

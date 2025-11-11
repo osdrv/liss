@@ -6,6 +6,7 @@ import (
 )
 
 type Node interface {
+	Token() token.Token
 	String() string
 	Children() []Node
 	expressionNode()

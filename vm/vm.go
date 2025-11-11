@@ -357,23 +357,35 @@ func (vm *VM) Run() error {
 				return err
 			}
 		case code.OpAnd:
-			b := vm.pop()
-			a := vm.pop()
-			if a.Type() != object.BoolType || b.Type() != object.BoolType {
-				return NewTypeMismatchError(
-					fmt.Sprintf("expected boolean types, got %s and %s", a.Type().String(), b.Type().String()))
-			}
-			if err := vm.push(object.NewBool(a.(*object.Bool).Value && b.(*object.Bool).Value)); err != nil {
-				return err
+			argc := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame().ip += 2
+			val := true
+			for range int(argc) {
+				arg := vm.pop()
+				if arg.Type() != object.BoolType {
+					return NewTypeMismatchError(
+						fmt.Sprintf("expected boolean type, got %s", arg.Type().String()),
+					)
+				}
+				val = val && arg.(*object.Bool).Value
+				if err := vm.push(object.NewBool(val)); err != nil {
+					return err
+				}
 			}
 		case code.OpOr:
-			b := vm.pop()
-			a := vm.pop()
-			if a.Type() != object.BoolType || b.Type() != object.BoolType {
-				return NewTypeMismatchError(
-					fmt.Sprintf("expected boolean types, got %s and %s", a.Type().String(), b.Type().String()))
+			argc := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame().ip += 2
+			val := false
+			for range int(argc) {
+				arg := vm.pop()
+				if arg.Type() != object.BoolType {
+					return NewTypeMismatchError(
+						fmt.Sprintf("expected boolean type, got %s", arg.Type().String()),
+					)
+				}
+				val = val || arg.(*object.Bool).Value
 			}
-			if err := vm.push(object.NewBool(a.(*object.Bool).Value || b.(*object.Bool).Value)); err != nil {
+			if err := vm.push(object.NewBool(val)); err != nil {
 				return err
 			}
 		case code.OpTrue:
@@ -503,6 +515,9 @@ func (vm *VM) Run() error {
 			}
 			ret := vm.pop()
 			frame := vm.popFrame()
+			for i := vm.sp; i >= frame.bptr; i-- {
+				vm.stack[i] = nil
+			}
 			vm.sp = frame.bptr - 1
 			if err := vm.push(ret); err != nil {
 				return err
@@ -615,6 +630,9 @@ func (vm *VM) callFunction(argc int) error {
 		if err != nil {
 			return err
 		}
+		for i := vm.sp - 1; i >= vm.sp-argc-1; i-- {
+			vm.stack[i] = nil
+		}
 		vm.sp = vm.sp - argc - 1
 		if err := vm.push(res); err != nil {
 			return err
@@ -699,6 +717,7 @@ func (vm *VM) pop() object.Object {
 		return nil
 	}
 	obj := vm.stack[vm.sp-1]
+	vm.stack[vm.sp] = nil
 	vm.sp--
 	return obj
 }

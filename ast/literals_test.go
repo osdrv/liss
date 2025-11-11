@@ -22,7 +22,7 @@ func TestIntegerLiteral(t *testing.T) {
 				Literal: "42",
 			},
 			want: &IntegerLiteral{
-				Token: token.Token{
+				Tok: token.Token{
 					Type:    token.Numeric,
 					Literal: "42",
 				},
@@ -68,7 +68,7 @@ func TestFloatLiteral(t *testing.T) {
 				Literal: "3.14",
 			},
 			want: &FloatLiteral{
-				Token: token.Token{
+				Tok: token.Token{
 					Type:    token.Numeric,
 					Literal: "3.14",
 				},
@@ -114,7 +114,7 @@ func TestStringLiteral(t *testing.T) {
 				Literal: `Hello, World!`,
 			},
 			want: &StringLiteral{
-				Token: token.Token{
+				Tok: token.Token{
 					Type:    token.String,
 					Literal: `Hello, World!`,
 				},
@@ -160,7 +160,7 @@ func TestBooleanLiteral(t *testing.T) {
 				Literal: "true",
 			},
 			want: &BooleanLiteral{
-				Token: token.Token{
+				Tok: token.Token{
 					Type:    token.True,
 					Literal: "true",
 				},
@@ -174,7 +174,7 @@ func TestBooleanLiteral(t *testing.T) {
 				Literal: "false",
 			},
 			want: &BooleanLiteral{
-				Token: token.Token{
+				Tok: token.Token{
 					Type:    token.False,
 					Literal: "false",
 				},

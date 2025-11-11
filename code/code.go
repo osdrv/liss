@@ -50,6 +50,7 @@ const (
 	OpCurrentClosure
 	OpReturn
 	OpBreakpoint
+	OpSrcLine
 	OpLoadModule
 	OpGetModule
 )
@@ -81,8 +82,8 @@ var definitions = map[OpCode]*Definition{
 	OpLessThan:     {"OpLessThan", []int{}},
 	OpLessEqual:    {"OpLessEqual", []int{}},
 	OpNot:          {"OpNot", []int{}},
-	OpAnd:          {"OpAnd", []int{}},
-	OpOr:           {"OpOr", []int{}},
+	OpAnd:          {"OpAnd", []int{2}},
+	OpOr:           {"OpOr", []int{2}},
 
 	OpPop:            {"OpPop", []int{}},
 	OpJump:           {"OpJump", []int{2}},
@@ -99,6 +100,7 @@ var definitions = map[OpCode]*Definition{
 	OpCurrentClosure: {"OpCurrentClosure", []int{}},
 	OpReturn:         {"OpReturn", []int{}},
 	OpBreakpoint:     {"OpBreakpoint", []int{2, 2}},
+	OpSrcLine:        {"OpSrcLine", []int{2}},
 	OpLoadModule:     {"OpLoadModule", []int{2}},
 	OpGetModule:      {"OpGetModule", []int{2, 2}},
 }

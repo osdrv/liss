@@ -40,7 +40,7 @@ func (p *Parser) Parse() (ast.Node, error) {
 		nodes = append(nodes, expr)
 	}
 
-	program := ast.NewBlockExpression(nodes)
+	program := ast.NewBlockExpression(p.curToken, nodes)
 	return program, nil
 }
 
@@ -293,10 +293,10 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 			case *ast.IdentifierExpr, *ast.FunctionExpression:
 				node, err = ast.NewCallExpression(tok, nodes[0], nodes[1:])
 			default:
-				node = ast.NewBlockExpression(nodes)
+				node = ast.NewBlockExpression(tok, nodes)
 			}
 		} else {
-			node = ast.NewBlockExpression(nodes)
+			node = ast.NewBlockExpression(tok, nodes)
 		}
 	}
 

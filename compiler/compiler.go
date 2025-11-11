@@ -125,9 +125,9 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		case ast.OperatorNot:
 			c.emit(code.OpNot)
 		case ast.OperatorAnd:
-			c.emit(code.OpAnd)
+			c.emit(code.OpAnd, argc)
 		case ast.OperatorOr:
-			c.emit(code.OpOr)
+			c.emit(code.OpOr, argc)
 		case ast.OperatorModulus:
 			c.emit(code.OpMod)
 		}
@@ -258,7 +258,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 			c.symbols.Define(object.MODULE_SELF, arg.Name)
 		}
 
-		err := c.compileStep(ast.NewBlockExpression(n.Body), true, true)
+		err := c.compileStep(ast.NewBlockExpression(node.Token(), n.Body), true, true)
 		if err != nil {
 			return err
 		}
@@ -343,9 +343,8 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 			c.emit(code.OpPop)
 		}
 	case *ast.BreakpointExpression:
-		bp := node.(*ast.BreakpointExpression)
 		c.emit(code.OpBreakpoint,
-			bp.Token.Location.Line, bp.Token.Location.Column)
+			node.Token().Location.Line, node.Token().Location.Column)
 	case *ast.ImportExpression:
 		ref := n.Ref.(*ast.StringLiteral).Value
 		modix, ok := c.symbols.LookupModule(ref)
