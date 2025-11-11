@@ -19,6 +19,10 @@ var AssertOperatorArgc = map[ast.Operator]int{
 	ast.OperatorNot:                1,
 }
 
+type CompilerOptions struct {
+	Debug bool
+}
+
 type Bytecode struct {
 	Instrs code.Instructions
 	Consts []object.Object
@@ -49,9 +53,12 @@ type Compiler struct {
 
 	scopes  []CompilationScope
 	scopeix int
+
+	opts     CompilerOptions
+	prevLine int
 }
 
-func New() *Compiler {
+func New(opts CompilerOptions) *Compiler {
 	s0 := CompilationScope{
 		instrs: make(code.Instructions, 0),
 		last:   EmittedInstruction{},
@@ -59,21 +66,33 @@ func New() *Compiler {
 	}
 
 	return &Compiler{
-		consts:  make([]object.Object, 0),
-		symbols: object.NewSymbolTable(),
-		scopes:  []CompilationScope{s0},
-		scopeix: 0,
+		consts:   make([]object.Object, 0),
+		symbols:  object.NewSymbolTable(),
+		scopes:   []CompilationScope{s0},
+		scopeix:  0,
+		prevLine: -1,
+		opts:     opts,
 	}
 }
 
-func NewWithState(symbols *object.SymbolTable, consts []object.Object) *Compiler {
-	c := New()
+func NewWithState(opts CompilerOptions, symbols *object.SymbolTable, consts []object.Object) *Compiler {
+	c := New(opts)
 	c.symbols = symbols
 	c.consts = consts
 	return c
 }
 
 func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
+	if c.opts.Debug {
+		tok := node.Token()
+		if c.prevLine != tok.Location.Line {
+			c.emit(code.OpSrcLine, tok.Location.Line)
+			c.prevLine = tok.Location.Line
+		}
+	}
+	tok := node.Token()
+	if tok.Location.Line != c.prevLine {
+	}
 	switch n := node.(type) {
 	case *ast.BlockExpression:
 		for ix, expr := range n.Nodes {

@@ -541,6 +541,12 @@ func (vm *VM) Run() error {
 			if err := vm.push(cur); err != nil {
 				return err
 			}
+		case code.OpSrcLine:
+			line := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame().ip += 2
+			if vm.opts.Debug > 0 {
+				fmt.Printf("Executing line: %d\n", line)
+			}
 		case code.OpBreakpoint:
 			line := code.ReadUint16(instrs[ip+1:])
 			col := code.ReadUint16(instrs[ip+3:])

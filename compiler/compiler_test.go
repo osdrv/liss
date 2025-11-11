@@ -13,7 +13,7 @@ import (
 )
 
 func TestComplilerScopes(t *testing.T) {
-	c := New()
+	c := New(CompilerOptions{})
 	assert.Equal(t, 0, c.scopeix, "Initial scope index should be 0")
 
 	c.emit(code.OpTrue)
@@ -167,7 +167,7 @@ func TestClosures(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
-			c := New()
+			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
@@ -582,7 +582,7 @@ func TestCompileStep(t *testing.T) {
 			if tt.symbols != nil {
 				symbols = tt.symbols
 			}
-			c := NewWithState(symbols, consts)
+			c := NewWithState(CompilerOptions{}, symbols, consts)
 			err := c.compileStep(tt.input, tt.managed, false)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
@@ -764,7 +764,7 @@ func TestCompile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
-			c := New()
+			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
@@ -869,7 +869,7 @@ func TestComparison(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
-			c := New()
+			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
 
@@ -919,7 +919,7 @@ func TestCond(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
-			c := New()
+			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
@@ -984,7 +984,7 @@ func TestLetExpr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
-			c := New()
+			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
@@ -1180,7 +1180,7 @@ func TestFunctionExpr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
-			c := New()
+			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
@@ -1222,7 +1222,7 @@ func TestBuiltinFunctionCall(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
-			c := New()
+			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
@@ -1376,7 +1376,7 @@ func TestFunctionCall(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
-			c := New()
+			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
@@ -1459,7 +1459,7 @@ func TestLetStatementScopes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
-			c := New()
+			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
@@ -1509,7 +1509,7 @@ func TestListExpr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
-			c := New()
+			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			if tt.wantErr != nil {
 				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")

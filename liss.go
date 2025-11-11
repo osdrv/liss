@@ -54,7 +54,9 @@ func Compile(src string, opts repl.Options) (*compiler.Bytecode, error) {
 		fmt.Printf("AST:\n%s\n", prog.String())
 	}
 
-	c := compiler.New()
+	c := compiler.New(compiler.CompilerOptions{
+		Debug: opts.Debug,
+	})
 	if err := c.Compile(prog); err != nil {
 		return nil, fmt.Errorf("failed to compile program: %w", err)
 	}
@@ -121,7 +123,9 @@ func CompileModule(nameOrPath string, opts repl.Options,
 		_, ok := (*node).(*ast.ImportExpression)
 		return ok
 	})
-	c := compiler.NewWithState(mod.Symbols, []object.Object{})
+	c := compiler.NewWithState(compiler.CompilerOptions{
+		Debug: opts.Debug,
+	}, mod.Symbols, []object.Object{})
 	for _, imp := range imports {
 		impExpr := imp.(*ast.ImportExpression)
 		var wantSymbols []string

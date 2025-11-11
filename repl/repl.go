@@ -46,7 +46,9 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 			fmt.Printf("AST:\n%s\n", prog.String())
 		}
 		fmt.Printf("Pre-comp consts: %+v\n", consts)
-		comp := compiler.NewWithState(symbols, consts)
+		comp := compiler.NewWithState(compiler.CompilerOptions{
+			Debug: opts.Debug,
+		}, symbols, consts)
 		if err := comp.Compile(prog); err != nil {
 			fmt.Fprintf(out, "Failed to compile program: %s\n", err)
 			continue

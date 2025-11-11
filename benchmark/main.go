@@ -34,7 +34,7 @@ func main() {
 		log.Fatalf("Failed to parse the source code: %s", err)
 	}
 
-	comp := compiler.New()
+	comp := compiler.New(compiler.CompilerOptions{})
 	if err := comp.Compile(prog); err != nil {
 		log.Fatalf("Failed to compile the program: %s", err)
 	}

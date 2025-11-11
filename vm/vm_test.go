@@ -376,7 +376,7 @@ func TestRun(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			assert.NoError(t, err, "Failed to parse input: %s", tt.input)
-			comp := compiler.New()
+			comp := compiler.New(compiler.CompilerOptions{})
 			assert.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
 			vm := New(comp.Bytecode())
 
@@ -555,7 +555,7 @@ func TestFunctionCall(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			require.NoError(t, err, "Failed to parse input: %s", tt.input)
-			comp := compiler.New()
+			comp := compiler.New(compiler.CompilerOptions{})
 			require.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
 			vm := New(comp.Bytecode())
 
@@ -626,7 +626,7 @@ func TestBuiltinCall(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			require.NoError(t, err, "Failed to parse input: %s", tt.input)
-			comp := compiler.New()
+			comp := compiler.New(compiler.CompilerOptions{})
 			require.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
 			vm := New(comp.Bytecode())
 
@@ -735,7 +735,7 @@ func TestClosures(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			prog, err := parse(tt.input)
 			require.NoError(t, err, "Failed to parse input: %s", tt.input)
-			comp := compiler.New()
+			comp := compiler.New(compiler.CompilerOptions{})
 			require.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
 			vm := New(comp.Bytecode())
 
