@@ -77,13 +77,15 @@ func (l *Lexer) emitEOF() token.Token {
 func (l *Lexer) advance(mode LexerMode) bool {
 	l.pos++
 	l.column++
-	if mode != LexerModeString {
-		if !l.isEOF() && isNewline(l.Source[l.pos]) {
-			l.pos++
-			l.line++
-			l.column = 1
-			return true
-		}
+	isEOL := false
+	for !l.isEOF() && isNewline(l.Source[l.pos]) {
+		l.pos++
+		l.line++
+		l.column = 1
+		isEOL = true
+	}
+	if isEOL && mode != LexerModeString {
+		return true
 	}
 	return false
 }
@@ -300,6 +302,8 @@ func (l *Lexer) emitKWOrIdentifier() token.Token {
 	if len(tok.Literal) == 0 {
 		return l.emitError("Empty identifier or keyword")
 	}
+
+	// fmt.Printf("Emitted KW/Identifier: %s of type %s at pos: L:%d C:%d\n", tok.Literal, tok.Type.String(), tok.Location.Line, tok.Location.Column)
 
 	return tok
 }
