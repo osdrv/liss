@@ -1,8 +1,6 @@
 (import "strings")
 (import "test_utils" ["benchmark"])
 
-(fn test_match_all [])
-
 (fn test []
     (let _match_all_res (test_utils:benchmark (fn []
         (strings:match_all
@@ -11,6 +9,14 @@
         )
     )))
     (println "Test match_all result: " _match_all_res)
+
+    (fn test_reverse []
+        (let s "Hello, World!")
+        (let reversed (strings:reverse s))
+        (println "Original string: " s)
+        (println "Reversed string: " reversed)
+    )
+    (test_reverse)
 )
 
 (test)

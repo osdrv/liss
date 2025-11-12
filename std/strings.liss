@@ -40,6 +40,20 @@
     )
 )
 
+(fn reverse [s]
+    (fn _next [acc ix]
+        (cond (< ix 0)
+            acc
+            (
+                (let _ch (get s ix))
+                (let _acc (+ acc _ch))
+                (_next _acc (- ix 1))
+            )
+        )
+    )
+    (_next "" (- (len s) 1))
+)
+
 (fn split [s delim]
     (let _len (len s))
     (fn _next [acc start ix]
