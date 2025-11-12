@@ -370,9 +370,9 @@ func (vm *VM) Run() error {
 					)
 				}
 				val = val && arg.(*object.Bool).Value
-				if err := vm.push(object.NewBool(val)); err != nil {
-					return err
-				}
+			}
+			if err := vm.push(object.NewBool(val)); err != nil {
+				return err
 			}
 		case code.OpOr:
 			argc := code.ReadUint16(instrs[ip+1:])
@@ -632,15 +632,13 @@ func (vm *VM) callFunction(argc int) error {
 			if err != nil {
 				return err
 			}
-			// adjust argc in case hook modified arguments
-			argc = len(args)
 		}
 
 		res, err := fn.Invoke(args...)
 		if err != nil {
 			return err
 		}
-		for i := vm.sp; i >= vm.sp-argc-1; i-- {
+		for i := vm.sp; i >= vm.sp-argc; i-- {
 			vm.stack[i] = nil
 		}
 		vm.sp = vm.sp - argc - 1
