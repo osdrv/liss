@@ -66,6 +66,8 @@ type VM struct {
 	files map[string]*object.File
 
 	opts VMOptions
+
+	lastPopped object.Object
 }
 
 func New(bc *compiler.Bytecode) *VM {
@@ -630,13 +632,15 @@ func (vm *VM) callFunction(argc int) error {
 			if err != nil {
 				return err
 			}
+			// adjust argc in case hook modified arguments
+			argc = len(args)
 		}
 
 		res, err := fn.Invoke(args...)
 		if err != nil {
 			return err
 		}
-		for i := vm.sp - 1; i >= vm.sp-argc-1; i-- {
+		for i := vm.sp; i >= vm.sp-argc-1; i-- {
 			vm.stack[i] = nil
 		}
 		vm.sp = vm.sp - argc - 1
@@ -698,7 +702,8 @@ func (vm *VM) Consts() []object.Object {
 }
 
 func (vm *VM) LastPopped() object.Object {
-	return vm.stack[vm.sp]
+	// return vm.stack[vm.sp]
+	return vm.lastPopped
 }
 
 func (vm *VM) push(obj object.Object) error {
@@ -707,7 +712,6 @@ func (vm *VM) push(obj object.Object) error {
 	}
 	vm.stack[vm.sp] = obj
 	vm.sp++
-
 	return nil
 }
 
@@ -723,7 +727,8 @@ func (vm *VM) pop() object.Object {
 		return nil
 	}
 	obj := vm.stack[vm.sp-1]
-	vm.stack[vm.sp] = nil
+	vm.lastPopped = obj
+	vm.stack[vm.sp-1] = nil
 	vm.sp--
 	return obj
 }

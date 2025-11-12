@@ -370,6 +370,28 @@ func TestRun(t *testing.T) {
 			input: `[1 "foo" true]`,
 			want:  []any{int64(1), "foo", true},
 		},
+		{
+			name: "OR operands return from the function call",
+			input: `
+			(let TRUE true)
+			(let FALSE false)
+			(fn return_true []
+				(let _true TRUE)
+				_true
+			)
+			(fn return_false []
+				(let _false FALSE)
+				_false
+			)
+			(or
+			(return_true)
+				(return_false)
+				(return_false)
+				(return_false)
+			)
+			`,
+			want: true,
+		},
 	}
 
 	for _, tt := range tests {
