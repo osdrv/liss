@@ -21,15 +21,16 @@ The current VM implementation is based on Thorsten Ball's book "Writing a Compil
 
 Here is an example of a LISS program that computes the factorial of a number:
 
-```liss
-(fn fact [n]
-  (cond (= n 0)
-        1
-        (* n (fact (- n 1)))
-  )
+<pre>
+(<b>fn</b> fact [acc n]
+    (<b>cond</b> (= n 0)
+        acc
+        (fact (* acc n) (- n 1))
+    )
 )
-(println "the result is: " (fact 30))
-```
+
+(<b>println</b> <i>"the result is: "</i> (fact 1 30))
+</pre>
 
 ## References
 
