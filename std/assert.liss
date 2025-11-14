@@ -1,8 +1,14 @@
 (fn equal [a b]
     (let msg (+ "Values are not equal: " (str a) " != " (str b)))
-    (cond (= a b)
-        true
-        (raise! msg)
+    (cond (or (is_null? a) (is_null? b))
+        (cond (and (is_null? a) (is_null? b))
+            true
+            (raise! msg)
+        )
+        (cond (= a b)
+            true
+            (raise! msg)
+        )
     )
 )
 

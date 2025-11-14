@@ -6,11 +6,14 @@
 )
 
 (fn reduce [arr fun acc]
-    (cond (or (is_null? arr) (is_empty? arr))
-        acc
-        (
-            (let _acc (fun acc (head arr)))
-            (reduce (tail arr) fun _acc)
+    (cond (is_null? arr)
+        null
+        (cond (is_empty? arr)
+            acc
+            (
+                (let _acc (fun acc (head arr)))
+                (reduce (tail arr) fun _acc)
+            )
         )
     )
 )
@@ -48,7 +51,10 @@
             )
         )
     )
-    (_next [] (- (len arr) 1))
+    (cond (is_null? arr)
+        null
+        (_next [] (- (len arr) 1))
+    )
 )
 
 (fn _find [acc ix arr n break]

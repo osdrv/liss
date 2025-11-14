@@ -78,7 +78,7 @@
 
 ; (_test)
 
-(fn test_list_push []
+((fn test_list_push []
     (let tests [
         (dict ["name" "null list"] ["input" null] ["want" null])
         (dict ["name" "empty list"] ["input" []] ["want" [1]])
@@ -92,20 +92,43 @@
         (assert:list_equal got want)
         (println ": OK")
     ))
-)
-(test_list_push)
+))
 
 
-(fn test_list_reduce []
-    (let arr [1 2 3 4 5])
-    (let sum (list:reduce arr (fn [acc x] (+ acc x)) 0))
-    (assert:equal sum 15)
-)
-(test_list_reduce)
+((fn test_list_reduce []
+    (let tests [
+        (dict ["name" "sum of null"] ["input" null] ["want" null])
+        (dict ["name" "sum of empty list"] ["input" []] ["want" 0])
+        (dict ["name" "sum of single element"] ["input" [5]] ["want" 5])
+        (dict ["name" "sum of multiple elements"] ["input" [1 2 3 4]] ["want" 10])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let want (get test "want"))
+        (let got (list:reduce input (fn [acc x] (+ acc x)) 0))
+        (assert:equal got want)
+        (println ": OK")
+    ))
+))
 
-(fn test_list_reverse []
-    (let arr [5 3 8 1 2 7 4 6])
-    (let rev (list:reverse arr))
-    (assert:list_equal rev [6 4 7 2 1 8 3 5])
-)
-(test_list_reverse)
+((fn test_list_reverse []
+    (let tests [
+        (dict ["name" "reverse null"] ["input" null] ["want" null])
+        (dict ["name" "reverse empty list"] ["input" []] ["want" []])
+        (dict ["name" "reverse single element"] ["input" [1]] ["want" [1]])
+        (dict ["name" "reverse multiple elements"] ["input" [1 2 3 4]] ["want" [4 3 2 1]])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let want (get test "want"))
+        (let got (list:reverse input))
+        (assert:list_equal got want)
+        (println ": OK")
+    ))
+
+    ; (let arr [5 3 8 1 2 7 4 6])
+    ; (let rev (list:reverse arr))
+    ; (assert:list_equal rev [6 4 7 2 1 8 3 5])
+))
