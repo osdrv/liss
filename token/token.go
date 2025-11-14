@@ -24,6 +24,7 @@ const (
 	Void TokenType = iota
 	EOF
 	Error
+	Raise
 
 	LParen
 	RParen
@@ -63,7 +64,8 @@ const (
 
 var (
 	tokenToString = map[TokenType]string{
-		EOF: "",
+		EOF:   "",
+		Raise: "raise",
 
 		LParen:   "(",
 		RParen:   ")",
@@ -116,6 +118,7 @@ var (
 		"mod":        Modulus,
 		"import":     Import,
 		"breakpoint": Breakpoint,
+		"raise!":     Raise,
 	}
 )
 

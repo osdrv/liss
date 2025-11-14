@@ -34,11 +34,11 @@ func init() {
 		mkBuiltin("randn", builtinRandIntN, false),
 
 		mkBuiltin("len", builtinLen, false),
-		mkBuiltin("is_empty?", builtinEmpty, false), // TODO: is_empty?
+		mkBuiltin("is_empty?", builtinEmpty, false),
 		mkBuiltin("head", builtinHead, false),
 		mkBuiltin("last", builtinLast, false),
 		mkBuiltin("tail", builtinTail, false),
-		mkBuiltin("is_null?", builtinIsNull, false), // TODO: is_null?
+		mkBuiltin("is_null?", builtinIsNull, false),
 		mkBuiltin("str", builtinStr, false),
 
 		mkBuiltin("list", builtinList, true),

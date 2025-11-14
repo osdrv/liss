@@ -1,20 +1,13 @@
-(fn _benchmark [fun]
-    (let _start (time_ms))
-    (let _res (fun))
-    (let _end (time_ms))
-    (print "Time taken (msec): ")
-    (println (- _end _start))
-    _res
-)
+(import "test_utils" ["benchmark"])
 
-(fn fact [n]
+(fn fact [acc n]
     (cond (= n 0)
-        1
-        ( * n (fact (- n 1)))
+        acc
+        (fact (* acc n) (- n 1))
     )
 )
 
-(let _res (_benchmark (fn []
-    (fact 25)
+(let _res (test_utils:benchmark (fn []
+    (fact 1 25)
 )))
 (println _res)

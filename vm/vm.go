@@ -22,6 +22,10 @@ const GlobalsSize = 65536
 
 var ErrStackOverflow = errors.New("stack overflow")
 
+func NewRuntimeError(msg string) error {
+	return fmt.Errorf("runtime error: %s", msg)
+}
+
 var True = object.NewBool(true)
 var False = object.NewBool(false)
 var Null = object.NewNull()
@@ -557,6 +561,9 @@ func (vm *VM) Run() error {
 				fmt.Printf("Breakpoint reached at: line: %d, column: %d\n", line, col)
 				runtime.Breakpoint()
 			}
+		case code.OpRaise:
+			errObj := vm.pop()
+			return NewRuntimeError(errObj.String())
 		case code.OpLoadModule:
 			// Nothing at the moment: modules are loaded during compilation
 			vm.currentFrame().ip += 2
@@ -611,6 +618,9 @@ func (vm *VM) pushClosure(cix int, numfree int) error {
 }
 
 func (vm *VM) callFunction(argc int) error {
+	if vm.sp-1-argc < 0 {
+		runtime.Breakpoint()
+	}
 	fnobj := vm.stack[vm.sp-1-argc]
 	switch fn := fnobj.(type) {
 	case *object.Closure:

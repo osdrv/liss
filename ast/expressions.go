@@ -418,3 +418,31 @@ func (e *BreakpointExpression) Token() token.Token {
 func (e *BreakpointExpression) String() string {
 	return "breakpoint"
 }
+
+type RaiseExpression struct {
+	Tok  token.Token
+	Expr Node
+}
+
+var _ Node = (*RaiseExpression)(nil)
+
+func NewRaiseExpression(tok token.Token, expr Node) (*RaiseExpression, error) {
+	return &RaiseExpression{
+		Tok:  tok,
+		Expr: expr,
+	}, nil
+}
+
+func (e *RaiseExpression) Token() token.Token {
+	return e.Tok
+}
+
+func (e *RaiseExpression) String() string {
+	return fmt.Sprintf("(raise %s)", e.Expr.String())
+}
+
+func (e *RaiseExpression) Children() []Node {
+	return []Node{e.Expr}
+}
+
+func (e *RaiseExpression) expressionNode() {}

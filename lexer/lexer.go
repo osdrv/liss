@@ -278,7 +278,11 @@ func (l *Lexer) emitKWOrIdentifier() token.Token {
 	to := from
 	for !l.isEOF() {
 		ch := l.Source[l.pos]
-		if isAlpha(ch) || ch == '_' || (to > from && isDigit(ch)) || (to > from && ch == ':') || (to > from && ch == '?') {
+		if isAlpha(ch) || ch == '_' ||
+			(to > from && isDigit(ch)) ||
+			(to > from && ch == ':') ||
+			(to > from && ch == '?') ||
+			(to > from && ch == '!') {
 			l.advance(LexerModeDefault)
 			to++
 		} else {
@@ -290,6 +294,10 @@ func (l *Lexer) emitKWOrIdentifier() token.Token {
 
 	if slices.Contains(lit[:len(lit)-1], '?') {
 		return l.emitError("Invalid character '?' in the middle of an identifier: it is only allowed at the end")
+	}
+
+	if slices.Contains(lit[:len(lit)-1], '!') {
+		return l.emitError("Invalid character '!' in the middle of an identifier: it is only allowed at the end")
 	}
 
 	tok.Literal = string(lit)

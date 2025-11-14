@@ -1,5 +1,8 @@
 (fn push [arr v]
-    (+ arr [v])
+    (cond (is_null? arr)
+        null
+        (+ arr [v])
+    )
 )
 
 (fn reduce [arr fun acc]
@@ -32,6 +35,20 @@
             (range arr start end)
         )
     )
+)
+
+(fn reverse [arr]
+    (fn _next [acc ix]
+        (cond (< ix 0)
+            acc
+            (
+                (let _el (get arr ix))
+                (let _acc (push acc _el))
+                (_next _acc (- ix 1))
+            )
+        )
+    )
+    (_next [] (- (len arr) 1))
 )
 
 (fn _find [acc ix arr n break]

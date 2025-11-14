@@ -305,13 +305,15 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		if fnsym != nil {
 			if fnsym.Scope == object.GlobalScope {
 				c.emit(code.OpSetGlobal, fnsym.Index)
+				c.emit(code.OpGetGlobal, fnsym.Index)
 			} else {
 				c.emit(code.OpSetLocal, fnsym.Index)
+				c.emit(code.OpGetLocal, fnsym.Index)
 			}
 		}
-		// if !managed {
-		// 	c.emit(code.OpPop)
-		// }
+		if !managed {
+			c.emit(code.OpPop)
+		}
 	case *ast.CallExpression:
 		callee := n.Callee
 		if calleeIdent, ok := callee.(*ast.IdentifierExpr); ok {
@@ -364,6 +366,11 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 	case *ast.BreakpointExpression:
 		c.emit(code.OpBreakpoint,
 			node.Token().Location.Line, node.Token().Location.Column)
+	case *ast.RaiseExpression:
+		if err := c.compileStep(n.Expr, true, false); err != nil {
+			return err
+		}
+		c.emit(code.OpRaise)
 	case *ast.ImportExpression:
 		ref := n.Ref.(*ast.StringLiteral).Value
 		modix, ok := c.symbols.LookupModule(ref)

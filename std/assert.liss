@@ -1,0 +1,73 @@
+(fn equal [a b]
+    (let msg (+ "Values are not equal: " (str a) " != " (str b)))
+    (cond (= a b)
+        true
+        (raise! msg)
+    )
+)
+
+(fn not_equal [a b]
+    (let msg (+ "Values should not be equal: " (str a) " == " (str b)))
+    (cond (!= a b)
+        true
+        (raise! msg)
+    )
+)
+
+(fn is_true [val]
+    (let msg (+ "Value is not true: " val))
+    (cond val
+        true
+        (raise! msg)
+    )
+)
+
+(fn is_false [val]
+    (let msg (+ "Value is not false: " val))
+    (cond (! val)
+        true
+        (raise! msg)
+    )
+)
+
+(fn is_null [val]
+    (let msg (+ "Value is not null: " val))
+    (cond (is_null? val)
+        true
+        (raise! msg)
+    )
+)
+
+(fn is_not_null [val]
+    (let msg (+ "Value should not be null: " val))
+    (cond (! (is_null? val))
+        true
+        (raise! msg)
+    )
+)
+
+(fn list_equal [a b]
+    (let msg (+ "Lists are not equal: \n" (str a) "\n" (str b)))
+    (fn _next [ix]
+        (cond (>= ix (len a))
+            true
+            (cond (= (get a ix) (get b ix))
+                (_next (+ ix 1))
+                (raise! msg)
+            )
+        )
+    )
+    (cond (or (is_null? a) (is_null? b))
+        (cond (and (is_null? a) (is_null? b))
+            true
+            (raise! msg)
+        )
+    )
+    (cond (is_null? a)
+        true
+        (cond (= (len a) (len b))
+                (_next 0)
+                (raise! msg)
+            )
+    )
+)

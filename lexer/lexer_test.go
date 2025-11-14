@@ -485,7 +485,7 @@ func TestNextToken(t *testing.T) {
 		},
 		{
 			name:  "Identifiers",
-			input: "foo bar baz _underscore123 a b_c d3f trueee foo?",
+			input: "foo bar baz _underscore123 a b_c d3f trueee foo? bar!",
 			match: TokenTypeMatch | TokenLiteralMatch,
 			want: []token.Token{
 				{
@@ -523,6 +523,10 @@ func TestNextToken(t *testing.T) {
 				{
 					Type:    token.Identifier,
 					Literal: "foo?",
+				},
+				{
+					Type:    token.Identifier,
+					Literal: "bar!",
 				},
 				{
 					Type: token.EOF,

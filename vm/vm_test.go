@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 	"osdrv/liss/ast"
+	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/lexer"
 	"osdrv/liss/parser"
@@ -434,6 +435,11 @@ func TestFunctionCall(t *testing.T) {
 			want:  int64(5),
 		},
 		{
+			name:  "named function immediate invocation",
+			input: `((fn foo [] (+ 2 3)))`,
+			want:  int64(5),
+		},
+		{
 			name:  "inline function call with simple const return",
 			input: "((fn [] 42))",
 			want:  int64(42),
@@ -580,6 +586,8 @@ func TestFunctionCall(t *testing.T) {
 			comp := compiler.New(compiler.CompilerOptions{})
 			require.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
 			vm := New(comp.Bytecode())
+
+			fmt.Println(code.PrintInstr(comp.Bytecode().Instrs))
 
 			err = vm.Run()
 			if tt.wantErr != nil {
