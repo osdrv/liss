@@ -558,6 +558,7 @@ func (vm *VM) Run() error {
 			line := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
 			if vm.opts.Debug > 0 {
+				fmt.Printf("Source file: %s\n", vm.currentFrame().cl.Module.Path)
 				fmt.Printf("Executing line: %d\n", line)
 			}
 		case code.OpBreakpoint:

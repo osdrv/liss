@@ -13,6 +13,7 @@ import (
 	"osdrv/liss/repl"
 	"osdrv/liss/vm"
 	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 )
@@ -21,7 +22,7 @@ type Result interface {
 	String() string
 }
 
-func Run(bc *compiler.Bytecode, opts repl.Options) (Result, error) {
+func Run(mod *compiler.Module, opts repl.Options) (Result, error) {
 	var vmopts vm.VMOptions
 	if opts.Debug {
 		vmopts.Debug = 1
@@ -29,16 +30,7 @@ func Run(bc *compiler.Bytecode, opts repl.Options) (Result, error) {
 			vmopts.Debug++
 		}
 	}
-	mod := &compiler.Module{
-		Name:     "main",
-		Path:     "",
-		Bytecode: bc,
-		Symbols:  object.NewSymbolTable(),
-		Env: &object.Environment{
-			Consts: bc.Consts,
-		},
-	}
-	vminst := vm.New(bc, mod).WithOptions(vmopts)
+	vminst := vm.New(mod.Bytecode, mod).WithOptions(vmopts)
 
 	defer vminst.Shutdown()
 	if err := vminst.Run(); err != nil {
@@ -51,7 +43,7 @@ func Run(bc *compiler.Bytecode, opts repl.Options) (Result, error) {
 	return top, nil
 }
 
-func Compile(src string, opts repl.Options) (*compiler.Bytecode, error) {
+func Compile(src string, opts repl.Options) (*compiler.Module, error) {
 	lex := lexer.NewLexer(src)
 	par := parser.NewParser(lex)
 	prog, err := par.Parse()
@@ -69,18 +61,26 @@ func Compile(src string, opts repl.Options) (*compiler.Bytecode, error) {
 	if err := c.Compile(prog); err != nil {
 		return nil, fmt.Errorf("failed to compile program: %w", err)
 	}
-	return c.Bytecode(), nil
+	mod := &compiler.Module{
+		Name:     "main",
+		Bytecode: c.Bytecode(),
+		Symbols:  c.Symbols(),
+		Env: &object.Environment{
+			Consts: c.Bytecode().Consts,
+		},
+	}
+	return mod, nil
 }
 
 func Execute(src string, opts repl.Options) (Result, error) {
-	bytecode, err := Compile(src, opts)
+	mod, err := Compile(src, opts)
 	if err != nil {
 		return nil, err
 	}
 	if opts.Verbose {
-		printBytecode(bytecode)
+		printBytecode(mod.Bytecode)
 	}
-	return Run(bytecode, opts)
+	return Run(mod, opts)
 }
 
 func InstantiateModule(mod *compiler.Module) (*object.Environment, error) {
@@ -95,6 +95,10 @@ func InstantiateModule(mod *compiler.Module) (*object.Environment, error) {
 func CompileModule(nameOrPath string, opts repl.Options,
 	cache map[string]*compiler.Module, chain []string) (*compiler.Module, error) {
 	resolved, err := resolveModulePath(nameOrPath)
+	fullPath, err := filepath.Abs(resolved)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path for module %s: %w", nameOrPath, err)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve module path: %w", err)
 	}
@@ -124,7 +128,7 @@ func CompileModule(nameOrPath string, opts repl.Options,
 
 	mod := &compiler.Module{
 		Name:    name,
-		Path:    resolved,
+		Path:    fullPath,
 		Symbols: object.NewSymbolTable(),
 	}
 
@@ -184,7 +188,7 @@ func ExecutePath(srcPath string, opts repl.Options) (Result, error) {
 	if opts.Verbose {
 		printBytecode(mod.Bytecode)
 	}
-	return Run(mod.Bytecode, opts)
+	return Run(mod, opts)
 }
 
 func printBytecode(bc *compiler.Bytecode) {

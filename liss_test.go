@@ -265,7 +265,6 @@ func TestExecute(t *testing.T) {
 			}
 			assert.Equal(t, tt.wantErr, err, "Expected error %v, got %v", tt.wantErr, err)
 			test.AssertObjectEql(t, res.(object.Object), tt.want)
-			//assert.Equal(t, tt.want, res, "Expected result %v, got %v", tt.want, res)
 		})
 	}
 }
