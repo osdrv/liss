@@ -74,7 +74,7 @@ type VM struct {
 	lastPopped object.Object
 }
 
-func New(bc *compiler.Bytecode) *VM {
+func New(bc *compiler.Bytecode, mod *compiler.Module) *VM {
 	env := object.NewEnvironment()
 	env.Globals = make([]object.Object, GlobalsSize)
 	env.Consts = bc.Consts
@@ -82,7 +82,14 @@ func New(bc *compiler.Bytecode) *VM {
 	mainfn := &object.Function{
 		Instrs: bc.Instrs,
 	}
-	maincl := object.NewClosure(mainfn, nil, env)
+	cmpmod := &object.Module{
+		Name:    mod.Name,
+		Path:    mod.Path,
+		Instrs:  mod.Bytecode.Instrs,
+		Symbols: mod.Symbols,
+		Env:     env,
+	}
+	maincl := object.NewClosure(mainfn, nil, env, cmpmod)
 	mframe := NewFrame(maincl, 0)
 	frames := make([]*Frame, MaxFrames)
 	frames[0] = mframe
@@ -113,14 +120,14 @@ func (vm *VM) Shutdown() {
 }
 
 // DEPRECATED: use NewWithEnv instead
-func NewWithGlobals(bc *compiler.Bytecode, globals []object.Object) *VM {
-	vm := New(bc)
-	vm.currentFrame().cl.Env.Globals = globals
-	return vm
-}
+// func NewWithGlobals(bc *compiler.Bytecode, globals []object.Object, mod *compiler.Module) *VM {
+// 	vm := New(bc, mod)
+// 	vm.currentFrame().cl.Env.Globals = globals
+// 	return vm
+// }
 
-func NewWithEnv(bc *compiler.Bytecode, env *object.Environment) *VM {
-	vm := New(bc)
+func NewWithEnv(bc *compiler.Bytecode, env *object.Environment, mod *compiler.Module) *VM {
+	vm := New(bc, mod)
 	vm.currentFrame().cl.Env = env
 	return vm
 }
@@ -591,10 +598,10 @@ func (vm *VM) pushModuleSymbol(modix int, constix int) error {
 	item := modObj.Env.Globals[constix]
 	switch item := item.(type) {
 	case *object.Function:
-		closure := object.NewClosure(item, nil, modObj.Env)
+		closure := object.NewClosure(item, nil, modObj.Env, modObj)
 		return vm.push(closure)
 	case *object.Closure:
-		closure := object.NewClosure(item.Fn, item.Free, modObj.Env)
+		closure := object.NewClosure(item.Fn, item.Free, modObj.Env, modObj)
 		return vm.push(closure)
 	default:
 		return vm.push(item)
@@ -613,7 +620,7 @@ func (vm *VM) pushClosure(cix int, numfree int) error {
 		free[i] = vm.stack[vm.sp-numfree+i]
 	}
 	vm.sp = vm.sp - numfree
-	closure := object.NewClosure(fn, free, vm.currentFrame().cl.Env)
+	closure := object.NewClosure(fn, free, vm.currentFrame().cl.Env, vm.currentFrame().cl.Module)
 	return vm.push(closure)
 }
 
@@ -710,7 +717,6 @@ func (vm *VM) Consts() []object.Object {
 }
 
 func (vm *VM) LastPopped() object.Object {
-	// return vm.stack[vm.sp]
 	return vm.lastPopped
 }
 

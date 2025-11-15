@@ -29,7 +29,16 @@ func Run(bc *compiler.Bytecode, opts repl.Options) (Result, error) {
 			vmopts.Debug++
 		}
 	}
-	vminst := vm.New(bc).WithOptions(vmopts)
+	mod := &compiler.Module{
+		Name:     "main",
+		Path:     "",
+		Bytecode: bc,
+		Symbols:  object.NewSymbolTable(),
+		Env: &object.Environment{
+			Consts: bc.Consts,
+		},
+	}
+	vminst := vm.New(bc, mod).WithOptions(vmopts)
 
 	defer vminst.Shutdown()
 	if err := vminst.Run(); err != nil {
@@ -75,7 +84,7 @@ func Execute(src string, opts repl.Options) (Result, error) {
 }
 
 func InstantiateModule(mod *compiler.Module) (*object.Environment, error) {
-	vm := vm.New(mod.Bytecode)
+	vm := vm.New(mod.Bytecode, mod)
 	err := vm.Run()
 	if err != nil {
 		return nil, err
@@ -247,25 +256,6 @@ func main() {
 
 	os.Exit(0)
 }
-
-// func ImportModule(base, imp *compiler.Module, modName string, wantSymbols []string) error {
-// 	impmod := object.NewModule(modName, imp.Bytecode.Instrs, imp.Symbols, imp.Bytecode.Consts)
-// 	base.Symbols.DefineModule(modName, impmod)
-//
-// 	wantAll := len(wantSymbols) == 0
-// 	wantSet := make(map[string]bool)
-// 	for _, sym := range wantSymbols {
-// 		wantSet[sym] = true
-// 	}
-//
-// 	for _, sym := range imp.Symbols.Export(wantSymbols) {
-// 		if wantAll || wantSet[sym.Name] {
-// 			base.Symbols.Define(modName, sym.Name)
-// 		}
-// 	}
-//
-// 	return nil
-// }
 
 func resolveModulePath(p string) (string, error) {
 	var resolved string

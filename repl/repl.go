@@ -26,6 +26,12 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 	globs := make([]object.Object, vm.GlobalsSize)
 	symbols := object.NewSymbolTable()
 
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Fprintf(out, "REPL panicked: %s\n", err)
+		}
+	}()
+
 	for {
 		if opts.Interactive {
 			fmt.Printf(Prompt)
@@ -44,8 +50,8 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 		}
 		if opts.Debug {
 			fmt.Printf("AST:\n%s\n", prog.String())
+			fmt.Printf("Pre-comp consts: %+v\n", consts)
 		}
-		fmt.Printf("Pre-comp consts: %+v\n", consts)
 		comp := compiler.NewWithState(compiler.CompilerOptions{
 			Debug: opts.Debug,
 		}, symbols, consts)
@@ -53,25 +59,41 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 			fmt.Fprintf(out, "Failed to compile program: %s\n", err)
 			continue
 		}
-		vm := vm.NewWithGlobals(comp.Bytecode(), globs)
+
+		mod := &compiler.Module{
+			Name:     "repl",
+			Bytecode: comp.Bytecode(),
+			Symbols:  symbols,
+			Env: &object.Environment{
+				Globals: globs,
+				Consts:  comp.Bytecode().Consts,
+			},
+		}
+		vminst := vm.NewWithEnv(comp.Bytecode(), mod.Env, mod)
+		if opts.Debug {
+			vminst = vminst.WithOptions(vm.VMOptions{Debug: 1})
+		}
 
 		if opts.Debug {
 			fmt.Printf("VM instructions:\n%s\n", code.PrintInstr(comp.Bytecode().Instrs))
 		}
 
-		if err := vm.Run(); err != nil {
+		if err := vminst.Run(); err != nil {
 			fmt.Fprintf(out, "Failed to run program: %s\n", err)
 			continue
 		}
 
 		if opts.Debug {
-			fmt.Printf("VM stack: %s\n", vm.PrintStack())
+			fmt.Printf("VM stack: %s\n", vminst.PrintStack())
 		}
 
-		consts = vm.Consts()
-		fmt.Printf("VM Constants: %+v\n", consts)
+		consts = vminst.Env().Consts
+		// consts = vminst.Consts()
+		if opts.Debug {
+			fmt.Printf("VM Constants: %+v\n", consts)
+		}
 
-		st := vm.LastPopped()
+		st := vminst.LastPopped()
 		io.WriteString(out, st.String())
 		io.WriteString(out, "\n")
 	}

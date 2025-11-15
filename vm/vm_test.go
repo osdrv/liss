@@ -3,9 +3,9 @@ package vm
 import (
 	"fmt"
 	"osdrv/liss/ast"
-	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/lexer"
+	"osdrv/liss/object"
 	"osdrv/liss/parser"
 	"osdrv/liss/test"
 	"testing"
@@ -401,7 +401,17 @@ func TestRun(t *testing.T) {
 			assert.NoError(t, err, "Failed to parse input: %s", tt.input)
 			comp := compiler.New(compiler.CompilerOptions{})
 			assert.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
-			vm := New(comp.Bytecode())
+
+			mod := &compiler.Module{
+				Name:     "test",
+				Bytecode: comp.Bytecode(),
+				Symbols:  comp.Symbols(),
+				Env: &object.Environment{
+					Consts: comp.Bytecode().Consts,
+				},
+			}
+
+			vm := New(comp.Bytecode(), mod)
 
 			err = vm.Run()
 			if tt.wantErr != nil {
@@ -585,9 +595,16 @@ func TestFunctionCall(t *testing.T) {
 			require.NoError(t, err, "Failed to parse input: %s", tt.input)
 			comp := compiler.New(compiler.CompilerOptions{})
 			require.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
-			vm := New(comp.Bytecode())
+			mod := &compiler.Module{
+				Name:     "test",
+				Bytecode: comp.Bytecode(),
+				Symbols:  comp.Symbols(),
+				Env: &object.Environment{
+					Consts: comp.Bytecode().Consts,
+				},
+			}
 
-			fmt.Println(code.PrintInstr(comp.Bytecode().Instrs))
+			vm := New(comp.Bytecode(), mod)
 
 			err = vm.Run()
 			if tt.wantErr != nil {
@@ -658,7 +675,15 @@ func TestBuiltinCall(t *testing.T) {
 			require.NoError(t, err, "Failed to parse input: %s", tt.input)
 			comp := compiler.New(compiler.CompilerOptions{})
 			require.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
-			vm := New(comp.Bytecode())
+			mod := &compiler.Module{
+				Name:     "test",
+				Bytecode: comp.Bytecode(),
+				Symbols:  comp.Symbols(),
+				Env: &object.Environment{
+					Consts: comp.Bytecode().Consts,
+				},
+			}
+			vm := New(comp.Bytecode(), mod)
 
 			err = vm.Run()
 			if tt.wantErr != nil {
@@ -767,7 +792,15 @@ func TestClosures(t *testing.T) {
 			require.NoError(t, err, "Failed to parse input: %s", tt.input)
 			comp := compiler.New(compiler.CompilerOptions{})
 			require.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
-			vm := New(comp.Bytecode())
+			mod := &compiler.Module{
+				Name:     "test",
+				Bytecode: comp.Bytecode(),
+				Symbols:  comp.Symbols(),
+				Env: &object.Environment{
+					Consts: comp.Bytecode().Consts,
+				},
+			}
+			vm := New(comp.Bytecode(), mod)
 
 			err = vm.Run()
 			if tt.wantErr != nil {

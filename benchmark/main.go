@@ -39,7 +39,17 @@ func main() {
 		log.Fatalf("Failed to compile the program: %s", err)
 	}
 
-	machine := vm.New(comp.Bytecode())
+	mod := &compiler.Module{
+		Name:     "main",
+		Path:     "",
+		Bytecode: comp.Bytecode(),
+		Symbols:  comp.Symbols(),
+		Env: &object.Environment{
+			Consts: comp.Bytecode().Consts,
+		},
+	}
+
+	machine := vm.New(comp.Bytecode(), mod)
 
 	start := time.Now()
 

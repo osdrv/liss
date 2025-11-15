@@ -515,15 +515,17 @@ type Closure struct {
 	Free   []Object
 	Consts []Object
 	Env    *Environment
+	Module *Module
 }
 
 var _ Object = (*Closure)(nil)
 
-func NewClosure(fn *Function, free []Object, env *Environment) *Closure {
+func NewClosure(fn *Function, free []Object, env *Environment, mod *Module) *Closure {
 	return &Closure{
-		Fn:   fn,
-		Free: free,
-		Env:  env,
+		Fn:     fn,
+		Free:   free,
+		Env:    env,
+		Module: mod,
 	}
 }
 
