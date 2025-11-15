@@ -86,7 +86,7 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 	if c.opts.Debug {
 		tok := node.Token()
 		if c.prevLine != tok.Location.Line {
-			c.emit(code.OpSrcLine, tok.Location.Line)
+			c.emit(code.OpSrcAnchor, tok.Location.Line)
 			c.prevLine = tok.Location.Line
 		}
 	}
@@ -424,8 +424,8 @@ func (c *Compiler) Symbols() *object.SymbolTable {
 }
 
 func (c *Compiler) ImportModule(ref string, mod *Module, symbols []string) (*object.Module, error) {
-	objmod := object.NewModule(mod.Name, mod.Bytecode.Instrs,
-		mod.Symbols, mod.Bytecode.Consts, mod.Env)
+	objmod := object.NewModule(mod.Name, mod.Path, mod.Bytecode.Instrs,
+		mod.Symbols, mod.Env)
 
 	modix := c.addConst(objmod)
 	if err := c.symbols.DefineModule(ref, objmod.Name, objmod, modix); err != nil {

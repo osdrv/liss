@@ -308,16 +308,18 @@ func builtinRange(arrObj, fromObj, toObj Object) (Object, error) {
 
 	switch arr := arrObj.(type) {
 	case *List:
-		if from < 0 || to > int64(len(arr.items)) || from > to {
+		if from < 0 || from > to {
 			return nil, fmt.Errorf("range: invalid range [%d:%d] for list of length %d", from, to, len(arr.items))
 		}
+		to = min(to, int64(len(arr.items)))
 		cp := make([]Object, to-from)
 		copy(cp, arr.items[from:to])
 		return &List{items: cp}, nil
 	case *String:
-		if from < 0 || to > int64(len(arr.Value)) || from > to {
+		if from < 0 || from > to {
 			return nil, fmt.Errorf("range: invalid range [%d:%d] for string of length %d", from, to, len(arr.Value))
 		}
+		to = min(to, int64(len(arr.Value)))
 		cp := make([]rune, to-from)
 		copy(cp, arr.Value[from:to])
 		return &String{Value: cp}, nil

@@ -527,12 +527,6 @@ func NewClosure(fn *Function, free []Object, env *Environment) *Closure {
 	}
 }
 
-func NewClosureWithConsts(fn *Function, free []Object, env *Environment, consts []Object) *Closure {
-	cl := NewClosure(fn, free, env)
-	cl.Consts = consts
-	return cl
-}
-
 func (c *Closure) Type() ObjectType {
 	return ClosureType
 }

@@ -5,22 +5,21 @@ import "osdrv/liss/code"
 type Module struct {
 	defaultObject
 	Name    string
+	Path    string
 	Instrs  code.Instructions
 	Symbols *SymbolTable
-	// DEPRECATED: use Env.Consts instead
-	Consts []Object
-	Env    *Environment
+	Env     *Environment
 }
 
 var _ Object = (*Module)(nil)
 
-func NewModule(name string, instrs code.Instructions,
-	symbols *SymbolTable, consts []Object, env *Environment) *Module {
+func NewModule(name string, path string, instrs code.Instructions,
+	symbols *SymbolTable, env *Environment) *Module {
 	return &Module{
 		Name:    name,
+		Path:    path,
 		Instrs:  instrs,
 		Symbols: symbols,
-		Consts:  consts,
 		Env:     env,
 	}
 }

@@ -547,7 +547,7 @@ func (vm *VM) Run() error {
 			if err := vm.push(cur); err != nil {
 				return err
 			}
-		case code.OpSrcLine:
+		case code.OpSrcAnchor:
 			line := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
 			if vm.opts.Debug > 0 {
@@ -591,10 +591,10 @@ func (vm *VM) pushModuleSymbol(modix int, constix int) error {
 	item := modObj.Env.Globals[constix]
 	switch item := item.(type) {
 	case *object.Function:
-		closure := object.NewClosureWithConsts(item, nil, modObj.Env, modObj.Env.Consts)
+		closure := object.NewClosure(item, nil, modObj.Env)
 		return vm.push(closure)
 	case *object.Closure:
-		closure := object.NewClosureWithConsts(item.Fn, item.Free, modObj.Env, modObj.Env.Consts)
+		closure := object.NewClosure(item.Fn, item.Free, modObj.Env)
 		return vm.push(closure)
 	default:
 		return vm.push(item)

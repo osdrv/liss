@@ -1,5 +1,5 @@
 (import "test_utils" ["benchmark"])
-(import "list") ; import all because this file is supposed to test all public functions
+(import "list")
 (import "assert")
 
 (fn _mk_rand_vec [size]
@@ -75,7 +75,6 @@
         )))
     )
 )
-
 ; (_test)
 
 ((fn test_list_push []
@@ -93,7 +92,6 @@
         (println ": OK")
     ))
 ))
-
 
 ((fn test_list_reduce []
     (let tests [
@@ -127,8 +125,58 @@
         (assert:list_equal got want)
         (println ": OK")
     ))
+))
 
-    ; (let arr [5 3 8 1 2 7 4 6])
-    ; (let rev (list:reverse arr))
-    ; (assert:list_equal rev [6 4 7 2 1 8 3 5])
+((fn test_list_map []
+    (let tests [
+        (dict ["name" "map null"] ["input" null] ["want" null])
+        (dict ["name" "map empty list"] ["input" []] ["want" []])
+        (dict ["name" "map single element"] ["input" [2]] ["want" [4]])
+        (dict ["name" "map multiple elements"] ["input" [1 2 3 4]] ["want" [2 4 6 8]])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let want (get test "want"))
+        (let got (list:map input (fn [x] (* x 2))))
+        (assert:list_equal got want)
+        (println ": OK")
+    ))
+))
+
+((fn test_list_filter []
+    (let tests [
+        (dict ["name" "filter null"] ["input" null] ["want" null])
+        (dict ["name" "filter empty list"] ["input" []] ["want" []])
+        (dict ["name" "filter single element (true)"] ["input" [2]] ["want" [2]])
+        (dict ["name" "filter single element (false)"] ["input" [3]] ["want" []])
+        (dict ["name" "filter multiple elements"] ["input" [1 2 3 4 5 6]] ["want" [2 4 6]])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let want (get test "want"))
+        (let got (list:filter input (fn [x] (= (% x 2) 0))))
+        (assert:list_equal got want)
+        (println ": OK")
+    ))
+))
+
+((fn test_list_range []
+    (let tests [
+        (dict ["name" "range null"] ["input" null] ["start" 0] ["end" 2] ["want" null])
+        (dict ["name" "range empty list"] ["input" []] ["start" 0] ["end" 2] ["want" []])
+        (dict ["name" "range single element"] ["input" [1]] ["start" 0] ["end" 1] ["want" [1]])
+        (dict ["name" "range multiple elements"] ["input" [1 2 3 4 5]] ["start" 1] ["end" 4] ["want" [2 3 4]])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let start (get test "start"))
+        (let end (get test "end"))
+        (let want (get test "want"))
+        (let got (list:range input start end))
+        (assert:list_equal got want)
+        (println ": OK")
+    ))
 ))
