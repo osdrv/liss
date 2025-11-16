@@ -52,14 +52,18 @@
     )
 )
 
-(fn list_equal [a b]
+(fn _list_equal [a b cmp]
     (let msg (+ "Lists are not equal: \n" (str a) "\n" (str b)))
     (fn _next [ix]
         (cond (>= ix (len a))
             true
-            (cond (= (get a ix) (get b ix))
-                (_next (+ ix 1))
-                (raise! msg)
+            (
+                (let aa (get a ix))
+                (let bb (get b ix))
+                (cond (cmp aa bb)
+                    (_next (+ ix 1))
+                    (raise! msg)
+                )
             )
         )
     )
@@ -75,5 +79,55 @@
                 (_next 0)
                 (raise! msg)
             )
+    )
+)
+
+(fn list_equal [a b]
+    (_list_equal a b equal)
+)
+
+(fn _dict_equal [a b cmp]
+    (let msg (+ "Dicts are not equal: \n" (str a) "\n" (str b)))
+    (fn _next [keys ix]
+        (cond (>= ix (len keys))
+            true
+            (
+                (let k (get keys ix))
+                (let va (get a k))
+                (let vb (get b k))
+                (cond (cmp va vb)
+                    (_next keys (+ ix 1))
+                    (raise! msg)
+                )
+            )
+        )
+    )
+    (cond (or (is_null? a) (is_null? b))
+        (cond (and (is_null? a) (is_null? b))
+            true
+            (raise! msg)
+        )
+    )
+    (let _keys (keys a))
+    (cond (is_null? a)
+        true
+        (cond (list_equal _keys (keys b))
+            (_next _keys 0)
+            (raise! msg)
+        )
+    )
+)
+
+(fn dict_equal [a b]
+    (_dict_equal a b equal)
+)
+
+(fn deep_equal [a b]
+    (cond (or (is_list? a) (is_list? b))
+        (_list_equal a b deep_equal)
+        (cond (or (is_dict? a) (is_dict? b))
+            (_dict_equal a b deep_equal)
+            (equal a b)
+        )
     )
 )

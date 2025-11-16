@@ -34,11 +34,9 @@ func init() {
 		mkBuiltin("randn", builtinRandIntN, false),
 
 		mkBuiltin("len", builtinLen, false),
-		mkBuiltin("is_empty?", builtinEmpty, false),
 		mkBuiltin("head", builtinHead, false),
 		mkBuiltin("last", builtinLast, false),
 		mkBuiltin("tail", builtinTail, false),
-		mkBuiltin("is_null?", builtinIsNull, false),
 		mkBuiltin("str", builtinStr, false),
 
 		mkBuiltin("list", builtinList, true),
@@ -60,6 +58,15 @@ func init() {
 		mkBuiltin("fopen", builtinFOpen, false),
 		mkBuiltin("fclose", builtinFClose, false),
 		mkBuiltin("fread_all", builtinFReadAll, false),
+
+		mkBuiltin("is_empty?", builtinEmpty, false),
+		mkBuiltin("is_null?", builtinIsNull, false),
+		mkBuiltin("is_list?", builtinIsList, false),
+		mkBuiltin("is_dict?", builtinIsDictionary, false),
+		mkBuiltin("is_string?", builtinIsString, false),
+		mkBuiltin("is_integer?", builtinIsInteger, false),
+		mkBuiltin("is_float?", builtinIsFloat, false),
+		mkBuiltin("is_bool?", builtinIsBool, false),
 	}
 
 	for ix, b := range builtins {
@@ -634,4 +641,30 @@ func builtinFReadAll(f Object) (Object, error) {
 	}
 	// TODO: implement blobs
 	return &String{Value: []rune(string(data))}, nil
+}
+
+func builtinIsList(v Object) (Object, error) {
+	return &Bool{Value: v.IsList()}, nil
+}
+
+func builtinIsDictionary(v Object) (Object, error) {
+	return &Bool{Value: v.IsDictionary()}, nil
+}
+
+func builtinIsString(v Object) (Object, error) {
+	return &Bool{Value: v.IsString()}, nil
+}
+
+func builtinIsInteger(v Object) (Object, error) {
+	_, ok := v.(*Integer)
+	return &Bool{Value: ok}, nil
+}
+
+func builtinIsFloat(v Object) (Object, error) {
+	_, ok := v.(*Float)
+	return &Bool{Value: ok}, nil
+}
+
+func builtinIsBool(v Object) (Object, error) {
+	return &Bool{Value: v.IsBool()}, nil
 }

@@ -22,22 +22,19 @@
         )
     )
     (fn _next [acc ix]
-        (let _substr (range s ix (len s)))
-        (let _match (match_ix pat _substr))
+        (let _substr (builtin:range s ix (len s)))
+        (let _match (builtin:match_ix pat _substr))
+        ; (println "_match: " _match)
         (cond (or (is_null? _match) (is_empty? _match))
             acc
             (
-                (let _acc (+ acc (_collect _substr [] _match 1)))
+                (let _acc (list:push acc (_collect _substr [] _match 0)))
                 (let _nix (get (last _match) 1))
                 (_next _acc (+ ix _nix))
             )
         )
     )
-    (let _res (_next [] 0))
-    (cond (is_empty? _res)
-        _res
-        (+ [s] _res)
-    )
+    (_next [] 0)
 )
 
 (fn reverse [s]
@@ -104,7 +101,7 @@
                                                 8
                                                 (cond (= ch "9")
                                                     9
-                                                    0
+                                                    (raise! (+ "atoi: invalid character '" ch "' in string '" s "'"))
                                                 )
                                             )
                                         )
