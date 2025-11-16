@@ -3,24 +3,6 @@
 (import "strings")
 (import "test_utils" ["benchmark"])
 
-((fn test []
-    (let _match_all_res (test_utils:benchmark (fn []
-        (strings:match_all
-            ".*mul\\((\\d+),(\\d+)\\).*"
-            "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))"
-        )
-    )))
-    (println "Test match_all result: " _match_all_res)
-
-    (fn test_reverse []
-        (let s "Hello, World!")
-        (let reversed (strings:reverse s))
-        (println "Original string: " s)
-        (println "Reversed string: " reversed)
-    )
-    (test_reverse)
-))
-
 ((fn test_strings_join []
     (let tests [
         (dict ["name" "join null"] ["input" null] ["delim" ", "] ["want" null])
@@ -43,9 +25,8 @@
     (let tests [
         (dict ["name" "match_all no matches"] ["pattern" "a(bc)d"] ["s" "xyzxyzxyz"] ["want" []])
         (dict ["name" "match_all single match"] ["pattern" "a(bc)d"] ["s" "xyzabcdxyz"] ["want" [["abcd" "bc"]]])
-        ; TODO: these tests are failing because my implementation is faulty
-        ;(dict ["name" "match_all multiple matches"] ["pattern" "a(bc)d"] ["s" "abcdxyzabcd123abcd"] ["want" [["abcd" "bc"] ["abcd" "bc"] ["abcd" "bc"]]])
-        ;(dict ["name" "match_all overlapping matches"] ["pattern" "(\\d\\d)"] ["s" "12345"] ["want" [["12"] ["23"] ["34"] ["45"]]])
+        (dict ["name" "match_all multiple matches"] ["pattern" "a(bc)d"] ["s" "abcdxyzabcd123abcd"] ["want" [["abcd" "bc"] ["abcd" "bc"] ["abcd" "bc"]]])
+        (dict ["name" "match_all overlapping matches"] ["pattern" "(\\d\\d)"] ["s" "12345"] ["want" [["12" "12"] ["34" "34"]]]) ; matches can not overlap
     ])
     (list:map tests (fn [test]
         (print "Running test: " (get test "name"))
@@ -53,7 +34,64 @@
         (let s (get test "s"))
         (let want (get test "want"))
         (let got (strings:match_all pattern s))
-        (assert:list_equal got want)
+        (assert:deep_equal got want)
+        (println ": OK")
+    ))
+))
+
+((fn test_strings_reverse []
+    (let tests [
+        (dict ["name" "reverse null"] ["input" null] ["want" null])
+        (dict ["name" "reverse empty string"] ["input" ""] ["want" ""])
+        (dict ["name" "reverse single character"] ["input" "A"] ["want" "A"])
+        (dict ["name" "reverse palindrome"] ["input" "madam"] ["want" "madam"])
+        (dict ["name" "reverse regular string"] ["input" "Hello, World!"] ["want" "!dlroW ,olleH"])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let want (get test "want"))
+        (let got (strings:reverse input))
+        (assert:equal got want)
+        (println ": OK")
+    ))
+))
+
+((fn test_strings_split []
+    (let tests [
+        (dict ["name" "split null"] ["input" null] ["delim" ","] ["want" null])
+        (dict ["name" "split empty string"] ["input" ""] ["delim" ","] ["want" []])
+        (dict ["name" "split no delimiter"] ["input" "HelloWorld"] ["delim" ","] ["want" ["HelloWorld"]])
+        (dict ["name" "split single delimiter"] ["input" "Hello,World"] ["delim" ","] ["want" ["Hello" "World"]])
+        (dict ["name" "split multiple delimiters"] ["input" "one,two,three,four"] ["delim" ","] ["want" ["one" "two" "three" "four"]])
+        (dict ["name" "split consecutive delimiters"] ["input" "one,,two,,,three"] ["delim" ","] ["want" ["one" "" "two" "" "" "three"]])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let delim (get test "delim"))
+        (let want (get test "want"))
+        (let got (strings:split input delim))
+        (assert:deep_equal got want)
+        (println ": OK")
+    ))
+))
+
+((fn test_strings_atoi []
+    (let tests [
+        (dict ["name" "atoi null"] ["input" null] ["want" null])
+        ; This test is expected to raise an error, but we can't catch it yet
+        ; (dict ["name" "atoi empty string"] ["input" ""] ["want" null])
+        (dict ["name" "atoi single digit"] ["input" "5"] ["want" 5])
+        (dict ["name" "atoi multiple digits"] ["input" "12345"] ["want" 12345])
+        (dict ["name" "atoi leading zeros"] ["input" "00042"] ["want" 42])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let want (get test "want"))
+        (let got (strings:atoi input))
+        (assert:equal got want)
         (println ": OK")
     ))
 ))

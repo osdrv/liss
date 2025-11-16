@@ -24,7 +24,6 @@
     (fn _next [acc ix]
         (let _substr (builtin:range s ix (len s)))
         (let _match (builtin:match_ix pat _substr))
-        ; (println "_match: " _match)
         (cond (or (is_null? _match) (is_empty? _match))
             acc
             (
@@ -48,12 +47,18 @@
             )
         )
     )
-    (_next "" (- (len s) 1))
+    (cond (is_null? s)
+        null
+        (cond (is_empty? s)
+            s
+            (_next "" (- (len s) 1))
+        )
+    )
 )
 
 (fn split [s delim]
-    (let _len (len s))
     (fn _next [acc start ix]
+        (let _len (len s))
         (cond (>= ix _len)
             (cond (> _len start)
                 (list:push acc (list:range s start _len))
@@ -71,37 +76,48 @@
             )
         )
     )
-    (let _res (_next [] 0 0))
-    (list:reduce _res (fn [acc chunk] (list:push acc (join chunk "")) ) [])
+    (cond (is_null? s)
+        null
+        (
+            (let _res (_next [] 0 0))
+            (list:reduce _res (fn [acc chunk] (list:push acc (join chunk "")) ) [])
+        )
+    )
 )
 
 ; TODO: implement proper atoi with error handling
 ; one of the ideas is to allow rune subtraction
 (fn atoi [s]
-    (list:reduce s (fn [acc ch]
-        (+
-            (* acc 10)
-            (cond (= ch "0")
-                0
-                (cond (= ch "1")
-                    1
-                    (cond (= ch "2")
-                        2
-                        (cond (= ch "3")
-                            3
-                            (cond (= ch "4")
-                                4
-                                (cond (= ch "5")
-                                    5
-                                    (cond (= ch "6")
-                                        6
-                                        (cond (= ch "7")
-                                            7
-                                            (cond (= ch "8")
-                                                8
-                                                (cond (= ch "9")
-                                                    9
-                                                    (raise! (+ "atoi: invalid character '" ch "' in string '" s "'"))
+    (cond (is_null? s)
+        null
+        (cond (is_empty? s)
+            (raise! "atoi: empty string")
+            (list:reduce s (fn [acc ch]
+                (+
+                    (* acc 10)
+                    (cond (= ch "0")
+                        0
+                        (cond (= ch "1")
+                            1
+                            (cond (= ch "2")
+                                2
+                                (cond (= ch "3")
+                                    3
+                                    (cond (= ch "4")
+                                        4
+                                        (cond (= ch "5")
+                                            5
+                                            (cond (= ch "6")
+                                                6
+                                                (cond (= ch "7")
+                                                    7
+                                                    (cond (= ch "8")
+                                                        8
+                                                        (cond (= ch "9")
+                                                            9
+                                                            (raise! (+ "atoi: invalid character '" ch "' in string '" s "'"))
+                                                        )
+                                                    )
                                                 )
                                             )
                                         )
@@ -111,7 +127,7 @@
                         )
                     )
                 )
-            )
+            ) 0)
         )
-    ) 0)
+    )
 )
