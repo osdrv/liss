@@ -77,23 +77,36 @@
 )
 
 (fn find [arr n]
-    (let _acc (_find [] 0 arr n true))
-    (cond (is_empty? _acc)
-        -1
-        (head _acc)
+    (cond (is_null? arr)
+        null
+        (
+            (let _acc (_find [] 0 arr n true))
+            (cond (is_empty? _acc)
+                -1
+                (head _acc)
+            )
+        )
     )
 )
 
 (fn contains? [arr n]
-    (cond (>= (find arr n) 0)
-        true
+    (cond (is_null? arr)
         false
+        (cond (>= (find arr n) 0)
+            true
+            false
+        )
     )
 )
 
 (fn find_all [arr n]
-    (let _res (_find [] 0 arr n false))
-    _res
+    (cond (is_null? arr)
+        null
+        (
+            (let _res (_find [] 0 arr n false))
+            _res
+        )
+    )
 )
 
 (fn quicksort [arr]
