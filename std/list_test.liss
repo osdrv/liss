@@ -15,67 +15,21 @@
     (_next 0 [])
 )
 
-(fn _test []
-    (
-        (let vec (_mk_rand_vec 1000))
-        (print "list: ")
-        (println vec "\n")
-
-        (test_utils:benchmark (fn [] (
-            (print "find: ")
-            (println (list:find vec 7))
-            (print "find_all: ")
-            (println (list:find_all vec 7))
-        )))
-
-        (test_utils:benchmark (fn [] (
-            (print "range 0..2: ")
-            (println (list:range vec 0 2))
-            (print "range 2..10: ")
-            (println (list:range vec 2 10))
-        )))
-
-        (test_utils:benchmark (fn [] (
-            (print "merge-sorted: ")
-            (println (list:mergesort vec))
-        )))
-
-        (test_utils:benchmark (fn [] (
-            (print "quick-sorted: ")
-            (println (list:quicksort vec))
-        )))
-
-        (test_utils:benchmark (fn [] (
-            (print "sorted: ")
-            (println (list:sort vec))
-        )))
-
-        (test_utils:benchmark (fn [] (
-            (print "filtered < 10: ")
-            (println (list:filter vec (fn [x] (< x 10))))
-        )))
-
-        (test_utils:benchmark (fn [] (
-            (print "reduced < 10: ")
-            (println (list:reduce vec (fn [acc x] (
-                (+ acc (cond (< x 10) [x] []))
-            )) []))
-        )))
-
-        (test_utils:benchmark (fn [] (
-            (print "mapped * 2: ")
-            (println (list:map vec (fn [x] (* x 2))))
-        )))
-
-        (test_utils:benchmark (fn [] (
-            (let _lookup (_mk_rand_vec 100))
-            (list:map _lookup (fn [x]
-                (list:contains? vec x)
-            ))
-        )))
+(fn _is_sorted [arr]
+    (fn _next [ix]
+        (cond (>= ix (len arr))
+            true
+            (cond (<= (get arr (- ix 1)) (get arr ix))
+                (_next (+ ix 1))
+                false
+            )
+        )
+    )
+    (cond (or (is_null? arr) (<= (len arr) 1))
+        true
+        (_next 1)
     )
 )
-; (_test)
 
 ((fn test_list_push []
     (let tests [
@@ -233,4 +187,68 @@
         (assert:list_equal got want)
         (println ": OK")
     ))
+))
+
+((fn test_list_sort []
+    (let tests [
+        (dict ["name" "sort null"] ["input" null] ["want" null])
+        (dict ["name" "sort empty list"] ["input" []] ["want" []])
+        (dict ["name" "sort single element"] ["input" [1]] ["want" [1]])
+        (dict ["name" "sort multiple elements"] ["input" [4 2 5 1 3]] ["want" [1 2 3 4 5]])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let want (get test "want"))
+        (let got (list:sort input))
+        (assert:list_equal got want)
+        (println ": OK")
+    ))
+))
+
+((fn benchmark_list_sort []
+    (print "Benchmarking list:sort ... ")
+    (let vec (_mk_rand_vec 1000))
+    (test_utils:benchmark (fn [] (
+        (list:sort vec)
+    )))
+    (println "OK")
+))
+
+((fn benchmarh_list_quicksort []
+    (print "Benchmarking list:quicksort ... ")
+    (let vec (_mk_rand_vec 1000))
+    (test_utils:benchmark (fn [] (
+        (list:quicksort vec)
+    )))
+    (println "OK")
+))
+
+((fn benchmarh_list_mergesort []
+    (print "Benchmarking list:mergesort ...")
+    (let vec (_mk_rand_vec 1000))
+    (test_utils:benchmark (fn [] (
+        (list:mergesort vec)
+    )))
+    (println "OK")
+))
+
+((fn benchmark_list_find []
+    (print "Benchmarking list:find ... ")
+    (let vec (_mk_rand_vec 1000))
+    (let n (get vec 500))
+    (test_utils:benchmark (fn [] (
+        (list:find vec n)
+    )))
+    (println "OK")
+))
+
+((fn benchmark_list_find_all []
+    (print "Benchmarking list:find_all ... ")
+    (let vec (_mk_rand_vec 1000))
+    (let n (get vec 500))
+    (test_utils:benchmark (fn [] (
+        (list:find_all vec n)
+    )))
+    (println "OK")
 ))

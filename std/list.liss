@@ -193,7 +193,7 @@
             (let _len (len arr))
             (cond (<= _len 1)
                 arr
-                (quicksort arr)
+                (mergesort arr)
             )
         )
     )

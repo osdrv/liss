@@ -2,7 +2,7 @@
     (let _start (time_ms))
     (let _res (fun))
     (let _end (time_ms))
-    (print "Elapsed time (msec): ")
-    (println (- _end _start) "\n")
+    (print "Elapsed time: ")
+    (println (- _end _start) "ms")
     _res
 )
