@@ -8,7 +8,9 @@ import (
 type Scope uint8
 
 const (
-	MODULE_SELF = ""
+	MODULE_UNSET   = ""
+	MODULE_SELF    = ""
+	MODULE_BUILTIN = "builtin"
 )
 
 const (
@@ -124,32 +126,43 @@ func (st *SymbolTable) defineFree(orig Symbol) Symbol {
 	return symbol
 }
 
-func (st *SymbolTable) Resolve(module string, name string) (Symbol, bool) {
-	if _, ix, ok := GetBuiltinByName(name); ok {
-		return Symbol{Name: name, Index: ix, Scope: BuiltinScope}, true
-	}
-	if module != MODULE_SELF {
-		modix, ok := st.modix[module]
-		if !ok {
-			if st.Outer != nil {
-				return st.Outer.Resolve(module, name)
+func resolveModuleSymbol(st *SymbolTable, module string, name string) (Symbol, bool) {
+	var modix int
+	var ok bool
+
+	ptr := st
+	for ptr != nil {
+		modix, ok = ptr.modix[module]
+		if ok {
+			if sym, ok := ptr.Modules[modix].Symbols.Resolve(MODULE_SELF, name); ok {
+				return Symbol{
+					Name:     name,
+					ModIndex: modix,
+					Index:    sym.Index,
+					Scope:    ModuleScope,
+				}, true
 			}
-			return Symbol{}, false
+			break
 		}
-		sym, ok := st.Modules[modix].Symbols.Resolve(MODULE_SELF, name)
-		if !ok {
-			return sym, ok
-		}
-		return Symbol{
-			Name:     name,
-			ModIndex: modix,
-			Index:    sym.Index,
-			Scope:    ModuleScope,
-		}, true
+		ptr = ptr.Outer
 	}
-	symbol, ok := st.Vars[name]
-	if !ok && st.Outer != nil {
-		symbol, ok = st.Outer.Resolve(module, name)
+
+	return Symbol{}, false
+}
+
+func resolveBuiltinSymbol(st *SymbolTable, module string, name string) (Symbol, bool) {
+	if _, ix, ok := GetBuiltinByName(name); ok {
+		return Symbol{Name: name, Index: ix, Scope: BuiltinScope}, ok
+	}
+	return Symbol{}, false
+}
+
+func resolveScopeChainSymbol(st *SymbolTable, module string, name string) (Symbol, bool) {
+	if symbol, ok := st.Vars[name]; ok {
+		return symbol, ok
+	}
+	if st.Outer != nil {
+		symbol, ok := st.Outer.Resolve(module, name)
 		if !ok {
 			return symbol, ok
 		}
@@ -159,7 +172,26 @@ func (st *SymbolTable) Resolve(module string, name string) (Symbol, bool) {
 		free := st.defineFree(symbol)
 		return free, true
 	}
-	return symbol, ok
+	return Symbol{}, false
+}
+
+// Resolution rules
+//  1. If module is provided and is not set to Builtin, look up the symbol
+//     in the corresponding module only.
+//  2. If the module is Builtin, look up the symbol in the builtins only.
+//  3. If the module is Self or not provided, look up the symbol in the current scope.
+//     a. If not found, look up in the outer scopes recursively.
+//     b. If not found in the outer scopes, look up in the builtins.
+func (st *SymbolTable) Resolve(module string, name string) (Symbol, bool) {
+	if module != MODULE_UNSET && module != MODULE_BUILTIN {
+		return resolveModuleSymbol(st, module, name)
+	} else if module == MODULE_BUILTIN {
+		return resolveBuiltinSymbol(st, module, name)
+	}
+	if sym, ok := resolveScopeChainSymbol(st, module, name); ok {
+		return sym, ok
+	}
+	return resolveBuiltinSymbol(st, module, name)
 }
 
 func (st *SymbolTable) Export(list []string) []Symbol {

@@ -31,12 +31,11 @@
 )
 
 (fn range [arr start end]
-    (println "range called with:" arr " " start " " end)
     (cond (is_null? arr)
         null
         (cond (>= start (len arr))
             []
-            (range arr start end)
+            (builtin:range arr start end)
         )
     )
 )
