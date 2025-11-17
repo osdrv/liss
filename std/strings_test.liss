@@ -95,3 +95,23 @@
         (println ": OK")
     ))
 ))
+
+((fn test_strings_has_prefix []
+    (let tests [
+        ; TODO: enable null tests when error handling is implemented
+        ; (dict ["name" "has_prefix null string"] ["s" null] ["prefix" "pre"] ["want" false])
+        ; (dict ["name" "has_prefix null prefix"] ["s" "string"] ["prefix" null] ["want" false])
+        (dict ["name" "has_prefix empty prefix"] ["s" "string"] ["prefix" ""] ["want" true])
+        (dict ["name" "has_prefix matching prefix"] ["s" "hello world"] ["prefix" "hello"] ["want" true])
+        (dict ["name" "has_prefix non-matching prefix"] ["s" "hello world"] ["prefix" "world"] ["want" false])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let s (get test "s"))
+        (let prefix (get test "prefix"))
+        (let want (get test "want"))
+        (let got (strings:has_prefix? s prefix))
+        (assert:equal got want)
+        (println ": OK")
+    ))
+))

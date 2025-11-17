@@ -131,3 +131,13 @@
         )
     )
 )
+
+(fn has_prefix? [str pref]
+    (cond (and (is_string? str) (is_string? pref))
+        (cond (< (len str) (len pref))
+            false
+            (= (list:range str 0 (len pref)) pref)
+        )
+        (raise! "has_prefix?: both arguments must be strings")
+    )
+)
