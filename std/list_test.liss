@@ -228,7 +228,7 @@
     (print "Benchmarking list:mergesort ...")
     (let vec (_mk_rand_vec 1000))
     (test_utils:benchmark (fn [] (
-        (list:mergesort vec)
+        (list:mergesort vec list:SORT_ASC)
     )))
     (println "OK")
 ))
