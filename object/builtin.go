@@ -45,7 +45,7 @@ func init() {
 		mkBuiltin("get", builtinGet, false),
 		mkBuiltin("put", builtinPut, false),
 		mkBuiltin("del", builtinDel, false),
-		mkBuiltin("has", builtinHas, false),
+		mkBuiltin("has?", builtinHas, false),
 		mkBuiltin("keys", builtinKeys, false),
 		mkBuiltin("values", builtinValues, false),
 		mkBuiltin("re", builtinReCompile, false),
@@ -64,7 +64,7 @@ func init() {
 		mkBuiltin("is_list?", builtinIsList, false),
 		mkBuiltin("is_dict?", builtinIsDictionary, false),
 		mkBuiltin("is_string?", builtinIsString, false),
-		mkBuiltin("is_integer?", builtinIsInteger, false),
+		mkBuiltin("is_int?", builtinIsInt, false),
 		mkBuiltin("is_float?", builtinIsFloat, false),
 		mkBuiltin("is_bool?", builtinIsBool, false),
 	}
@@ -655,7 +655,7 @@ func builtinIsString(v Object) (Object, error) {
 	return &Bool{Value: v.IsString()}, nil
 }
 
-func builtinIsInteger(v Object) (Object, error) {
+func builtinIsInt(v Object) (Object, error) {
 	_, ok := v.(*Integer)
 	return &Bool{Value: ok}, nil
 }

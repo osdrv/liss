@@ -56,6 +56,7 @@
     )
 )
 
+; TODO: FIXME: at the moment, delimiter can only be a single rune
 (fn split [s delim]
     (fn _next [acc start ix]
         (let _len (len s))
