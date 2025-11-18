@@ -145,8 +145,6 @@
 )
 
 (fn mergesort [arr fun]
-    (fn _min2 [a b] (cond (< a b) a b))
-    (fn _max2 [a b] (cond (> a b) a b))
     (fn _merge2 [acc a aix b bix]
         (cond (>= aix (len a))
             (+ acc (range b bix (len b)))
@@ -164,10 +162,14 @@
             arr
             (
                 (cond (= (len arr) 2)
-                    [
-                        (_min2 (get arr 0) (get arr 1))
-                        (_max2 (get arr 0) (get arr 1))
-                    ]
+                    (
+                        (let a (get arr 0))
+                        (let b (get arr 1))
+                        (cond (fun a b)
+                            [a b]
+                            [b a]
+                        )
+                    )
                     (
                         (let _mid (/ (len arr) 2))
                         (let _a (range arr 0 _mid))
@@ -185,8 +187,8 @@
     )
 )
 
-(let SORT_ASC (fn [a b] (<= a b)))
-(let SORT_DESC (fn [a b] (>= a b)))
+(let SORT_ASC (fn [a b] (< a b)))
+(let SORT_DESC (fn [a b] (> a b)))
 
 (fn sort [arr]
     (cond (is_null? arr)
