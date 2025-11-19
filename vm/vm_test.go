@@ -411,7 +411,7 @@ func TestRun(t *testing.T) {
 				},
 			}
 
-			vm := New(comp.Bytecode(), mod)
+			vm := New(mod)
 
 			err = vm.Run()
 			if tt.wantErr != nil {
@@ -604,7 +604,7 @@ func TestFunctionCall(t *testing.T) {
 				},
 			}
 
-			vm := New(comp.Bytecode(), mod)
+			vm := New(mod)
 
 			err = vm.Run()
 			if tt.wantErr != nil {
@@ -683,7 +683,7 @@ func TestBuiltinCall(t *testing.T) {
 					Consts: comp.Bytecode().Consts,
 				},
 			}
-			vm := New(comp.Bytecode(), mod)
+			vm := New(mod)
 
 			err = vm.Run()
 			if tt.wantErr != nil {
@@ -800,7 +800,7 @@ func TestClosures(t *testing.T) {
 					Consts: comp.Bytecode().Consts,
 				},
 			}
-			vm := New(comp.Bytecode(), mod)
+			vm := New(mod)
 
 			err = vm.Run()
 			if tt.wantErr != nil {

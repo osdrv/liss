@@ -30,7 +30,7 @@ func Run(mod *compiler.Module, opts repl.Options) (Result, error) {
 			vmopts.Debug++
 		}
 	}
-	vminst := vm.New(mod.Bytecode, mod).WithOptions(vmopts)
+	vminst := vm.New(mod).WithOptions(vmopts)
 
 	defer vminst.Shutdown()
 	if err := vminst.Run(); err != nil {
@@ -84,7 +84,7 @@ func Execute(src string, opts repl.Options) (Result, error) {
 }
 
 func InstantiateModule(mod *compiler.Module) (*object.Environment, error) {
-	vm := vm.New(mod.Bytecode, mod)
+	vm := vm.New(mod)
 	err := vm.Run()
 	if err != nil {
 		return nil, err

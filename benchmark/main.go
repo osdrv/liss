@@ -49,7 +49,7 @@ func main() {
 		},
 	}
 
-	machine := vm.New(comp.Bytecode(), mod)
+	machine := vm.New(mod)
 
 	start := time.Now()
 

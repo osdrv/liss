@@ -333,7 +333,7 @@ func TestCompileModule(t *testing.T) {
 			}
 			t.Logf("Compiling module from path: %s", path)
 			cache := make(map[string]*compiler.Module)
-			mod, err := CompileModule(path, repl.Options{}, cache, nil)
+			mod, err := CompileModule(".", path, repl.Options{}, cache, nil)
 			if tt.wantErr != nil {
 				require.ErrorContains(t, err, tt.wantErr.Error())
 			} else {

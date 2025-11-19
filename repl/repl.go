@@ -69,7 +69,7 @@ func Run(in io.Reader, out io.Writer, opts Options) {
 				Consts:  comp.Bytecode().Consts,
 			},
 		}
-		vminst := vm.NewWithEnv(comp.Bytecode(), mod.Env, mod)
+		vminst := vm.New(mod)
 		if opts.Debug {
 			vminst = vminst.WithOptions(vm.VMOptions{Debug: 1})
 		}

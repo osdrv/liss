@@ -74,13 +74,13 @@ type VM struct {
 	lastPopped object.Object
 }
 
-func New(bc *compiler.Bytecode, mod *compiler.Module) *VM {
+func New(mod *compiler.Module) *VM {
 	env := object.NewEnvironment()
 	env.Globals = make([]object.Object, GlobalsSize)
-	env.Consts = bc.Consts
+	env.Consts = mod.Bytecode.Consts
 
 	mainfn := &object.Function{
-		Instrs: bc.Instrs,
+		Instrs: mod.Bytecode.Instrs,
 	}
 	cmpmod := &object.Module{
 		Name:    mod.Name,
@@ -117,19 +117,6 @@ func (vm *VM) Shutdown() {
 			f.Close()
 		}
 	}
-}
-
-// DEPRECATED: use NewWithEnv instead
-// func NewWithGlobals(bc *compiler.Bytecode, globals []object.Object, mod *compiler.Module) *VM {
-// 	vm := New(bc, mod)
-// 	vm.currentFrame().cl.Env.Globals = globals
-// 	return vm
-// }
-
-func NewWithEnv(bc *compiler.Bytecode, env *object.Environment, mod *compiler.Module) *VM {
-	vm := New(bc, mod)
-	vm.currentFrame().cl.Env = env
-	return vm
 }
 
 func (vm *VM) WithOptions(opts VMOptions) *VM {
