@@ -31,6 +31,7 @@ type Bytecode struct {
 type Module struct {
 	Name     string
 	Path     string
+	DotPath  string
 	Bytecode *Bytecode
 	Symbols  *object.SymbolTable
 	Env      *object.Environment
@@ -319,7 +320,9 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		if calleeIdent, ok := callee.(*ast.IdentifierExpr); ok {
 			sym, ok := c.symbols.Resolve(calleeIdent.Module, calleeIdent.Name)
 			if !ok {
-				return fmt.Errorf("undefined function: %s", calleeIdent.Name)
+				return fmt.Errorf("undefined function: %s:%s",
+					calleeIdent.Module,
+					calleeIdent.Name)
 			}
 			switch sym.Scope {
 			case object.GlobalScope:
@@ -428,7 +431,7 @@ func (c *Compiler) ImportModule(ref string, mod *Module, symbols []string) (*obj
 		mod.Symbols, mod.Env)
 
 	modix := c.addConst(objmod)
-	if err := c.symbols.DefineModule(ref, objmod.Name, objmod, modix); err != nil {
+	if err := c.symbols.DefineModule(objmod.Name, objmod, modix); err != nil {
 		return nil, err
 	}
 
@@ -437,15 +440,6 @@ func (c *Compiler) ImportModule(ref string, mod *Module, symbols []string) (*obj
 	}
 
 	return objmod, nil
-}
-
-func (c *Compiler) lookupModule(path *ast.StringLiteral) (*object.Module, error) {
-	ref := path.Value
-	modix, ok := c.symbols.LookupModule(ref)
-	if !ok {
-		return nil, fmt.Errorf("module not found: %s", ref)
-	}
-	return c.consts[modix].(*object.Module), nil
 }
 
 func (c *Compiler) currentInstrs() code.Instructions {

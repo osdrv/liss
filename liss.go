@@ -92,9 +92,12 @@ func InstantiateModule(mod *compiler.Module) (*object.Environment, error) {
 	return vm.Env(), nil
 }
 
-func CompileModule(nameOrPath string, opts repl.Options,
+func CompileModule(dotPath string, nameOrPath string, opts repl.Options,
 	cache map[string]*compiler.Module, chain []string) (*compiler.Module, error) {
-	resolved, err := resolveModulePath(nameOrPath)
+	resolved, err := resolveModulePath(dotPath, nameOrPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve module path for %s: %w", nameOrPath, err)
+	}
 	fullPath, err := filepath.Abs(resolved)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get absolute path for module %s: %w", nameOrPath, err)
@@ -129,6 +132,7 @@ func CompileModule(nameOrPath string, opts repl.Options,
 	mod := &compiler.Module{
 		Name:    name,
 		Path:    fullPath,
+		DotPath: path.Dir(fullPath),
 		Symbols: object.NewSymbolTable(),
 	}
 
@@ -151,7 +155,7 @@ func CompileModule(nameOrPath string, opts repl.Options,
 		if opts.Debug {
 			fmt.Printf("Compiling imported module %s for module %s\n", ref, name)
 		}
-		impmod, err := CompileModule(ref, opts, cache, append(chain, name))
+		impmod, err := CompileModule(mod.DotPath, ref, opts, cache, append(chain, name))
 		if err != nil {
 			return nil, fmt.Errorf("failed to compile imported module %s: %w",
 				impExpr.Ref.(*ast.StringLiteral).Value, err)
@@ -181,7 +185,8 @@ func CompileModule(nameOrPath string, opts repl.Options,
 
 func ExecutePath(srcPath string, opts repl.Options) (Result, error) {
 	cache := make(map[string]*compiler.Module)
-	mod, err := CompileModule(srcPath, opts, cache, nil)
+	dotPath := path.Clean(".")
+	mod, err := CompileModule(dotPath, srcPath, opts, cache, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -261,20 +266,26 @@ func main() {
 	os.Exit(0)
 }
 
-func resolveModulePath(p string) (string, error) {
+func resolveModulePath(dotPath string, p string) (string, error) {
 	var resolved string
 	// If the path looks like a standard module name, search in ./std/{import_path}.liss
 	if looksLikeStdModule(p) {
 		resolved = path.Join(".", "std", p+".liss")
+	} else if path.IsAbs(p) {
+		return p, nil
 	} else {
-		// Otherwise, treat it as a file path
-		resolved = p
+		// Otherwise, treat it as a file path relative to the dotPath
+		resolved = path.Join(dotPath, p)
+		return filepath.Clean(resolved), nil
 	}
 	return resolved, nil
 }
 
 func looksLikeStdModule(path string) bool {
-	return !strings.Contains(path, "/") && !strings.Contains(path, "\\") && !strings.HasPrefix(path, ".")
+	return !strings.Contains(path, "/") &&
+		!strings.Contains(path, "\\") &&
+		!strings.HasPrefix(path, ".") &&
+		!strings.HasSuffix(path, ".liss")
 }
 
 func getModuleNameFromPath(p string) string {

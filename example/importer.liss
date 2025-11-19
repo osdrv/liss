@@ -1,0 +1,6 @@
+(import "exporter.liss" ["exported"])
+
+((fn main []
+    (let result (exporter:exported "World"))
+    (println result)
+))

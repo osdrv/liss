@@ -13,6 +13,8 @@ const (
 	MODULE_BUILTIN = "builtin"
 )
 
+const LissFileExt = ".liss"
+
 const (
 	GlobalScope Scope = iota
 	LocalScope
@@ -57,20 +59,24 @@ func NewNestedSymbolTable(outer *SymbolTable) *SymbolTable {
 	}
 }
 
-func (st *SymbolTable) DefineModule(ref, name string, mod *Module, modix int) error {
+func (st *SymbolTable) DefineModule(name string, mod *Module, modix int) error {
 	if st.modix == nil {
 		st.modix = make(map[string]int)
 	}
-	if _, ok := st.modix[ref]; ok {
+	if _, ok := st.modix[name]; ok {
 		return fmt.Errorf("Module is already defined: %s", name)
 	}
 	st.Modules = append(st.Modules, mod)
-	st.modix[ref] = modix
+	st.modix[name] = modix
 	return nil
 }
 
-func (st *SymbolTable) LookupModule(ref string) (int, bool) {
-	mix, ok := st.modix[ref]
+func (st *SymbolTable) LookupModule(refOrName string) (int, bool) {
+	name := refOrName
+	if strings.HasSuffix(refOrName, LissFileExt) {
+		name = strings.TrimSuffix(refOrName, LissFileExt)
+	}
+	mix, ok := st.modix[name]
 	return mix, ok
 }
 

@@ -1,0 +1,4 @@
+(fn exported [s]
+    (println "Exported function called with argument:" s)
+    (+ "Hello, " s "!")
+)
