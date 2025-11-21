@@ -6,6 +6,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"osdrv/liss/regexp"
+	"path/filepath"
 	"reflect"
 	"time"
 )
@@ -55,7 +56,7 @@ func init() {
 		mkBuiltin("print", builtinPrint, true),
 		mkBuiltin("println", builtinPrintln, true),
 
-		mkBuiltin("fopen", builtinFOpen, false),
+		mkBuiltin("fopen", builtinFOpen, true),
 		mkBuiltin("fclose", builtinFClose, false),
 		mkBuiltin("fread_all", builtinFReadAll, false),
 
@@ -605,13 +606,27 @@ func builtinPrintln(args ...Object) (Object, error) {
 }
 
 // TODO: add modes (read, write, append, etc.)
-func builtinFOpen(path Object) (Object, error) {
-	if !path.IsString() {
-		return nil, fmt.Errorf("fopen: expected string as argument, got %s", path.String())
+func builtinFOpen(args ...Object) (Object, error) {
+	pathObj := args[0]
+	if !pathObj.IsString() {
+		return nil, fmt.Errorf("fopen: expected string as argument, got %s", pathObj.String())
 	}
-	strPath := path.(*String)
+	var dotPath Object
+	if len(args) > 1 {
+		dotPath = args[1]
+		if !dotPath.IsString() {
+			return nil, fmt.Errorf("fopen: expected string as second argument, got %s", dotPath.String())
+		}
+	}
+	path := string(pathObj.(*String).Value)
+	if filepath.IsLocal(path) {
+		if dotPath != nil {
+			basePath := string(dotPath.(*String).Value)
+			path = filepath.Join(basePath, path)
+		}
+	}
 	// open file for reading
-	fd, err := os.Open(string(strPath.Value))
+	fd, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}

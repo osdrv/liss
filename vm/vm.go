@@ -47,10 +47,21 @@ var appendStdoutHook builtinHook = func(
 	return fn, args, nil
 }
 
+var appendDotPathHook builtinHook = func(
+	vm *VM, fn *object.BuiltinFunction, args []object.Object,
+) (*object.BuiltinFunction, []object.Object, error) {
+	if len(args) == 1 {
+		// Put current module's dot path as the second argument
+		args = append(args, object.NewString(vm.currentFrame().cl.Module.Path))
+	}
+	return fn, args, nil
+}
+
 var (
 	DefaultHooks = map[string]builtinHook{
 		"print":   appendStdoutHook,
 		"println": appendStdoutHook,
+		"fopen":   appendDotPathHook,
 	}
 )
 
