@@ -27,3 +27,8 @@ bench:
 clean:
 	@echo "Cleaning up..."
 	@rm -f $(BINARY_NAME)
+
+test-std:
+	@echo "Running LISS standard library tests..."
+	./${BINARY_NAME} -src ./std/list_test.liss
+	./${BINARY_NAME} -src ./std/strings_test.liss

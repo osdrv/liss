@@ -1,8 +1,10 @@
 package main
 
 import (
+	"io"
 	"os"
 	"osdrv/liss/compiler"
+	"osdrv/liss/module_loader"
 	"osdrv/liss/object"
 	"osdrv/liss/repl"
 	"osdrv/liss/test"
@@ -254,7 +256,11 @@ func TestExecute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, err := Execute(tt.source, repl.Options{})
+			// TODO: rework Compile/Execute to be testable here
+			mod := &compiler.Module{
+				Src: tt.source,
+			}
+			res, err := Execute(mod.Src, ".", repl.Options{})
 			if err != nil || tt.wantErr != nil {
 				if tt.wantErr != nil {
 					assert.ErrorContains(t, err, tt.wantErr.Error())
@@ -325,15 +331,19 @@ func TestCompileModule(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := tt.modulePath
-			if tt.moduleContent != "" {
-				require.Empty(t, tt.modulePath, "Either modulePath or moduleContent should be set, not both")
-				path = writeTmpModule(t, tt.moduleContent)
-				defer os.Remove(path)
+			loader := module_loader.New(".", module_loader.Options{})
+			src := tt.moduleContent
+			if src == "" && tt.modulePath != "" {
+				path, err := loader.Resolve(tt.modulePath)
+				require.NoError(t, err, "Failed to resolve module path: %s", tt.modulePath)
+				f, err := os.Open(path)
+				require.NoError(t, err, "Failed to open module file: %s", path)
+				defer f.Close()
+				data, err := io.ReadAll(f)
+				require.NoError(t, err, "Failed to read module file: %s", path)
+				src = string(data)
 			}
-			t.Logf("Compiling module from path: %s", path)
-			cache := make(map[string]*compiler.Module)
-			mod, err := CompileModule(".", path, repl.Options{}, cache, nil)
+			mod, err := CompileAll(src, loader, repl.Options{})
 			if tt.wantErr != nil {
 				require.ErrorContains(t, err, tt.wantErr.Error())
 			} else {
@@ -342,14 +352,4 @@ func TestCompileModule(t *testing.T) {
 			assert.Equal(t, len(tt.wantVars), len(mod.Symbols.Vars), "Number of symbols do not match")
 		})
 	}
-}
-
-func writeTmpModule(t *testing.T, content string) string {
-	tmpFile, err := os.CreateTemp("", "exe_*.liss")
-	require.NoError(t, err, "Failed to create temp file for module content")
-	_, err = tmpFile.WriteString(content)
-	require.NoError(t, err, "Failed to write module content to temp file")
-	err = tmpFile.Close()
-	require.NoError(t, err, "Failed to close temp file")
-	return tmpFile.Name()
 }

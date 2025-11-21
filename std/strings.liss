@@ -15,7 +15,7 @@
             acc
             (
                 (let _m (get mtch ix))
-                (let _subs (range _s (get _m 0) (get _m 1)))
+                (let _subs (builtin:range _s (get _m 0) (get _m 1)))
                 (let _acc (list:push acc _subs))
                 (_collect _s _acc mtch (+ ix 1))
             )

@@ -28,15 +28,6 @@ type Bytecode struct {
 	Consts []object.Object
 }
 
-type Module struct {
-	Name     string
-	Path     string
-	DotPath  string
-	Bytecode *Bytecode
-	Symbols  *object.SymbolTable
-	Env      *object.Environment
-}
-
 type EmittedInstruction struct {
 	OpCode   code.OpCode
 	Position int
@@ -431,7 +422,7 @@ func (c *Compiler) ImportModule(ref string, mod *Module, symbols []string) (*obj
 		mod.Symbols, mod.Env)
 
 	modix := c.addConst(objmod)
-	if err := c.symbols.DefineModule(objmod.Name, objmod, modix); err != nil {
+	if err := c.symbols.DefineModule(ref, objmod, modix); err != nil {
 		return nil, err
 	}
 

@@ -41,7 +41,6 @@ func main() {
 
 	mod := &compiler.Module{
 		Name:     "main",
-		Path:     "",
 		Bytecode: comp.Bytecode(),
 		Symbols:  comp.Symbols(),
 		Env: &object.Environment{

@@ -195,6 +195,7 @@ type ImportExpression struct {
 	emptyNode
 	Tok     token.Token
 	Ref     Node
+	Alias   string
 	Symbols *ListExpression
 }
 

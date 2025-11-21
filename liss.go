@@ -3,18 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"osdrv/liss/ast"
 	"osdrv/liss/code"
 	"osdrv/liss/compiler"
 	"osdrv/liss/lexer"
+	"osdrv/liss/module_loader"
 	"osdrv/liss/object"
 	"osdrv/liss/parser"
 	"osdrv/liss/repl"
 	"osdrv/liss/vm"
 	"path"
 	"path/filepath"
-	"slices"
 	"strings"
 )
 
@@ -43,8 +44,11 @@ func Run(mod *compiler.Module, opts repl.Options) (Result, error) {
 	return top, nil
 }
 
-func Compile(src string, opts repl.Options) (*compiler.Module, error) {
-	lex := lexer.NewLexer(src)
+// CompileAll compiles the given source code along with its imports using the provided module loader.
+func CompileAll(src string, loader module_loader.Loader, opts repl.Options) (*compiler.Module, error) {
+	mod := compiler.NewModule(src, loader.DotPath())
+
+	lex := lexer.NewLexer(mod.Src)
 	par := parser.NewParser(lex)
 	prog, err := par.Parse()
 	if err != nil {
@@ -55,138 +59,117 @@ func Compile(src string, opts repl.Options) (*compiler.Module, error) {
 		fmt.Printf("AST:\n%s\n", prog.String())
 	}
 
-	c := compiler.New(compiler.CompilerOptions{
-		Debug: opts.Debug,
-	})
-	if err := c.Compile(prog); err != nil {
-		return nil, fmt.Errorf("failed to compile program: %w", err)
-	}
-	mod := &compiler.Module{
-		Name:     "main",
-		Bytecode: c.Bytecode(),
-		Symbols:  c.Symbols(),
-		Env: &object.Environment{
-			Consts: c.Bytecode().Consts,
-		},
-	}
-	return mod, nil
-}
+	symbols := object.NewSymbolTable()
+	consts := []object.Object{}
 
-func Execute(src string, opts repl.Options) (Result, error) {
-	mod, err := Compile(src, opts)
-	if err != nil {
-		return nil, err
-	}
-	if opts.Verbose {
-		printBytecode(mod.Bytecode)
-	}
-	return Run(mod, opts)
-}
-
-func InstantiateModule(mod *compiler.Module) (*object.Environment, error) {
-	vm := vm.New(mod)
-	err := vm.Run()
-	if err != nil {
-		return nil, err
-	}
-	return vm.Env(), nil
-}
-
-func CompileModule(dotPath string, nameOrPath string, opts repl.Options,
-	cache map[string]*compiler.Module, chain []string) (*compiler.Module, error) {
-	resolved, err := resolveModulePath(dotPath, nameOrPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve module path for %s: %w", nameOrPath, err)
-	}
-	fullPath, err := filepath.Abs(resolved)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get absolute path for module %s: %w", nameOrPath, err)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve module path: %w", err)
-	}
-	name := getModuleNameFromPath(nameOrPath)
-
-	if mod, ok := cache[resolved]; ok {
-		return mod, nil
-	}
-
-	if slices.Contains(chain, name) {
-		return nil, fmt.Errorf("circular module dependency detected: %s -> %s",
-			strings.Join(append(chain, name), " -> "), name)
-	}
-
-	// try to read the resolved path
-	data, err := os.ReadFile(resolved)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read module file %s: %w", resolved, err)
-	}
-
-	lex := lexer.NewLexer(string(data))
-	par := parser.NewParser(lex)
-	prog, err := par.Parse()
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse module %s: %w", name, err)
-	}
-
-	mod := &compiler.Module{
-		Name:    name,
-		Path:    fullPath,
-		DotPath: path.Dir(fullPath),
-		Symbols: object.NewSymbolTable(),
-	}
-
-	imports := ast.NewTreeWalker(prog).CollectNodes(func(node *ast.Node) bool {
-		_, ok := (*node).(*ast.ImportExpression)
-		return ok
-	})
 	c := compiler.NewWithState(compiler.CompilerOptions{
 		Debug: opts.Debug,
-	}, mod.Symbols, []object.Object{})
-	for _, imp := range imports {
-		impExpr := imp.(*ast.ImportExpression)
-		var wantSymbols []string
-		if impExpr.Symbols != nil {
-			for _, sym := range impExpr.Symbols.Items {
-				wantSymbols = append(wantSymbols, sym.(*ast.StringLiteral).Value)
-			}
-		}
-		ref := impExpr.Ref.(*ast.StringLiteral).Value
+	}, symbols, consts)
+
+	imports, err := findImports(prog)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve module imports: %w", err)
+	}
+
+	for alias, ie := range imports {
 		if opts.Debug {
-			fmt.Printf("Compiling imported module %s for module %s\n", ref, name)
+			fmt.Printf("Compiling imported module %s(%s)\n", ie.ref, alias)
 		}
-		impmod, err := CompileModule(mod.DotPath, ref, opts, cache, append(chain, name))
+		// TODO: implement circular import detection
+		path, err := loader.Resolve(ie.ref)
 		if err != nil {
-			return nil, fmt.Errorf("failed to compile imported module %s: %w",
-				impExpr.Ref.(*ast.StringLiteral).Value, err)
+			return nil, fmt.Errorf("failed to resolve imported module %s: %w", ie.ref, err)
 		}
-		env, err := InstantiateModule(impmod)
+		src, err := loader.Load(path)
 		if err != nil {
-			return nil, fmt.Errorf("failed to instantiate imported module %s: %w",
-				impmod.Name, err)
+			return nil, fmt.Errorf("failed to load imported module %s: %w", ie.ref, err)
 		}
-		impmod.Env = env
-		if _, err := c.ImportModule(ref, impmod, wantSymbols); err != nil {
+
+		loader.PushDotPath(path)
+		impmod, err := CompileAll(string(src), loader, opts)
+		impmod.Path = path
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile imported module %s: %w", ie.ref, err)
+		}
+		loader.PopDotPath()
+
+		if err := InstantiateModule(impmod); err != nil {
+			return nil, fmt.Errorf("failed to instantiate imported module %s: %w", impmod.Name, err)
+		}
+		if _, err := c.ImportModule(alias, impmod, ie.symbols); err != nil {
 			return nil, fmt.Errorf("failed to import module %s: %w", impmod.Name, err)
 		}
 	}
 
 	if err := c.Compile(prog); err != nil {
-		return nil, fmt.Errorf("failed to compile module %s: %w", name, err)
+		return nil, fmt.Errorf("failed to compile program: %w", err)
 	}
 
 	mod.Bytecode = c.Bytecode()
 	mod.Symbols = c.Symbols()
-
-	cache[resolved] = mod
+	mod.Env.Consts = c.Bytecode().Consts
+	// TODO: reconsider this flag: I am not using it anywhere yet
+	mod.MarkInitialized()
 
 	return mod, nil
 }
 
-func ExecutePath(srcPath string, opts repl.Options) (Result, error) {
-	cache := make(map[string]*compiler.Module)
-	dotPath := path.Clean(".")
-	mod, err := CompileModule(dotPath, srcPath, opts, cache, nil)
+type importEntry struct {
+	ref     string
+	symbols []string
+}
+
+func findImports(prog ast.Node) (map[string]importEntry, error) {
+	imps := make(map[string]importEntry)
+	impExprs := ast.NewTreeWalker(prog).CollectNodes(func(node *ast.Node) bool {
+		_, ok := (*node).(*ast.ImportExpression)
+		return ok
+	})
+	for _, imp := range impExprs {
+		impExpr := imp.(*ast.ImportExpression)
+		refLit, ok := impExpr.Ref.(*ast.StringLiteral)
+		if !ok {
+			return nil, fmt.Errorf("import reference is not a string literal: %s", impExpr.Ref.String())
+		}
+		ref := refLit.Value
+		alias := impExpr.Alias
+		if alias == "" {
+			alias = getModuleNameFromRef(ref)
+		}
+		if _, ok := imps[alias]; ok {
+			return nil, fmt.Errorf("duplicate import alias: %s", alias)
+		}
+		var symbols []string
+		if impExpr.Symbols != nil {
+			for _, sym := range impExpr.Symbols.Items {
+				symLit, ok := sym.(*ast.StringLiteral)
+				if !ok {
+					return nil, fmt.Errorf("import symbol is not a string literal: %s", sym.String())
+				}
+				symbols = append(symbols, symLit.Value)
+			}
+		}
+		imps[alias] = importEntry{
+			ref:     ref,
+			symbols: symbols,
+		}
+	}
+	return imps, nil
+}
+
+func InstantiateModule(mod *compiler.Module) error {
+	vm := vm.New(mod)
+	err := vm.Run()
+	if err != nil {
+		return err
+	}
+	mod.Env = vm.Env()
+	return nil
+}
+
+func Execute(src string, dotPath string, opts repl.Options) (Result, error) {
+	loader := module_loader.New(dotPath, module_loader.Options{})
+	mod, err := CompileAll(src, loader, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +177,29 @@ func ExecutePath(srcPath string, opts repl.Options) (Result, error) {
 		printBytecode(mod.Bytecode)
 	}
 	return Run(mod, opts)
+}
+
+func ExecutePath(srcPath string, opts repl.Options) (Result, error) {
+	dotPath, err := filepath.Abs(path.Dir(srcPath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine current path: %w", err)
+	}
+	f, err := os.Open(srcPath)
+	defer f.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open source file %s: %w", srcPath, err)
+	}
+	src, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read source file %s: %w", srcPath, err)
+	}
+	return Execute(string(src), dotPath, opts)
+}
+
+func getModuleNameFromRef(ref string) string {
+	base := path.Base(ref)
+	ext := path.Ext(base)
+	return strings.TrimSuffix(base, ext)
 }
 
 func printBytecode(bc *compiler.Bytecode) {
@@ -264,31 +270,4 @@ func main() {
 	}
 
 	os.Exit(0)
-}
-
-func resolveModulePath(dotPath string, p string) (string, error) {
-	var resolved string
-	// If the path looks like a standard module name, search in ./std/{import_path}.liss
-	if looksLikeStdModule(p) {
-		resolved = path.Join(".", "std", p+".liss")
-	} else if path.IsAbs(p) {
-		return p, nil
-	} else {
-		// Otherwise, treat it as a file path relative to the dotPath
-		resolved = path.Join(dotPath, p)
-		return filepath.Clean(resolved), nil
-	}
-	return resolved, nil
-}
-
-func looksLikeStdModule(path string) bool {
-	return !strings.Contains(path, "/") &&
-		!strings.Contains(path, "\\") &&
-		!strings.HasPrefix(path, ".") &&
-		!strings.HasSuffix(path, ".liss")
-}
-
-func getModuleNameFromPath(p string) string {
-	bp := path.Base(p)
-	return strings.TrimSuffix(bp, path.Ext(bp))
 }

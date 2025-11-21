@@ -77,6 +77,14 @@ func (st *SymbolTable) LookupModule(refOrName string) (int, bool) {
 		name = strings.TrimSuffix(refOrName, LissFileExt)
 	}
 	mix, ok := st.modix[name]
+	if !ok {
+		// Try looking up by full ref
+		for ix, mod := range st.Modules {
+			if mod.Path == refOrName {
+				return ix, true
+			}
+		}
+	}
 	return mix, ok
 }
 
