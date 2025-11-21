@@ -59,6 +59,7 @@ const (
 	Cond
 	Let
 	Import
+	As
 	Breakpoint
 )
 
@@ -96,6 +97,7 @@ var (
 		Cond:       "cond",
 		Let:        "let",
 		Import:     "import",
+		As:         "as",
 		Breakpoint: "breakpoint",
 	}
 )
@@ -117,6 +119,7 @@ var (
 		"div":        Divide,
 		"mod":        Modulus,
 		"import":     Import,
+		"as":         As,
 		"breakpoint": Breakpoint,
 		"raise!":     Raise,
 	}

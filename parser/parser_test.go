@@ -484,6 +484,32 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name:  "Import expression with aliasing",
+			input: `(import "math" as m)`,
+			want: []ast.Node{
+				&ast.ImportExpression{
+					Tok: token.Token{
+						Type:    token.Import,
+						Literal: "import",
+					},
+					Ref: &ast.StringLiteral{
+						Tok: token.Token{
+							Type:    token.String,
+							Literal: `"math"`,
+						},
+						Value: "math",
+					},
+					Alias: &ast.IdentifierExpr{
+						Tok: token.Token{
+							Type:    token.Identifier,
+							Literal: "m",
+						},
+						Name: "m",
+					},
+				},
+			},
+		},
+		{
 			name:  "Import expression with symbols",
 			input: `(import "list" ["map" "reduce"])`,
 			want: []ast.Node{

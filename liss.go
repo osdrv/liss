@@ -132,8 +132,10 @@ func findImports(prog ast.Node) (map[string]importEntry, error) {
 			return nil, fmt.Errorf("import reference is not a string literal: %s", impExpr.Ref.String())
 		}
 		ref := refLit.Value
-		alias := impExpr.Alias
-		if alias == "" {
+		var alias string
+		if impExpr.Alias != nil {
+			alias = impExpr.Alias.Name
+		} else {
 			alias = getModuleNameFromRef(ref)
 		}
 		if _, ok := imps[alias]; ok {

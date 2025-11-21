@@ -195,17 +195,18 @@ type ImportExpression struct {
 	emptyNode
 	Tok     token.Token
 	Ref     Node
-	Alias   string
 	Symbols *ListExpression
+	Alias   *IdentifierExpr
 }
 
 var _ Node = (*ImportExpression)(nil)
 
-func NewImportExpression(tok token.Token, ref Node, symbols *ListExpression) (*ImportExpression, error) {
+func NewImportExpression(tok token.Token, ref Node, symbols *ListExpression, alias *IdentifierExpr) (*ImportExpression, error) {
 	return &ImportExpression{
 		Tok:     tok,
 		Ref:     ref,
 		Symbols: symbols,
+		Alias:   alias,
 	}, nil
 }
 

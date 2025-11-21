@@ -185,7 +185,21 @@ func (p *Parser) parseImportExpression() (ast.Node, error) {
 		}
 		symbols = symnode.(*ast.ListExpression)
 	}
-	return ast.NewImportExpression(tok, ref, symbols)
+	var alias *ast.IdentifierExpr
+	if p.curToken.Type == token.As {
+		if err := p.consume(token.As); err != nil {
+			return nil, err
+		}
+		if p.curToken.Type != token.Identifier {
+			return nil, fmt.Errorf("import alias must be an identifier")
+		}
+		aliasNode, err := p.parseIdentifierExpr()
+		if err != nil {
+			return nil, err
+		}
+		alias = aliasNode.(*ast.IdentifierExpr)
+	}
+	return ast.NewImportExpression(tok, ref, symbols, alias)
 }
 
 func (p *Parser) parseBreakpointExpression() (ast.Node, error) {

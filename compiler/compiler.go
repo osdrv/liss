@@ -369,6 +369,12 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		ref := n.Ref.(*ast.StringLiteral).Value
 		modix, ok := c.symbols.LookupModule(ref)
 		if !ok {
+			if n.Alias != nil {
+				alias := n.Alias.Name
+				modix, ok = c.symbols.LookupModule(alias)
+			}
+		}
+		if !ok {
 			return fmt.Errorf("module could not be found: %s", ref)
 		}
 		c.emit(code.OpLoadModule, modix)

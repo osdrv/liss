@@ -1,0 +1,5 @@
+(import "math" ["PI"] as m)
+
+((fn main []
+    (println "Value of PI is: " m:PI)
+))
