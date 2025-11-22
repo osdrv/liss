@@ -82,9 +82,6 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 			c.prevLine = tok.Location.Line
 		}
 	}
-	tok := node.Token()
-	if tok.Location.Line != c.prevLine {
-	}
 	switch n := node.(type) {
 	case *ast.BlockExpression:
 		for ix, expr := range n.Nodes {
@@ -407,7 +404,7 @@ func (c *Compiler) loadSymbol(sym object.Symbol) error {
 
 func (c *Compiler) Compile(prog ast.Node) error {
 	if err := c.compileStep(prog, false, false); err != nil {
-		return err
+		return fmt.Errorf("Compilation error at line: %d: %s", c.prevLine+1, err.Error())
 	}
 	return nil
 }

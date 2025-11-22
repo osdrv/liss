@@ -65,6 +65,11 @@ var (
 	}
 )
 
+type anchor struct {
+	path string
+	line int
+}
+
 type VMOptions struct {
 	Debug int
 }
@@ -83,6 +88,7 @@ type VM struct {
 	opts VMOptions
 
 	lastPopped object.Object
+	lastAnchor *anchor
 }
 
 func New(mod *compiler.Module) *VM {
@@ -142,10 +148,15 @@ func (vm *VM) StackTop() object.Object {
 	return vm.stack[vm.sp-1]
 }
 
-func (vm *VM) Run() error {
+func (vm *VM) Run() (exit_err error) {
 	var ip int
 	var instrs code.Instructions
 	var op code.OpCode
+	defer func() {
+		if exit_err != nil && vm.lastAnchor != nil {
+			exit_err = fmt.Errorf("%s (at %s:%d)", exit_err.Error(), vm.lastAnchor.path, vm.lastAnchor.line)
+		}
+	}()
 
 	for vm.currentFrame().ip < len(vm.currentFrame().Instructions())-1 {
 		vm.currentFrame().ip++
@@ -155,7 +166,7 @@ func (vm *VM) Run() error {
 		env := vm.currentFrame().cl.Env
 		op = code.OpCode(instrs[ip])
 
-		if vm.opts.Debug > 0 {
+		if vm.opts.Debug > 1 {
 			fmt.Printf("Current frame:\n%s\n", code.PrintInstr(vm.currentFrame().Instructions()))
 			fmt.Printf("Curtrent instruction pointer: %d\n", ip)
 			fmt.Printf("VM is executing operation: %s (%d)\n", code.PrintOpCode(op), op)
@@ -555,7 +566,8 @@ func (vm *VM) Run() error {
 		case code.OpSrcAnchor:
 			line := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame().ip += 2
-			if vm.opts.Debug > 0 {
+			vm.lastAnchor = &anchor{path: vm.currentFrame().cl.Module.Path, line: int(line)}
+			if vm.opts.Debug > 1 {
 				fmt.Printf("Source file: %s\n", vm.currentFrame().cl.Module.Path)
 				fmt.Printf("Executing line: %d\n", line)
 			}

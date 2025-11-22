@@ -53,10 +53,9 @@ func equalObjects(a, b Object) bool {
 }
 
 type KeyValue struct {
-	Key     Object
-	Value   Object
-	deleted bool
-	next    *KeyValue
+	Key   Object
+	Value Object
+	next  *KeyValue
 }
 
 type Dictionary struct {
@@ -86,7 +85,6 @@ func (d *Dictionary) Put(key Object, value Object) error {
 			return err
 		}
 	}
-
 	h, err := hashObject(key)
 	if err != nil {
 		return err
@@ -240,12 +238,21 @@ func (d *Dictionary) moveItems(maxMoves int) error {
 				return err
 			}
 			h %= uint64(d.cap)
-			newkv := &KeyValue{
+			ptr2 := d.items[h]
+			var newkv *KeyValue
+			for ptr2 != nil {
+				if equalObjects(ptr2.Key, ptr.Key) {
+					goto NextKey
+				}
+				ptr2 = ptr2.next
+			}
+			newkv = &KeyValue{
 				Key:   ptr.Key,
 				Value: ptr.Value,
 			}
 			newkv.next = d.items[h]
 			d.items[h] = newkv
+		NextKey:
 			ptr = ptr.next
 		}
 		d.oldItems[d.movePtr] = nil
@@ -268,9 +275,7 @@ func (d *Dictionary) Clone() Object {
 	for _, kv := range d.items {
 		ptr := kv
 		for ptr != nil {
-			if !ptr.deleted {
-				newDict.Put(ptr.Key, ptr.Value)
-			}
+			newDict.Put(ptr.Key, ptr.Value)
 			ptr = ptr.next
 		}
 	}
@@ -345,9 +350,7 @@ func (d *Dictionary) Keys() []Object {
 	for _, kv := range d.items {
 		ptr := kv
 		for ptr != nil {
-			if !ptr.deleted {
-				keys = append(keys, ptr.Key)
-			}
+			keys = append(keys, ptr.Key)
 			ptr = ptr.next
 		}
 	}
@@ -359,9 +362,7 @@ func (d *Dictionary) Values() []Object {
 	for _, kv := range d.items {
 		ptr := kv
 		for ptr != nil {
-			if !ptr.deleted {
-				values = append(values, ptr.Value)
-			}
+			values = append(values, ptr.Value)
 			ptr = ptr.next
 		}
 	}

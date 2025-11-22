@@ -35,7 +35,7 @@ func Run(mod *compiler.Module, opts repl.Options) (Result, error) {
 
 	defer vminst.Shutdown()
 	if err := vminst.Run(); err != nil {
-		return nil, fmt.Errorf("failed to run bytecode: %w", err)
+		return nil, fmt.Errorf("Runtime error: %w", err)
 	}
 	top := vminst.LastPopped()
 	if opts.Debug {

@@ -767,7 +767,7 @@ func TestCompile(t *testing.T) {
 			c := New(CompilerOptions{})
 			err = c.Compile(prog)
 			if tt.wantErr != nil {
-				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				assert.ErrorContains(t, err, tt.wantErr.Error(), "Expected error does not match")
 				return
 			}
 			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
