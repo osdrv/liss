@@ -260,7 +260,8 @@ func TestExecute(t *testing.T) {
 			mod := &compiler.Module{
 				Src: tt.source,
 			}
-			res, err := Execute(mod.Src, ".", repl.Options{})
+			loader := module_loader.New(".", module_loader.Options{})
+			res, err := Execute(mod.Src, loader, repl.Options{})
 			if err != nil || tt.wantErr != nil {
 				if tt.wantErr != nil {
 					assert.ErrorContains(t, err, tt.wantErr.Error())

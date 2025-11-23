@@ -1,6 +1,6 @@
-# LISS Programming Language
+# Liss Programming Language
 
-![LISS Logo](https://github.com/osdrv/liss-doc/blob/main/img/liss-1.png?raw=true)
+![Liss Logo](https://github.com/osdrv/liss-doc/blob/main/img/liss-1.png?raw=true)
 
 Liss is an educational functional programming language with a Lisp-inspired syntax. It is a compiled language that runs on its own virtual machine.
 
@@ -19,7 +19,7 @@ The current VM implementation is based on Thorsten Ball's book "Writing a Compil
 
 ## Example
 
-Here is an example of a LISS program that computes the factorial of a number:
+Here is an example of a Liss program that computes the factorial of a number:
 
 <pre>
 (<b>fn</b> fact [acc n]

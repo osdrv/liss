@@ -169,8 +169,7 @@ func InstantiateModule(mod *compiler.Module) error {
 	return nil
 }
 
-func Execute(src string, dotPath string, opts repl.Options) (Result, error) {
-	loader := module_loader.New(dotPath, module_loader.Options{})
+func Execute(src string, loader module_loader.Loader, opts repl.Options) (Result, error) {
 	mod, err := CompileAll(src, loader, opts)
 	if err != nil {
 		return nil, err
@@ -181,21 +180,26 @@ func Execute(src string, dotPath string, opts repl.Options) (Result, error) {
 	return Run(mod, opts)
 }
 
-func ExecutePath(srcPath string, opts repl.Options) (Result, error) {
+func ExecutePath(srcPath string, loader module_loader.Loader, opts repl.Options) (Result, error) {
 	dotPath, err := filepath.Abs(path.Dir(srcPath))
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine current path: %w", err)
 	}
+	loader.PushDotPath(dotPath)
+	defer loader.PopDotPath()
+
 	f, err := os.Open(srcPath)
 	defer f.Close()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open source file %s: %w", srcPath, err)
 	}
+
 	src, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read source file %s: %w", srcPath, err)
 	}
-	return Execute(string(src), dotPath, opts)
+
+	return Execute(string(src), loader, opts)
 }
 
 func getModuleNameFromRef(ref string) string {
@@ -238,6 +242,14 @@ func main() {
 	defer out.Close()
 	defer er.Close()
 
+	exp, err := os.Executable()
+	if err != nil {
+		fmt.Fprintf(er, "Error getting executable path: %v\n", err)
+		os.Exit(1)
+	}
+	// Drop the executable name to get the directory
+	exp = filepath.Dir(exp)
+
 	debug := flag.Bool("debug", false, "Enables debug mode with stack dumps and traces")
 	verbose := flag.Bool("v", false, "Enables verbose output")
 	src := flag.String("src", "", "Source file to execute")
@@ -251,6 +263,7 @@ func main() {
 	if opts.Debug {
 		fmt.Printf("Runtime flags: %+v\n", opts)
 	}
+	loader := module_loader.New(exp, module_loader.Options{})
 
 	if *exec != "" {
 		opts.Interactive = false
@@ -266,7 +279,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if _, err := ExecutePath(*src, opts); err != nil {
+	if _, err := ExecutePath(*src, loader, opts); err != nil {
 		fmt.Fprintf(er, "Error executing file %s: %v\n", *src, err)
 		os.Exit(1)
 	}

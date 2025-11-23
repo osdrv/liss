@@ -29,11 +29,15 @@ type LoaderImp struct {
 
 var _ Loader = (*LoaderImp)(nil)
 
-func New(dotPath string, opts Options) *LoaderImp {
+func New(rootPath string, opts Options) *LoaderImp {
 	return &LoaderImp{
 		opts:  opts,
-		paths: []string{dotPath},
+		paths: []string{rootPath},
 	}
+}
+
+func (l *LoaderImp) RootPath() string {
+	return l.paths[0]
 }
 
 func (l *LoaderImp) DotPath() string {
@@ -66,7 +70,7 @@ func (l *LoaderImp) Resolve(pathOrName string) (string, error) {
 	var resolved string
 	// If the path looks like a standard module name, search in ./std/{import_path}.liss
 	if looksLikeStdModule(pathOrName) {
-		resolved = path.Join(".", "std", pathOrName+".liss")
+		resolved = path.Join(l.RootPath(), "std", pathOrName+".liss")
 	} else if path.IsAbs(pathOrName) {
 		return pathOrName, nil
 	} else {
