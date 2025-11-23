@@ -68,7 +68,7 @@ func (l *LoaderImp) Load(path string) ([]byte, error) {
 
 func (l *LoaderImp) Resolve(pathOrName string) (string, error) {
 	var resolved string
-	// If the path looks like a standard module name, search in ./std/{import_path}.liss
+	// If the path looks like a standard module name, search in ${LISS_ROOT_PATH}/std/{import_path}.liss
 	if looksLikeStdModule(pathOrName) {
 		resolved = path.Join(l.RootPath(), "std", pathOrName+".liss")
 	} else if path.IsAbs(pathOrName) {
