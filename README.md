@@ -2,6 +2,8 @@
 
 ![Liss Logo](https://github.com/osdrv/liss-doc/blob/main/img/liss-1.png?raw=true)
 
+## About
+
 Liss is an educational functional programming language with a Lisp-inspired syntax. It is a compiled language that runs on its own virtual machine.
 
 The current VM implementation is based on Thorsten Ball's book "Writing a Compiler in Go" [[link]](https://compilerbook.com).
