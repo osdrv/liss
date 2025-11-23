@@ -153,6 +153,26 @@
     ))
 ))
 
+((fn test_list_find_bin []
+    (let tests [
+        (dict ["name" "find_bin in null"] ["input" [null 1]] ["want" null])
+        (dict ["name" "find_bin in empty list"] ["input" [[] 1]] ["want" -1])
+        (dict ["name" "find_bin in a single element list"] ["input" [[1] 1]] ["want" 0])
+        (dict ["name" "find_bin existing element"] ["input" [[1 2 3 4 5] 3]] ["want" 2])
+        (dict ["name" "find_bin non-existing element"] ["input" [[1 2 3 4 5] 6]] ["want" -1])
+        (dict ["name" "find_bin in a non-unique list"] ["input" [[1 2 3 3 4 4 4 5] 4]] ["want" 4])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let arr (get (get test "input") 0))
+        (let n (get (get test "input") 1))
+        (let want (get test "want"))
+        (let got (list:find_bin arr n))
+        (assert:equal got want)
+        (println ": OK")
+    ))
+))
+
 ((fn test_list_contains []
     (let tests [
         (dict ["name" "contains in null"] ["input" [null 1]] ["want" false])

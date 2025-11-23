@@ -55,7 +55,7 @@ func CompileAll(src string, loader module_loader.Loader, opts repl.Options) (*co
 		return nil, fmt.Errorf("failed to parse program: %w", err)
 	}
 
-	if opts.Debug {
+	if opts.Debug && opts.Verbose {
 		fmt.Printf("AST:\n%s\n", prog.String())
 	}
 

@@ -1,3 +1,7 @@
+; Standard Liss list/array functions
+
+; `push` returns a new array with the value `v` appended to the end
+; of array `arr`
 (fn push [arr v]
     (cond (is_null? arr)
         null
@@ -5,6 +9,8 @@
     )
 )
 
+; `reduce` applies function `fun` cumulatively to the items of array `arr`,
+; aggregating them into a single value, starting with initial accumulator `acc`
 (fn reduce [arr fun acc]
     (cond (is_null? arr)
         null
@@ -18,18 +24,23 @@
     )
 )
 
+; `map` applies function `fun` to each item of array `arr`,
+; returning a new array of the results
 (fn map [arr fun]
     (reduce arr (fn [acc x]
         (+ acc [(fun x)])
     ) [])
 )
 
+; `filter` returns a new array containing only the items of array `arr`
+; for which function `fun` returns true
 (fn filter [arr fun]
     (reduce arr (fn [acc x] (
         (+ acc (cond (fun x) [x] []))
     )) [])
 )
 
+; `range` returns a sub-array of `arr` from index `start` to `end` (exclusive)
 (fn range [arr start end]
     (cond (is_null? arr)
         null
@@ -40,6 +51,7 @@
     )
 )
 
+; `reverse` returns a new array with the elements of `arr` in reverse order
 (fn reverse [arr]
     (fn _next [acc ix]
         (cond (< ix 0)
@@ -76,6 +88,8 @@
     )
 )
 
+; `find` returns the index of the first occurrence of `n` in `arr`,
+; or -1 if not found; the search is performed linearly
 (fn find [arr n]
     (cond (is_null? arr)
         null
@@ -89,6 +103,35 @@
     )
 )
 
+(fn find_bin [sorted_arr n]
+    (fn _next [left right]
+        (cond (<= (- right left) 1)
+            (cond (= n (get sorted_arr left))
+                left
+                (cond (= n (get sorted_arr right))
+                    right
+                    -1
+                )
+            )
+            (
+                (let mid (/ (+ left right) 2))
+                (cond (<= n (get sorted_arr mid))
+                    (_next left mid)
+                    (_next mid right)
+                )
+            )
+        )
+    )
+    (cond (is_null? sorted_arr)
+        null
+        (cond (is_empty? sorted_arr)
+            -1
+            (_next 0 (- (len sorted_arr) 1))
+        )
+    )
+)
+
+; `contains?` returns true if `n` is found in `arr`, false otherwise
 (fn contains? [arr n]
     (cond (is_null? arr)
         false
@@ -99,6 +142,8 @@
     )
 )
 
+; `find_all` returns an array of all indices where `n` occurs in `arr`
+; the search is performed linearly
 (fn find_all [arr n]
     (cond (is_null? arr)
         null
@@ -109,6 +154,7 @@
     )
 )
 
+; `quicksort` sorts the array `arr` using the quicksort algorithm
 (fn quicksort [arr]
     (cond (or (is_empty? arr) (< (len arr) 2))
         arr
@@ -144,6 +190,7 @@
 
 )
 
+; `mergesort` sorts the array `arr` using the mergesort algorithm
 (fn mergesort [arr fun]
     (fn _merge2 [acc a aix b bix]
         (cond (>= aix (len a))
@@ -187,9 +234,13 @@
     )
 )
 
+; `SORT_ASC` is a comparison function for ascending order
 (let SORT_ASC (fn [a b] (< a b)))
+
+; `SORT_DESC` is a comparison function for descending order
 (let SORT_DESC (fn [a b] (> a b)))
 
+; `sort` sorts the array `arr` using `SORT_ASC` ordering
 (fn sort [arr]
     (cond (is_null? arr)
         null
@@ -203,6 +254,7 @@
     )
 )
 
+; `sort_fn` sorts the array `arr` using the comparison function `fun`
 (fn sort_fn [arr fun]
     (cond (is_null? arr)
         null

@@ -35,7 +35,8 @@ func (p *Parser) Parse() (ast.Node, error) {
 	for !p.isEOF {
 		expr, err := p.parseNode()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Parse error: %s (around line: %d, pos: %d)",
+				err.Error(), p.curToken.Location.Line, p.curToken.Location.Column)
 		}
 		nodes = append(nodes, expr)
 	}
