@@ -103,6 +103,36 @@
     )
 )
 
+; `find_bin_fn` performs a binary search on a sorted array `sorted_arr`. It returns the first element
+; for which the function `fun` returns true, or -1 if no such element is found
+(fn find_bin_fn [sorted_arr fun]
+    (fn _next [left right]
+        (cond (<= (- right left) 1)
+            (cond (fun (get sorted_arr left))
+                left
+                (cond (fun (get sorted_arr right))
+                    right
+                    -1
+                )
+            )
+            (
+                (let mid (/ (+ left right) 2))
+                (cond (fun (get sorted_arr mid))
+                    (_next left mid)
+                    (_next mid right)
+                )
+            )
+        )
+    )
+    (cond (is_null? sorted_arr)
+        null
+        (cond (is_empty? sorted_arr)
+            -1
+            (_next 0 (- (len sorted_arr) 1))
+        )
+    )
+)
+
 (fn find_bin [sorted_arr n]
     (fn _next [left right]
         (cond (<= (- right left) 1)

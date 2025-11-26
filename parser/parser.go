@@ -249,6 +249,64 @@ func (p *Parser) parseCondExpression() (ast.Node, error) {
 	return ast.NewCondExpression(tok, cond, th, el)
 }
 
+func (p *Parser) parseSwitchExpression() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.consume(token.Switch); err != nil {
+		return nil, err
+	}
+	var expr ast.Node
+	if p.curToken.Type != token.LBracket {
+		var err error
+		expr, err = p.parseNode()
+		if err != nil {
+			return nil, err
+		}
+	}
+	cases := make([]*ast.CaseExpression, 0, 1)
+	var def *ast.CaseExpression
+	var err error
+	for p.curToken.Type == token.LBracket {
+		if err := p.consume(token.LBracket); err != nil {
+			return nil, err
+		}
+		var when, then ast.Node
+		var err error
+		if p.curToken.Type == token.Multiply {
+			if err := p.consume(token.Multiply); err != nil {
+				return nil, err
+			}
+		} else {
+			when, err = p.parseNode()
+			if err != nil {
+				return nil, err
+			}
+		}
+		then, err = p.parseNode()
+		if err != nil {
+			return nil, err
+		}
+		if when == nil {
+			def, err = ast.NewCaseExpression(when, then)
+		} else {
+			caseExpr, err := ast.NewCaseExpression(when, then)
+			if err != nil {
+				return nil, err
+			}
+			cases = append(cases, caseExpr)
+		}
+		if err := p.consume(token.RBracket); err != nil {
+			return nil, err
+		}
+	}
+	if def == nil {
+		def, err = ast.NewCaseExpression(nil, &ast.NullLiteral{})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ast.NewSwitchExpression(tok, expr, cases, def)
+}
+
 func (p *Parser) parseListExpression() (ast.Node, error) {
 	tok := p.curToken
 	if err := p.consume(token.LBracket); err != nil {
@@ -279,6 +337,8 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 	switch p.curToken.Type {
 	case token.Cond:
 		node, err = p.parseCondExpression()
+	case token.Switch:
+		node, err = p.parseSwitchExpression()
 	case token.Fn:
 		node, err = p.parseFunctionExpression()
 	case token.Let:

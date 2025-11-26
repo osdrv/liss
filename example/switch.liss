@@ -1,0 +1,9 @@
+(fn int2str [n]
+    (switch n
+        [1 "one"]
+        [2 "two"]
+        [3 "three"]
+        [* "many"]
+    )
+)
+(int2str(3))

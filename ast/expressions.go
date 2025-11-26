@@ -448,3 +448,83 @@ func (e *RaiseExpression) Children() []Node {
 }
 
 func (e *RaiseExpression) expressionNode() {}
+
+type CaseExpression struct {
+	When Node // When When is nil, it represents the default case aka match all
+	Then Node
+}
+
+func NewCaseExpression(when Node, then Node) (*CaseExpression, error) {
+	return &CaseExpression{
+		When: when,
+		Then: then,
+	}, nil
+}
+
+func (ce *CaseExpression) String() string {
+	var b bytes.Buffer
+	b.WriteByte('[')
+	if ce.When != nil {
+		b.WriteString(ce.When.String())
+	} else {
+		b.WriteByte('*')
+	}
+	b.WriteByte(' ')
+	b.WriteString(ce.Then.String())
+	b.WriteByte(']')
+	return b.String()
+}
+
+type SwitchExpression struct {
+	Tok     token.Token
+	Expr    Node
+	Cases   []*CaseExpression
+	Default *CaseExpression
+}
+
+var _ Node = (*SwitchExpression)(nil)
+
+func NewSwitchExpression(tok token.Token, expr Node, cases []*CaseExpression, def *CaseExpression) (*SwitchExpression, error) {
+	e := &SwitchExpression{
+		Tok:     tok,
+		Cases:   cases,
+		Default: def,
+	}
+	if expr == nil {
+		e.Expr = &BooleanLiteral{
+			Tok:   tok,
+			Value: true,
+		}
+	}
+	return e, nil
+}
+
+func (e *SwitchExpression) Token() token.Token {
+	return e.Tok
+}
+
+func (e *SwitchExpression) String() string {
+	var b bytes.Buffer
+	b.WriteString("switch ")
+	for _, c := range e.Cases {
+		b.WriteString(fmt.Sprintf("\n  %s", c.String()))
+	}
+	if e.Default != nil {
+		b.WriteString(fmt.Sprintf("\n  %s", e.Default.String()))
+	}
+	return b.String()
+}
+
+func (e *SwitchExpression) Children() []Node {
+	nodes := make([]Node, 2*len(e.Cases)+1)
+	for _, c := range e.Cases {
+		nodes = append(nodes, c.When)
+		nodes = append(nodes, c.Then)
+	}
+	if e.Default != nil {
+		nodes = append(nodes, e.Default.Then)
+	}
+	return nodes
+}
+
+func (e *SwitchExpression) expressionNode() {}

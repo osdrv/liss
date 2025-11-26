@@ -296,6 +296,83 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
+			name: "simple switch expression with no default branch",
+			input: `(switch num
+			    [1 "one"]
+				[2 "two"]
+				[3 "three"]
+			)`,
+			want: []ast.Node{
+				&ast.SwitchExpression{
+					Tok: token.Token{
+						Type:    token.Switch,
+						Literal: "switch",
+					},
+					Expr: &ast.IdentifierExpr{
+						Tok: token.Token{
+							Type:    token.Identifier,
+							Literal: "num",
+						},
+						Name: "num",
+					},
+					Cases: []*ast.CaseExpression{
+						{
+							When: &ast.IntegerLiteral{
+								Tok: token.Token{
+									Type:    token.Numeric,
+									Literal: "1",
+								},
+								Value: int64(1),
+							},
+							Then: &ast.StringLiteral{
+								Tok: token.Token{
+									Type:    token.String,
+									Literal: `"one"`,
+								},
+								Value: "one",
+							},
+						},
+						{
+							When: &ast.IntegerLiteral{
+								Tok: token.Token{
+									Type:    token.Numeric,
+									Literal: "2",
+								},
+								Value: int64(2),
+							},
+							Then: &ast.StringLiteral{
+								Tok: token.Token{
+									Type:    token.String,
+									Literal: `"two"`,
+								},
+								Value: "two",
+							},
+						},
+						{
+							When: &ast.IntegerLiteral{
+								Tok: token.Token{
+									Type:    token.Numeric,
+									Literal: "3",
+								},
+								Value: int64(3),
+							},
+							Then: &ast.StringLiteral{
+								Tok: token.Token{
+									Type:    token.String,
+									Literal: `"three"`,
+								},
+								Value: "three",
+							},
+						},
+					},
+					Default: &ast.CaseExpression{
+						When: nil,
+						Then: &ast.NullLiteral{},
+					},
+				},
+			},
+		},
+		{
 			name:  "Simple let expression",
 			input: "(let x 42)",
 			want: []ast.Node{

@@ -57,6 +57,7 @@ const (
 	False
 	Null
 	Cond
+	Switch
 	Let
 	Import
 	As
@@ -95,6 +96,7 @@ var (
 		False:      "false",
 		Null:       "null",
 		Cond:       "cond",
+		Switch:     "switch",
 		Let:        "let",
 		Import:     "import",
 		As:         "as",
@@ -109,6 +111,7 @@ var (
 		"false":      False,
 		"null":       Null,
 		"cond":       Cond,
+		"switch":     Switch,
 		"let":        Let,
 		"and":        And,
 		"or":         Or,
