@@ -6,4 +6,4 @@
         [* "many"]
     )
 )
-(int2str(3))
+(println (int2str(4)))

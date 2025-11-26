@@ -165,6 +165,55 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		}
 		jmpTo = len(c.currentInstrs())
 		c.updOperand(jmp2, jmpTo)
+	case *ast.SwitchExpression:
+		// This implementation treats a switch expression as a series of if-else-if expressions.
+		// The main expression is re-evaluated for each case, which is a limitation
+		// due to the lack of an OpDup instruction in the VM.
+		endJumps := []int{}
+		var nextCaseJumpPos int
+
+		for _, caseExpr := range n.Cases {
+			if nextCaseJumpPos != 0 {
+				c.updOperand(nextCaseJumpPos, len(c.currentInstrs()))
+			}
+
+			// Condition: n.Expr == caseExpr.When
+			if err := c.compileStep(n.Expr, true, false); err != nil {
+				return err
+			}
+			if err := c.compileStep(caseExpr.When, true, false); err != nil {
+				return err
+			}
+			c.emit(code.OpEql)
+
+			nextCaseJumpPos = c.emit(code.OpJumpIfFalse, 9999)
+
+			// Then block
+			if err := c.compileStep(caseExpr.Then, managed, isTail); err != nil {
+				return err
+			}
+			endJumps = append(endJumps, c.emit(code.OpJump, 9999))
+		}
+
+		if nextCaseJumpPos != 0 {
+			c.updOperand(nextCaseJumpPos, len(c.currentInstrs()))
+		}
+
+		// Default case
+		if n.Default != nil {
+			if err := c.compileStep(n.Default.Then, managed, isTail); err != nil {
+				return err
+			}
+		} else {
+			c.emit(code.OpNull)
+			if !managed {
+				c.emit(code.OpPop)
+			}
+		}
+
+		for _, jmp := range endJumps {
+			c.updOperand(jmp, len(c.currentInstrs()))
+		}
 	case *ast.IntegerLiteral:
 		integer := object.NewInteger(n.Value)
 		c.emit(code.OpConst, c.addConst(integer))

@@ -487,6 +487,7 @@ var _ Node = (*SwitchExpression)(nil)
 func NewSwitchExpression(tok token.Token, expr Node, cases []*CaseExpression, def *CaseExpression) (*SwitchExpression, error) {
 	e := &SwitchExpression{
 		Tok:     tok,
+		Expr:    expr,
 		Cases:   cases,
 		Default: def,
 	}
@@ -516,7 +517,7 @@ func (e *SwitchExpression) String() string {
 }
 
 func (e *SwitchExpression) Children() []Node {
-	nodes := make([]Node, 2*len(e.Cases)+1)
+	nodes := make([]Node, 0, 2*len(e.Cases)+1)
 	for _, c := range e.Cases {
 		nodes = append(nodes, c.When)
 		nodes = append(nodes, c.Then)

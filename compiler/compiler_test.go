@@ -779,6 +779,98 @@ func TestCompile(t *testing.T) {
 	}
 }
 
+func TestSwitchExpression(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantInstrs []code.Instructions
+		wantConsts []any
+		wantErr    error
+	}{
+		{
+			name:  "simple switch",
+			input: `(switch 2 [1 "one"] [2 "two"] [* "default"])`,
+			wantConsts: []any{
+				int64(2), int64(1), "one",
+				int64(2), int64(2), "two",
+				"default",
+			},
+			wantInstrs: []code.Instructions{
+				// case 1: (2 == 1) -> false
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpEql),
+				code.Make(code.OpJumpIfFalse, 17),
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpPop),
+				code.Make(code.OpJump, 38),
+
+				// case 2: (2 == 2) -> true
+				code.Make(code.OpConst, 3),
+				code.Make(code.OpConst, 4),
+				code.Make(code.OpEql),
+				code.Make(code.OpJumpIfFalse, 34),
+				code.Make(code.OpConst, 5),
+				code.Make(code.OpPop),
+				code.Make(code.OpJump, 38),
+
+				// default case
+				code.Make(code.OpConst, 6),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:  "switch no default",
+			input: `(switch 3 [1 "one"] [2 "two"])`,
+			wantConsts: []any{
+				int64(3), int64(1), "one",
+				int64(3), int64(2), "two",
+			},
+			wantInstrs: []code.Instructions{
+				// case 1
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpEql),
+				code.Make(code.OpJumpIfFalse, 17),
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpPop),
+				code.Make(code.OpJump, 36),
+
+				// case 2
+				code.Make(code.OpConst, 3),
+				code.Make(code.OpConst, 4),
+				code.Make(code.OpEql),
+				code.Make(code.OpJumpIfFalse, 34),
+				code.Make(code.OpConst, 5),
+				code.Make(code.OpPop),
+				code.Make(code.OpJump, 36),
+
+				// default
+				code.Make(code.OpNull),
+				code.Make(code.OpPop),
+			},
+		}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New(CompilerOptions{})
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.ErrorContains(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
+
+}
+
 func TestComparison(t *testing.T) {
 	tests := []struct {
 		name       string
