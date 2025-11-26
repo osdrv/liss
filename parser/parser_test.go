@@ -296,7 +296,7 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			name: "simple switch expression with no default branch",
+			name: "switch expression with no default branch",
 			input: `(switch num
 			    [1 "one"]
 				[2 "two"]
@@ -367,6 +367,134 @@ func TestParse(t *testing.T) {
 					},
 					Default: &ast.CaseExpression{
 						When: nil,
+						Then: &ast.NullLiteral{},
+					},
+				},
+			},
+		},
+		{
+			name: "switch expression with default branch",
+			input: `(switch num
+			    [1 "one"]
+				[2 "two"]
+				[* "many"]
+			)`,
+			want: []ast.Node{
+				&ast.SwitchExpression{
+					Tok: token.Token{
+						Type:    token.Switch,
+						Literal: "switch",
+					},
+					Expr: &ast.IdentifierExpr{
+						Tok: token.Token{
+							Type:    token.Identifier,
+							Literal: "num",
+						},
+						Name: "num",
+					},
+					Cases: []*ast.CaseExpression{
+						{
+							When: &ast.IntegerLiteral{
+								Tok: token.Token{
+									Type:    token.Numeric,
+									Literal: "1",
+								},
+								Value: int64(1),
+							},
+							Then: &ast.StringLiteral{
+								Tok: token.Token{
+									Type:    token.String,
+									Literal: `"one"`,
+								},
+								Value: "one",
+							},
+						},
+						{
+							When: &ast.IntegerLiteral{
+								Tok: token.Token{
+									Type:    token.Numeric,
+									Literal: "2",
+								},
+								Value: int64(2),
+							},
+							Then: &ast.StringLiteral{
+								Tok: token.Token{
+									Type:    token.String,
+									Literal: `"two"`,
+								},
+								Value: "two",
+							},
+						},
+					},
+					Default: &ast.CaseExpression{
+						When: &ast.IdentifierExpr{
+							Tok: token.Token{
+								Type:    token.Multiply,
+								Literal: "*",
+							},
+							Name: "*",
+						},
+						Then: &ast.StringLiteral{
+							Tok: token.Token{
+								Type:    token.String,
+								Literal: `"many"`,
+							},
+							Value: "many",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "switch expression with no expression",
+			input: `(switch
+				[true "yes"]
+				[false "no"]
+			)`,
+			want: []ast.Node{
+				&ast.SwitchExpression{
+					Tok: token.Token{
+						Type:    token.Switch,
+						Literal: "switch",
+					},
+					Expr: &ast.BooleanLiteral{
+						Value: true,
+					},
+					Cases: []*ast.CaseExpression{
+						{
+							When: &ast.BooleanLiteral{
+								Tok: token.Token{
+									Type:    token.True,
+									Literal: "true",
+								},
+								Value: true,
+							},
+							Then: &ast.StringLiteral{
+								Tok: token.Token{
+									Type:    token.String,
+									Literal: `"yes"`,
+								},
+								Value: "yes",
+							},
+						},
+						{
+							When: &ast.BooleanLiteral{
+								Tok: token.Token{
+									Type:    token.False,
+									Literal: "false",
+								},
+								Value: false,
+							},
+							Then: &ast.StringLiteral{
+								Tok: token.Token{
+									Type:    token.String,
+									Literal: `"no"`,
+								},
+								Value: "no",
+							},
+						},
+					},
+					Default: &ast.CaseExpression{
 						Then: &ast.NullLiteral{},
 					},
 				},

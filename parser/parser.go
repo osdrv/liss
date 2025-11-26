@@ -286,6 +286,9 @@ func (p *Parser) parseSwitchExpression() (ast.Node, error) {
 			return nil, err
 		}
 		if when == nil {
+			if def != nil {
+				return nil, fmt.Errorf("multiple default cases in switch expression")
+			}
 			def, err = ast.NewCaseExpression(when, then)
 		} else {
 			caseExpr, err := ast.NewCaseExpression(when, then)
