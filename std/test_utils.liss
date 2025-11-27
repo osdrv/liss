@@ -1,8 +1,8 @@
-(fn benchmark [fun]
+(fn benchmark [label fun]
     (let _start (time_ms))
     (let _res (fun))
     (let _end (time_ms))
-    (print "Elapsed time: ")
+    (print "Elapsed time(" label "): ")
     (println (- _end _start) "ms")
     _res
 )

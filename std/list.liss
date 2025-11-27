@@ -1,11 +1,24 @@
 ; Standard Liss list/array functions
 
+; `SORT_ASC` is a comparison function for ascending order
+(let SORT_ASC (fn [a b] (< a b)))
+
+; `SORT_DESC` is a comparison function for descending order
+(let SORT_DESC (fn [a b] (> a b)))
+
 ; `push` returns a new array with the value `v` appended to the end
 ; of array `arr`
 (fn push [arr v]
     (cond (is_null? arr)
         null
         (+ arr [v])
+    )
+)
+
+(fn copy [arr]
+    (cond (is_null? arr)
+        null
+        (+ [] arr)
     )
 )
 
@@ -184,6 +197,53 @@
     )
 )
 
+;@mutator
+(fn quicksort_fn_mut [arr fun]
+    (fn _partition [low high]
+        (let _pivot (get arr high))
+        (let _i (- low 1))
+        (fn _next [j i]
+            (cond (> j (- high 1))
+                i
+                (
+                    (cond (fun (get arr j) _pivot)
+                        (
+                            (let _new_i (+ i 1))
+                            (let _temp (get arr _new_i))
+                            (put arr _new_i (get arr j))
+                            (put arr j _temp)
+                            (_next (+ j 1) _new_i)
+                        )
+                        (_next (+ j 1) i)
+                    )
+                )
+            )
+        )
+        (let i1 (_next low _i))
+        (let _temp (get arr (+ i1 1)))
+        (put arr (+ i1 1) (get arr high))
+        (put arr high _temp)
+        (+ i1 1)
+    )
+
+    (fn _qs [low high]
+        (cond (< low high)
+            (
+                (let pi (_partition low high))
+                (_qs low (- pi 1))
+                (_qs (+ pi 1) high)
+            )
+        )
+    )
+
+    (cond (not (is_null? arr))
+        (cond (>= (len arr) 2)
+            (_qs 0 (- (len arr) 1))
+        )
+    )
+    arr
+)
+
 ; `quicksort` sorts the array `arr` using the quicksort algorithm
 (fn quicksort [arr]
     (cond (or (is_empty? arr) (< (len arr) 2))
@@ -221,7 +281,7 @@
 )
 
 ; `mergesort` sorts the array `arr` using the mergesort algorithm
-(fn mergesort [arr fun]
+(fn mergesort_fn [arr fun]
     (fn _merge2 [acc a aix b bix]
         (cond (>= aix (len a))
             (+ acc (range b bix (len b)))
@@ -264,12 +324,6 @@
     )
 )
 
-; `SORT_ASC` is a comparison function for ascending order
-(let SORT_ASC (fn [a b] (< a b)))
-
-; `SORT_DESC` is a comparison function for descending order
-(let SORT_DESC (fn [a b] (> a b)))
-
 ; `sort` sorts the array `arr` using `SORT_ASC` ordering
 (fn sort [arr]
     (cond (is_null? arr)
@@ -278,7 +332,7 @@
             (let _len (len arr))
             (cond (<= _len 1)
                 arr
-                (mergesort arr SORT_ASC)
+                (mergesort_fn arr SORT_ASC)
             )
         )
     )
@@ -291,7 +345,7 @@
         (
             (cond (<= (len arr) 1)
                 arr
-                (mergesort arr fun)
+                (mergesort_fn arr fun)
             )
         )
     )

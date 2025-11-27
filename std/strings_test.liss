@@ -1,7 +1,6 @@
 (import "assert" ["equal"])
 (import "list" ["map"])
 (import "strings")
-(import "test_utils" ["benchmark"])
 
 ((fn test_strings_join []
     (let tests [
