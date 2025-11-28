@@ -114,3 +114,56 @@
         (println ": OK")
     ))
 ))
+
+((fn test_strings_has_sufix []
+    (let tests [
+        (dict ["name" "has_suffix empty suffix"] ["s" "string"] ["suffix" ""] ["want" true])
+        (dict ["name" "has_suffix matching suffix"] ["s" "hello world"] ["suffix" "world"] ["want" true])
+        (dict ["name" "has_suffix non-matching suffix"] ["s" "hello world"] ["suffix" "hello"] ["want" false])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let s (get test "s"))
+        (let suffix (get test "suffix"))
+        (let want (get test "want"))
+        (let got (strings:has_suffix? s suffix))
+        (assert:equal got want)
+        (println ": OK")
+    ))
+))
+
+((fn test_strings_trim_prefix []
+    (let tests [
+        (dict ["name" "trim_prefix no prefix"] ["s" "hello world"] ["prefix" "world"] ["want" "hello world"])
+        (dict ["name" "trim_prefix matching prefix"] ["s" "hello world"] ["prefix" "hello "] ["want" "world"])
+        (dict ["name" "trim_prefix empty prefix"] ["s" "hello world"] ["prefix" ""] ["want" "hello world"])
+        (dict ["name" "trim_prefix full string"] ["s" "hello"] ["prefix" "hello"] ["want" ""])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let s (get test "s"))
+        (let prefix (get test "prefix"))
+        (let want (get test "want"))
+        (let got (strings:trim_prefix s prefix))
+        (assert:equal got want)
+        (println ": OK")
+    ))
+))
+
+((fn test_strings_trim_suffix []
+    (let tests [
+        (dict ["name" "trim_suffix no suffix"] ["s" "hello world"] ["suffix" "hello"] ["want" "hello world"])
+        (dict ["name" "trim_suffix matching suffix"] ["s" "hello world"] ["suffix" " world"] ["want" "hello"])
+        (dict ["name" "trim_suffix empty suffix"] ["s" "hello world"] ["suffix" ""] ["want" "hello world"])
+        (dict ["name" "trim_suffix full string"] ["s" "hello"] ["suffix" "hello"] ["want" ""])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let s (get test "s"))
+        (let suffix (get test "suffix"))
+        (let want (get test "want"))
+        (let got (strings:trim_suffix s suffix))
+        (assert:equal got want)
+        (println ": OK")
+    ))
+))

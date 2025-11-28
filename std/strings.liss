@@ -117,8 +117,38 @@
     (cond (and (is_string? str) (is_string? pref))
         (cond (< (len str) (len pref))
             false
-            (= (list:range str 0 (len pref)) pref)
+            (= (builtin:range str 0 (len pref)) pref)
         )
         (raise! "has_prefix?: both arguments must be strings")
+    )
+)
+
+(fn has_suffix? [str suff]
+    (cond (and (is_string? str) (is_string? suff))
+        (cond (< (len str) (len suff))
+            false
+            (= (builtin:range str (- (len str) (len suff)) (len str)) suff)
+        )
+        (raise! "has_suffix?: both arguments must be strings")
+    )
+)
+
+(fn trim_prefix [str pref]
+    (cond (and (is_string? str) (is_string? pref))
+        (cond (has_prefix? str pref)
+            (builtin:range str (len pref) (len str))
+            str
+        )
+        (raise! "trim_prefix: both arguments must be strings")
+    )
+)
+
+(fn trim_suffix [str suff]
+    (cond (and (is_string? str) (is_string? suff))
+        (cond (has_suffix? str suff)
+            (builtin:range str 0 (- (len str) (len suff)))
+            str
+        )
+        (raise! "trim_suffix: both arguments must be strings")
     )
 )
