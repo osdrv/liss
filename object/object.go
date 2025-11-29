@@ -26,6 +26,12 @@ const (
 	ModuleType
 )
 
+var (
+	TRUE  = NewBool(true)
+	FALSE = NewBool(false)
+	NULL  = NewNull()
+)
+
 func (t ObjectType) String() string {
 	switch t {
 	case IntegerType:
@@ -128,6 +134,7 @@ type lenable interface {
 type Numeric interface {
 	Int64() int64
 	Float64() float64
+	ToFloat64() Object
 }
 
 type Integer struct {
@@ -166,6 +173,10 @@ func (i *Integer) Float64() float64 {
 	return float64(i.Value)
 }
 
+func (i *Integer) ToFloat64() Object {
+	return NewFloat(float64(i.Value))
+}
+
 func (i *Integer) Raw() any {
 	return i.Value
 }
@@ -200,6 +211,10 @@ func (f *Float) Int64() int64 {
 
 func (f *Float) Float64() float64 {
 	return f.Value
+}
+
+func (f *Float) ToFloat64() Object {
+	return f
 }
 
 func (f *Float) IsNumeric() bool {

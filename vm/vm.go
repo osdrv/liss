@@ -26,10 +26,6 @@ func NewRuntimeError(msg string) error {
 	return fmt.Errorf("runtime error: %s", msg)
 }
 
-var True = object.NewBool(true)
-var False = object.NewBool(false)
-var Null = object.NewNull()
-
 type builtinHook func(*VM, *object.BuiltinFunc, []object.Object) (*object.BuiltinFunc, []object.Object, error)
 
 var appendStdoutHook builtinHook = func(
@@ -366,7 +362,11 @@ func (vm *VM) Run() (exit_err error) {
 			if err != nil {
 				return err
 			}
-			if err := vm.push(object.NewBool(cmp)); err != nil {
+			pcmp := object.FALSE
+			if cmp {
+				pcmp = object.TRUE
+			}
+			if err := vm.push(pcmp); err != nil {
 				return err
 			}
 		case code.OpNot:
@@ -375,7 +375,11 @@ func (vm *VM) Run() (exit_err error) {
 				return NewTypeMismatchError(
 					fmt.Sprintf("expected boolean type, got %s", a.Type().String()))
 			}
-			if err := vm.push(object.NewBool(!a.(*object.Bool).Value)); err != nil {
+			pval := object.TRUE
+			if a.(*object.Bool).Value {
+				pval = object.FALSE
+			}
+			if err := vm.push(pval); err != nil {
 				return err
 			}
 		case code.OpAnd:
@@ -391,7 +395,11 @@ func (vm *VM) Run() (exit_err error) {
 				}
 				val = val && arg.(*object.Bool).Value
 			}
-			if err := vm.push(object.NewBool(val)); err != nil {
+			pval := object.FALSE
+			if val {
+				pval = object.TRUE
+			}
+			if err := vm.push(pval); err != nil {
 				return err
 			}
 		case code.OpOr:
@@ -407,19 +415,23 @@ func (vm *VM) Run() (exit_err error) {
 				}
 				val = val || arg.(*object.Bool).Value
 			}
-			if err := vm.push(object.NewBool(val)); err != nil {
+			pval := object.FALSE
+			if val {
+				pval = object.TRUE
+			}
+			if err := vm.push(pval); err != nil {
 				return err
 			}
 		case code.OpTrue:
-			if err := vm.push(True); err != nil {
+			if err := vm.push(object.TRUE); err != nil {
 				return err
 			}
 		case code.OpFalse:
-			if err := vm.push(False); err != nil {
+			if err := vm.push(object.FALSE); err != nil {
 				return err
 			}
 		case code.OpNull:
-			if err := vm.push(Null); err != nil {
+			if err := vm.push(object.NULL); err != nil {
 				return err
 			}
 		case code.OpPop:
@@ -531,7 +543,7 @@ func (vm *VM) Run() (exit_err error) {
 			// check if there is anything new on the stack.
 			// If not, push null.
 			if vm.sp == vm.currentFrame().bptr {
-				if err := vm.push(Null); err != nil {
+				if err := vm.push(object.NULL); err != nil {
 					return err
 				}
 			}
@@ -772,15 +784,10 @@ func (vm *VM) popFrame() *Frame {
 }
 
 func castTypes(a, b object.Object, cmp code.OpCode) (object.Object, object.Object) {
-	if a.Type() == b.Type() {
-		return a, b
-	}
-
-	if a.IsNumeric() && b.IsNumeric() {
-		af := a.(object.Numeric).Float64()
-		bf := b.(object.Numeric).Float64()
-		// TODO: we only need to cast one of them, but we do both for simplicity
-		return object.NewFloat(af), object.NewFloat(bf)
+	if a.IsNumeric() && b.IsNumeric() && (a.Type() != b.Type()) {
+		af := a.(object.Numeric).ToFloat64()
+		bf := b.(object.Numeric).ToFloat64()
+		return af, bf
 	}
 
 	return a, b

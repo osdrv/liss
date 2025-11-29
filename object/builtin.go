@@ -143,117 +143,6 @@ func GetBuiltinByIndex(ix int) (*BuiltinFunc, bool) {
 	return builtins[ix], true
 }
 
-// type BuiltinFunction struct {
-// 	defaultObject
-// 	name     string
-// 	fn       any // TODO: reevaluate whether I need to keep the src fn
-// 	variadic bool
-// 	argc     int
-// 	rawfn    reflect.Value
-// }
-//
-// var _ Object = (*BuiltinFunction)(nil)
-//
-// func NewVariadicBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
-// 	b, err := NewBuiltinFunction(name, fn)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	b.variadic = true
-// 	return b, nil
-// }
-//
-// func NewBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
-// 	argc, err := getFuncNumArgs(fn)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	rawfn := reflect.ValueOf(fn)
-// 	if rawfn.Kind() != reflect.Func {
-// 		return nil, ErrNotAFunction
-// 	}
-//
-// 	return &BuiltinFunction{
-// 		name:  name,
-// 		fn:    fn,
-// 		argc:  argc,
-// 		rawfn: rawfn,
-// 	}, nil
-// }
-//
-// func (b *BuiltinFunction) Name() string {
-// 	return b.name
-// }
-//
-// func (b *BuiltinFunction) Clone() Object {
-// 	return b
-// }
-//
-// func (b *BuiltinFunction) String() string {
-// 	return fmt.Sprintf("<builtin function %s>", b.name)
-// }
-//
-// func (b *BuiltinFunction) Type() ObjectType {
-// 	return BuiltinType
-// }
-
-// func (b *BuiltinFunction) IsFunction() bool {
-// 	return true
-// }
-//
-// func (b *BuiltinFunction) validateArgs(args []Object) error {
-// 	if b.variadic {
-// 		if len(args) < b.argc-1 {
-// 			return fmt.Errorf("builtin function %s expects at least %d arguments, got %d", b.name, b.argc-1, len(args))
-// 		}
-// 	} else {
-// 		if len(args) != b.argc {
-// 			return fmt.Errorf("builtin function %s expects %d arguments, got %d", b.name, b.argc, len(args))
-// 		}
-// 	}
-// 	return nil
-// }
-
-// func (b *BuiltinFunction) Invoke(args ...Object) (Object, error) {
-// 	if err := b.validateArgs(args); err != nil {
-// 		return nil, err
-// 	}
-//
-// 	// TODO: this bit is crazy slow because of reflect, need to find a better way
-// 	in := make([]reflect.Value, len(args))
-// 	for i, arg := range args {
-// 		in[i] = reflect.ValueOf(arg)
-// 	}
-//
-// 	out := b.rawfn.Call(in)
-// 	if len(out) != 2 {
-// 		return nil, fmt.Errorf("builtin function %s should return two values (Object, error)", b.name)
-// 	}
-//
-// 	var err error
-// 	var res Object
-// 	if out[1].Interface() != nil {
-// 		err = out[1].Interface().(error)
-// 	} else {
-// 		res = out[0].Interface().(Object)
-// 	}
-//
-// 	return res, err
-// }
-//
-// func (b *BuiltinFunction) Raw() any {
-// 	panic("not implemented")
-// }
-
-// func getFuncNumArgs(fn any) (int, error) {
-// 	typ := reflect.TypeOf(fn)
-// 	if typ.Kind() != reflect.Func {
-// 		return 0, ErrNotAFunction
-// 	}
-// 	return typ.NumIn(), nil
-// }
-
 func builtinTime(_ []Object) (Object, error) {
 	return NewInteger(int64(time.Now().Unix())), nil
 }
@@ -417,9 +306,6 @@ func builtinDict(pairs []Object) (Object, error) {
 
 func builtinGetFromDict(args []Object) (Object, error) {
 	container, key := args[0], args[1]
-	if !container.IsDictionary() {
-		return nil, fmt.Errorf("get: expected dictionary as first argument, got %s", container.String())
-	}
 	dict := container.(*Dictionary)
 	value, ok, err := dict.Get(key)
 	if err != nil {
@@ -433,9 +319,6 @@ func builtinGetFromDict(args []Object) (Object, error) {
 
 func builtinGetFromList(args []Object) (Object, error) {
 	container, key := args[0], args[1]
-	if !container.IsList() {
-		return nil, fmt.Errorf("get: expected list as first argument, got %s", container.String())
-	}
 	list := container.(*List)
 	indexObj, ok := key.(*Integer)
 	if !ok {
@@ -450,9 +333,6 @@ func builtinGetFromList(args []Object) (Object, error) {
 
 func builtinGetFromString(args []Object) (Object, error) {
 	container, key := args[0], args[1]
-	if !container.IsString() {
-		return nil, fmt.Errorf("get: expected string as first argument, got %s", container.String())
-	}
 	str := container.(*String)
 	indexObj, ok := key.(*Integer)
 	if !ok {
@@ -575,7 +455,10 @@ func builtinReMatch(args []Object) (Object, error) {
 		if err != nil {
 			return nil, err
 		}
-		return NewBool(re.Match(sstr)), nil
+		if re.Match(sstr) {
+			return TRUE, nil
+		}
+		return FALSE, nil
 	}
 	return nil, fmt.Errorf("match: expected regexp or string as first argument, got %s", pat.String())
 }

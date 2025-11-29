@@ -35,6 +35,8 @@ const (
 	OpAnd
 	OpOr
 
+	OpMaxCompre // reserved as a sentinel for comparison operations
+
 	OpPop
 	OpJump
 	OpJumpIfFalse
