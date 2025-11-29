@@ -7,7 +7,6 @@ import (
 	"os"
 	"osdrv/liss/regexp"
 	"path/filepath"
-	"reflect"
 	"time"
 )
 
@@ -15,204 +14,261 @@ var (
 	ErrNotAFunction = fmt.Errorf("not a function")
 )
 
-var builtins []*BuiltinFunction
-var builtinIndex map[string]int = make(map[string]int)
+type builtinFuncRaw func(args []Object) (Object, error)
 
-func mkBuiltin(name string, fn any, variadic bool) *BuiltinFunction {
-	b, err := NewBuiltinFunction(name, fn)
-	if err != nil {
-		panic(err)
+type BuiltinFunc struct {
+	defaultObject
+	Name     string
+	Argc     int
+	Variadic bool
+	Fn       builtinFuncRaw
+}
+
+func NewBuiltinFunc(name string, argc int, variadic bool, fn builtinFuncRaw) *BuiltinFunc {
+	return &BuiltinFunc{
+		Name:     name,
+		Argc:     argc,
+		Variadic: variadic,
+		Fn:       fn,
 	}
-	b.variadic = variadic
+}
+
+var _ Object = (*BuiltinFunc)(nil)
+
+func (b *BuiltinFunc) Type() ObjectType {
+	return BuiltinType
+}
+
+func (b *BuiltinFunc) Clone() Object {
 	return b
 }
 
+func (b *BuiltinFunc) Raw() any {
+	return b.Fn
+}
+
+func (b *BuiltinFunc) String() string {
+	return "<builtin function " + b.Name + ">"
+}
+
+func (b *BuiltinFunc) validateArgs(args []Object) error {
+	// TODO: function signature could be more complex in the future
+	// We could do type checking here as well
+	if !b.Variadic {
+		if len(args) != b.Argc {
+			return fmt.Errorf("builtin function %s expects %d arguments, got %d", b.Name, b.Argc, len(args))
+		}
+	} else {
+		// Variadic function: only check minimum number of arguments
+		if len(args) < b.Argc {
+			return fmt.Errorf("builtin function %s expects at least %d arguments, got %d", b.Name, b.Argc, len(args))
+		}
+	}
+	return nil
+}
+
+func (b *BuiltinFunc) IsFunction() bool {
+	return true
+}
+
+func (b *BuiltinFunc) Invoke(args []Object) (Object, error) {
+	if err := b.validateArgs(args); err != nil {
+		return nil, err
+	}
+	return b.Fn(args)
+}
+
+var builtins []*BuiltinFunc
+var builtinIndex map[string]int = make(map[string]int)
+
 func init() {
-	builtins = []*BuiltinFunction{
-		mkBuiltin("time", builtinTime, false),
-		mkBuiltin("time_ms", builtinTimeMillis, false),
-		mkBuiltin("rand", builtinRandInt, false),
-		mkBuiltin("randn", builtinRandIntN, false),
+	builtins = []*BuiltinFunc{
+		NewBuiltinFunc("time", 0, false, builtinTime),
+		NewBuiltinFunc("time_ms", 0, false, builtinTimeMillis),
+		NewBuiltinFunc("rand", 0, false, builtinRandInt),
+		NewBuiltinFunc("randn", 1, false, builtinRandIntN),
 
-		mkBuiltin("len", builtinLen, false),
-		mkBuiltin("head", builtinHead, false),
-		mkBuiltin("last", builtinLast, false),
-		mkBuiltin("tail", builtinTail, false),
-		mkBuiltin("str", builtinStr, false),
+		NewBuiltinFunc("len", 1, false, builtinLen),
+		NewBuiltinFunc("head", 1, false, builtinHead),
+		NewBuiltinFunc("last", 1, false, builtinLast),
+		NewBuiltinFunc("tail", 1, false, builtinTail),
+		NewBuiltinFunc("str", 1, false, builtinStr),
 
-		mkBuiltin("list", builtinList, true),
-		mkBuiltin("range", builtinRange, false),
-		mkBuiltin("dict", builtinDict, true),
-		mkBuiltin("get", builtinGet, false),
-		mkBuiltin("put", builtinPut, false),
-		mkBuiltin("del", builtinDel, false),
-		mkBuiltin("has?", builtinHas, false),
-		mkBuiltin("keys", builtinKeys, false),
-		mkBuiltin("values", builtinValues, false),
-		mkBuiltin("re", builtinReCompile, false),
-		mkBuiltin("match?", builtinReMatch, false),
-		mkBuiltin("match", builtinReCapture, false),
-		mkBuiltin("match_ix", builtinReCaptureIx, false),
-		mkBuiltin("print", builtinPrint, true),
-		mkBuiltin("println", builtinPrintln, true),
+		NewBuiltinFunc("list", 0, true, builtinList),
+		NewBuiltinFunc("range", 3, false, builtinRange),
+		NewBuiltinFunc("dict", 0, true, builtinDict),
+		NewBuiltinFunc("get", 2, false, builtinGet),
+		NewBuiltinFunc("put", 3, false, builtinPut),
+		NewBuiltinFunc("del", 2, false, builtinDel),
+		NewBuiltinFunc("has?", 2, false, builtinHas),
+		NewBuiltinFunc("keys", 1, false, builtinKeys),
+		NewBuiltinFunc("values", 1, false, builtinValues),
+		NewBuiltinFunc("re", 1, false, builtinReCompile),
+		NewBuiltinFunc("match?", 2, false, builtinReMatch),
+		NewBuiltinFunc("match", 2, false, builtinReCapture),
+		NewBuiltinFunc("match_ix", 2, false, builtinReCaptureIx),
+		NewBuiltinFunc("print", 2, true, builtinPrint),
+		NewBuiltinFunc("println", 2, true, builtinPrintln),
 
-		mkBuiltin("fopen", builtinFOpen, true),
-		mkBuiltin("fclose", builtinFClose, false),
-		mkBuiltin("fread_all", builtinFReadAll, false),
+		NewBuiltinFunc("fopen", 1, true, builtinFOpen),
+		NewBuiltinFunc("fclose", 1, false, builtinFClose),
+		NewBuiltinFunc("fread_all", 1, false, builtinFReadAll),
 
-		mkBuiltin("is_empty?", builtinEmpty, false),
-		mkBuiltin("is_null?", builtinIsNull, false),
-		mkBuiltin("is_list?", builtinIsList, false),
-		mkBuiltin("is_dict?", builtinIsDictionary, false),
-		mkBuiltin("is_string?", builtinIsString, false),
-		mkBuiltin("is_int?", builtinIsInt, false),
-		mkBuiltin("is_float?", builtinIsFloat, false),
-		mkBuiltin("is_bool?", builtinIsBool, false),
+		NewBuiltinFunc("is_empty?", 1, false, builtinEmpty),
+		NewBuiltinFunc("is_null?", 1, false, builtinIsNull),
+		NewBuiltinFunc("is_list?", 1, false, builtinIsList),
+		NewBuiltinFunc("is_dict?", 1, false, builtinIsDictionary),
+		NewBuiltinFunc("is_string?", 1, false, builtinIsString),
+		NewBuiltinFunc("is_int?", 1, false, builtinIsInt),
+		NewBuiltinFunc("is_float?", 1, false, builtinIsFloat),
+		NewBuiltinFunc("is_bool?", 1, false, builtinIsBool),
 	}
 
 	for ix, b := range builtins {
-		builtinIndex[b.name] = ix
+		builtinIndex[b.Name] = ix
 	}
 }
 
-func GetBuiltinByName(name string) (*BuiltinFunction, int, bool) {
+func GetBuiltinByName(name string) (*BuiltinFunc, int, bool) {
 	if ix, ok := builtinIndex[name]; ok {
 		return builtins[ix], ix, true
 	}
 	return nil, -1, false
 }
 
-func GetBuiltinByIndex(ix int) (*BuiltinFunction, bool) {
+func GetBuiltinByIndex(ix int) (*BuiltinFunc, bool) {
 	if ix < 0 || ix >= len(builtins) {
 		return nil, false
 	}
 	return builtins[ix], true
 }
 
-type BuiltinFunction struct {
-	defaultObject
-	name     string
-	fn       any // TODO: reevaluate whether I need to keep the src fn
-	variadic bool
-	argc     int
-	rawfn    reflect.Value
-}
+// type BuiltinFunction struct {
+// 	defaultObject
+// 	name     string
+// 	fn       any // TODO: reevaluate whether I need to keep the src fn
+// 	variadic bool
+// 	argc     int
+// 	rawfn    reflect.Value
+// }
+//
+// var _ Object = (*BuiltinFunction)(nil)
+//
+// func NewVariadicBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
+// 	b, err := NewBuiltinFunction(name, fn)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	b.variadic = true
+// 	return b, nil
+// }
+//
+// func NewBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
+// 	argc, err := getFuncNumArgs(fn)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	rawfn := reflect.ValueOf(fn)
+// 	if rawfn.Kind() != reflect.Func {
+// 		return nil, ErrNotAFunction
+// 	}
+//
+// 	return &BuiltinFunction{
+// 		name:  name,
+// 		fn:    fn,
+// 		argc:  argc,
+// 		rawfn: rawfn,
+// 	}, nil
+// }
+//
+// func (b *BuiltinFunction) Name() string {
+// 	return b.name
+// }
+//
+// func (b *BuiltinFunction) Clone() Object {
+// 	return b
+// }
+//
+// func (b *BuiltinFunction) String() string {
+// 	return fmt.Sprintf("<builtin function %s>", b.name)
+// }
+//
+// func (b *BuiltinFunction) Type() ObjectType {
+// 	return BuiltinType
+// }
 
-var _ Object = (*BuiltinFunction)(nil)
+// func (b *BuiltinFunction) IsFunction() bool {
+// 	return true
+// }
+//
+// func (b *BuiltinFunction) validateArgs(args []Object) error {
+// 	if b.variadic {
+// 		if len(args) < b.argc-1 {
+// 			return fmt.Errorf("builtin function %s expects at least %d arguments, got %d", b.name, b.argc-1, len(args))
+// 		}
+// 	} else {
+// 		if len(args) != b.argc {
+// 			return fmt.Errorf("builtin function %s expects %d arguments, got %d", b.name, b.argc, len(args))
+// 		}
+// 	}
+// 	return nil
+// }
 
-func NewVariadicBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
-	b, err := NewBuiltinFunction(name, fn)
-	if err != nil {
-		return nil, err
-	}
-	b.variadic = true
-	return b, nil
-}
+// func (b *BuiltinFunction) Invoke(args ...Object) (Object, error) {
+// 	if err := b.validateArgs(args); err != nil {
+// 		return nil, err
+// 	}
+//
+// 	// TODO: this bit is crazy slow because of reflect, need to find a better way
+// 	in := make([]reflect.Value, len(args))
+// 	for i, arg := range args {
+// 		in[i] = reflect.ValueOf(arg)
+// 	}
+//
+// 	out := b.rawfn.Call(in)
+// 	if len(out) != 2 {
+// 		return nil, fmt.Errorf("builtin function %s should return two values (Object, error)", b.name)
+// 	}
+//
+// 	var err error
+// 	var res Object
+// 	if out[1].Interface() != nil {
+// 		err = out[1].Interface().(error)
+// 	} else {
+// 		res = out[0].Interface().(Object)
+// 	}
+//
+// 	return res, err
+// }
+//
+// func (b *BuiltinFunction) Raw() any {
+// 	panic("not implemented")
+// }
 
-func NewBuiltinFunction(name string, fn any) (*BuiltinFunction, error) {
-	argc, err := getFuncNumArgs(fn)
-	if err != nil {
-		return nil, err
-	}
+// func getFuncNumArgs(fn any) (int, error) {
+// 	typ := reflect.TypeOf(fn)
+// 	if typ.Kind() != reflect.Func {
+// 		return 0, ErrNotAFunction
+// 	}
+// 	return typ.NumIn(), nil
+// }
 
-	rawfn := reflect.ValueOf(fn)
-	if rawfn.Kind() != reflect.Func {
-		return nil, ErrNotAFunction
-	}
-
-	return &BuiltinFunction{
-		name:  name,
-		fn:    fn,
-		argc:  argc,
-		rawfn: rawfn,
-	}, nil
-}
-
-func (b *BuiltinFunction) Name() string {
-	return b.name
-}
-
-func (b *BuiltinFunction) Clone() Object {
-	return b
-}
-
-func (b *BuiltinFunction) String() string {
-	return fmt.Sprintf("<builtin function %s>", b.name)
-}
-
-func (b *BuiltinFunction) Type() ObjectType {
-	return BuiltinType
-}
-
-func (b *BuiltinFunction) IsFunction() bool {
-	return true
-}
-
-func (b *BuiltinFunction) validateArgs(args []Object) error {
-	if b.variadic {
-		if len(args) < b.argc-1 {
-			return fmt.Errorf("builtin function %s expects at least %d arguments, got %d", b.name, b.argc-1, len(args))
-		}
-	} else {
-		if len(args) != b.argc {
-			return fmt.Errorf("builtin function %s expects %d arguments, got %d", b.name, b.argc, len(args))
-		}
-	}
-	return nil
-}
-
-func (b *BuiltinFunction) Invoke(args ...Object) (Object, error) {
-	if err := b.validateArgs(args); err != nil {
-		return nil, err
-	}
-
-	in := make([]reflect.Value, len(args))
-	for i, arg := range args {
-		in[i] = reflect.ValueOf(arg)
-	}
-
-	out := b.rawfn.Call(in)
-	if len(out) != 2 {
-		return nil, fmt.Errorf("builtin function %s should return two values (Object, error)", b.name)
-	}
-
-	var err error
-	var res Object
-	if out[1].Interface() != nil {
-		err = out[1].Interface().(error)
-	} else {
-		res = out[0].Interface().(Object)
-	}
-
-	return res, err
-}
-
-func (b *BuiltinFunction) Raw() any {
-	panic("not implemented")
-}
-
-func getFuncNumArgs(fn any) (int, error) {
-	typ := reflect.TypeOf(fn)
-	if typ.Kind() != reflect.Func {
-		return 0, ErrNotAFunction
-	}
-	return typ.NumIn(), nil
-}
-
-func builtinTime() (Object, error) {
+func builtinTime(_ []Object) (Object, error) {
 	return NewInteger(int64(time.Now().Unix())), nil
 }
 
-func builtinTimeMillis() (Object, error) {
+func builtinTimeMillis(_ []Object) (Object, error) {
 	return NewInteger(int64(time.Now().UnixMilli())), nil
 }
 
-func builtinRandInt() (Object, error) {
+func builtinRandInt(_ []Object) (Object, error) {
 	n := rand.Int64()
 	return NewInteger(n), nil
 }
 
-func builtinRandIntN(n Object) (Object, error) {
+func builtinRandIntN(args []Object) (Object, error) {
+	n := args[0]
 	if n.Type() != IntegerType {
 		return nil, fmt.Errorf("rand:intn: expected integer argument, got %s", n.String())
 	}
@@ -224,7 +280,8 @@ func builtinRandIntN(n Object) (Object, error) {
 	return NewInteger(int64(r)), nil
 }
 
-func builtinLen(a Object) (Object, error) {
+func builtinLen(args []Object) (Object, error) {
+	a := args[0]
 	if a.IsLenable() {
 		al := a.(lenable)
 		return &Integer{Value: int64(al.Len())}, nil
@@ -232,7 +289,8 @@ func builtinLen(a Object) (Object, error) {
 	return nil, fmt.Errorf("object %s is not lenable", a.String())
 }
 
-func builtinEmpty(a Object) (Object, error) {
+func builtinEmpty(args []Object) (Object, error) {
+	a := args[0]
 	if a.IsLenable() {
 		al := a.(lenable)
 		return &Bool{Value: al.Len() == 0}, nil
@@ -240,15 +298,18 @@ func builtinEmpty(a Object) (Object, error) {
 	return nil, fmt.Errorf("object %s is not lennable", a.String())
 }
 
-func builtinIsNull(v Object) (Object, error) {
+func builtinIsNull(args []Object) (Object, error) {
+	v := args[0]
 	return &Bool{Value: v.IsNull()}, nil
 }
 
-func builtinStr(a Object) (Object, error) {
+func builtinStr(args []Object) (Object, error) {
+	a := args[0]
 	return &String{Value: []rune(a.String())}, nil
 }
 
-func builtinHead(a Object) (Object, error) {
+func builtinHead(args []Object) (Object, error) {
+	a := args[0]
 	if a.IsList() {
 		arr := a.(*List)
 		if len(arr.items) > 0 {
@@ -265,7 +326,8 @@ func builtinHead(a Object) (Object, error) {
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
 }
 
-func builtinLast(a Object) (Object, error) {
+func builtinLast(args []Object) (Object, error) {
+	a := args[0]
 	if a.IsList() {
 		arr := a.(*List)
 		if len(arr.items) > 0 {
@@ -282,7 +344,8 @@ func builtinLast(a Object) (Object, error) {
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
 }
 
-func builtinTail(a Object) (Object, error) {
+func builtinTail(args []Object) (Object, error) {
+	a := args[0]
 	if a.IsList() {
 		arr := a.(*List)
 		if len(arr.items) > 1 {
@@ -300,11 +363,12 @@ func builtinTail(a Object) (Object, error) {
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
 }
 
-func builtinList(args ...Object) (Object, error) {
+func builtinList(args []Object) (Object, error) {
 	return &List{items: args}, nil
 }
 
-func builtinRange(arrObj, fromObj, toObj Object) (Object, error) {
+func builtinRange(args []Object) (Object, error) {
+	arrObj, fromObj, toObj := args[0], args[1], args[2]
 	if _, ok := fromObj.(*Integer); !ok {
 		return nil, fmt.Errorf("range: expected integer as from argument, got %s", fromObj.String())
 	}
@@ -336,7 +400,7 @@ func builtinRange(arrObj, fromObj, toObj Object) (Object, error) {
 	}
 }
 
-func builtinDict(pairs ...Object) (Object, error) {
+func builtinDict(pairs []Object) (Object, error) {
 	dict := make(map[any]Object)
 	for _, pair := range pairs {
 		if !pair.IsList() {
@@ -351,7 +415,8 @@ func builtinDict(pairs ...Object) (Object, error) {
 	return NewDictionaryWithItems(pairs)
 }
 
-func builtinGetFromDict(container Object, key Object) (Object, error) {
+func builtinGetFromDict(args []Object) (Object, error) {
+	container, key := args[0], args[1]
 	if !container.IsDictionary() {
 		return nil, fmt.Errorf("get: expected dictionary as first argument, got %s", container.String())
 	}
@@ -366,7 +431,8 @@ func builtinGetFromDict(container Object, key Object) (Object, error) {
 	return value, nil
 }
 
-func builtinGetFromList(container Object, key Object) (Object, error) {
+func builtinGetFromList(args []Object) (Object, error) {
+	container, key := args[0], args[1]
 	if !container.IsList() {
 		return nil, fmt.Errorf("get: expected list as first argument, got %s", container.String())
 	}
@@ -382,7 +448,8 @@ func builtinGetFromList(container Object, key Object) (Object, error) {
 	return list.items[index], nil
 }
 
-func builtinGetFromString(container Object, key Object) (Object, error) {
+func builtinGetFromString(args []Object) (Object, error) {
+	container, key := args[0], args[1]
 	if !container.IsString() {
 		return nil, fmt.Errorf("get: expected string as first argument, got %s", container.String())
 	}
@@ -398,18 +465,20 @@ func builtinGetFromString(container Object, key Object) (Object, error) {
 	return &String{Value: []rune{str.Value[index]}}, nil
 }
 
-func builtinGet(container Object, key Object) (Object, error) {
+func builtinGet(args []Object) (Object, error) {
+	container := args[0]
 	if container.IsList() {
-		return builtinGetFromList(container, key)
+		return builtinGetFromList(args)
 	} else if container.IsDictionary() {
-		return builtinGetFromDict(container, key)
+		return builtinGetFromDict(args)
 	} else if container.IsString() {
-		return builtinGetFromString(container, key)
+		return builtinGetFromString(args)
 	}
 	return nil, fmt.Errorf("get: expected list or dictionary as first argument, got %s", container.String())
 }
 
-func builtinPut(container Object, key Object, value Object) (Object, error) {
+func builtinPut(args []Object) (Object, error) {
+	container, key, value := args[0], args[1], args[2]
 	if container.IsList() {
 		if key.Type() != IntegerType {
 			return nil, fmt.Errorf("put: expected integer as index for list, got %s", key.String())
@@ -433,7 +502,8 @@ func builtinPut(container Object, key Object, value Object) (Object, error) {
 	}
 }
 
-func builtinDel(container Object, key Object) (Object, error) {
+func builtinDel(args []Object) (Object, error) {
+	container, key := args[0], args[1]
 	if !container.IsDictionary() {
 		return nil, fmt.Errorf("del: expected dictionary as first argument, got %s", container.String())
 	}
@@ -445,7 +515,8 @@ func builtinDel(container Object, key Object) (Object, error) {
 	return &Bool{Value: ok}, nil
 }
 
-func builtinHas(container Object, key Object) (Object, error) {
+func builtinHas(args []Object) (Object, error) {
+	container, key := args[0], args[1]
 	if !container.IsDictionary() {
 		return nil, fmt.Errorf("has: expected dictionary as first argument, got %s", container.String())
 	}
@@ -457,7 +528,8 @@ func builtinHas(container Object, key Object) (Object, error) {
 	return &Bool{Value: ok}, nil
 }
 
-func builtinKeys(container Object) (Object, error) {
+func builtinKeys(args []Object) (Object, error) {
+	container := args[0]
 	if !container.IsDictionary() {
 		return nil, fmt.Errorf("keys: expected dictionary as argument, got %s", container.String())
 	}
@@ -465,7 +537,8 @@ func builtinKeys(container Object) (Object, error) {
 	return NewList(dict.Keys()), nil
 }
 
-func builtinValues(container Object) (Object, error) {
+func builtinValues(args []Object) (Object, error) {
+	container := args[0]
 	if !container.IsDictionary() {
 		return nil, fmt.Errorf("values: expected dictionary as argument, got %s", container.String())
 	}
@@ -473,7 +546,8 @@ func builtinValues(container Object) (Object, error) {
 	return NewList(dict.Values()), nil
 }
 
-func builtinReCompile(pat Object) (Object, error) {
+func builtinReCompile(args []Object) (Object, error) {
+	pat := args[0]
 	if !pat.IsString() {
 		return nil, fmt.Errorf("compile: expected string as argument, got %s", pat.String())
 	}
@@ -485,7 +559,8 @@ func builtinReCompile(pat Object) (Object, error) {
 	return re, nil
 }
 
-func builtinReMatch(pat Object, str Object) (Object, error) {
+func builtinReMatch(args []Object) (Object, error) {
+	pat, str := args[0], args[1]
 	if !str.IsString() {
 		return nil, fmt.Errorf("match: expected string as second argument, got %s", str.String())
 	}
@@ -533,7 +608,8 @@ func finalizerMatchStringIx(re *regexp.Regexp, str string) (Object, error) {
 	return res, nil
 }
 
-func prepareMatchArgs(pat Object, str Object) (*regexp.Regexp, string, error) {
+func prepareMatchArgs(args []Object) (*regexp.Regexp, string, error) {
+	pat, str := args[0], args[1]
 	if !str.IsString() {
 		return nil, "", fmt.Errorf("capture: expected string as second argument, got %s", str.String())
 	}
@@ -555,26 +631,23 @@ func prepareMatchArgs(pat Object, str Object) (*regexp.Regexp, string, error) {
 	return re, sstr, nil
 }
 
-func builtinReCapture(pat Object, str Object) (Object, error) {
-	re, sstr, err := prepareMatchArgs(pat, str)
+func builtinReCapture(args []Object) (Object, error) {
+	re, sstr, err := prepareMatchArgs(args)
 	if err != nil {
 		return nil, err
 	}
 	return finalizerMatchString(re, sstr)
 }
 
-func builtinReCaptureIx(pat Object, str Object) (Object, error) {
-	re, sstr, err := prepareMatchArgs(pat, str)
+func builtinReCaptureIx(args []Object) (Object, error) {
+	re, sstr, err := prepareMatchArgs(args)
 	if err != nil {
 		return nil, err
 	}
 	return finalizerMatchStringIx(re, sstr)
 }
 
-func builtinPrint(args ...Object) (Object, error) {
-	if len(args) < 2 {
-		return nil, fmt.Errorf("print: expected at least 2 arguments, got %d", len(args))
-	}
+func builtinPrint(args []Object) (Object, error) {
 	f := args[0]
 	rest := args[1:]
 	if !f.IsFile() {
@@ -600,13 +673,13 @@ func builtinPrint(args ...Object) (Object, error) {
 	return NewInteger(int64(totBytes)), nil
 }
 
-func builtinPrintln(args ...Object) (Object, error) {
+func builtinPrintln(args []Object) (Object, error) {
 	args = append(args, NewString("\n"))
-	return builtinPrint(args...)
+	return builtinPrint(args)
 }
 
 // TODO: add modes (read, write, append, etc.)
-func builtinFOpen(args ...Object) (Object, error) {
+func builtinFOpen(args []Object) (Object, error) {
 	pathObj := args[0]
 	if !pathObj.IsString() {
 		return nil, fmt.Errorf("fopen: expected string as argument, got %s", pathObj.String())
@@ -633,7 +706,8 @@ func builtinFOpen(args ...Object) (Object, error) {
 	return &File{fd: fd}, nil
 }
 
-func builtinFClose(f Object) (Object, error) {
+func builtinFClose(args []Object) (Object, error) {
+	f := args[0]
 	if !f.IsFile() {
 		return nil, fmt.Errorf("fclose: expected file as argument, got %s", f.String())
 	}
@@ -645,7 +719,8 @@ func builtinFClose(f Object) (Object, error) {
 	return &Null{}, nil
 }
 
-func builtinFReadAll(f Object) (Object, error) {
+func builtinFReadAll(args []Object) (Object, error) {
+	f := args[0]
 	if !f.IsFile() {
 		return nil, fmt.Errorf("fread_all: expected file as argument, got %s", f.String())
 	}
@@ -658,28 +733,34 @@ func builtinFReadAll(f Object) (Object, error) {
 	return &String{Value: []rune(string(data))}, nil
 }
 
-func builtinIsList(v Object) (Object, error) {
+func builtinIsList(args []Object) (Object, error) {
+	v := args[0]
 	return &Bool{Value: v.IsList()}, nil
 }
 
-func builtinIsDictionary(v Object) (Object, error) {
+func builtinIsDictionary(args []Object) (Object, error) {
+	v := args[0]
 	return &Bool{Value: v.IsDictionary()}, nil
 }
 
-func builtinIsString(v Object) (Object, error) {
+func builtinIsString(args []Object) (Object, error) {
+	v := args[0]
 	return &Bool{Value: v.IsString()}, nil
 }
 
-func builtinIsInt(v Object) (Object, error) {
+func builtinIsInt(args []Object) (Object, error) {
+	v := args[0]
 	_, ok := v.(*Integer)
 	return &Bool{Value: ok}, nil
 }
 
-func builtinIsFloat(v Object) (Object, error) {
+func builtinIsFloat(args []Object) (Object, error) {
+	v := args[0]
 	_, ok := v.(*Float)
 	return &Bool{Value: ok}, nil
 }
 
-func builtinIsBool(v Object) (Object, error) {
+func builtinIsBool(args []Object) (Object, error) {
+	v := args[0]
 	return &Bool{Value: v.IsBool()}, nil
 }

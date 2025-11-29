@@ -16,6 +16,7 @@ import (
 	"osdrv/liss/vm"
 	"path"
 	"path/filepath"
+	"runtime/pprof"
 	"strings"
 )
 
@@ -252,6 +253,7 @@ func main() {
 
 	debug := flag.Bool("debug", false, "Enables debug mode with stack dumps and traces")
 	verbose := flag.Bool("v", false, "Enables verbose output")
+	prof := flag.Bool("pprof", false, "Enables CPU profiling to cpu_profile.prof")
 	src := flag.String("src", "", "Source file to execute")
 	exec := flag.String("exec", "", "Execute source code and exit")
 	flag.Parse()
@@ -263,6 +265,14 @@ func main() {
 	if opts.Debug {
 		fmt.Printf("Runtime flags: %+v\n", opts)
 	}
+
+	f, err := os.Create("cpu_profile.prof")
+	if err != nil {
+		fmt.Fprintf(er, "Error creating CPU profile file: %v\n", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+
 	loader := module_loader.New(exp, module_loader.Options{})
 
 	if *exec != "" {
@@ -279,10 +289,18 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *prof {
+		if err := pprof.StartCPUProfile(f); err != nil {
+			fmt.Fprintf(er, "Error starting CPU profile: %v\n", err)
+			os.Exit(1)
+		}
+	}
 	if _, err := ExecutePath(*src, loader, opts); err != nil {
 		fmt.Fprintf(er, "Error executing file %s: %v\n", *src, err)
 		os.Exit(1)
 	}
-
+	if *prof {
+		pprof.StopCPUProfile()
+	}
 	os.Exit(0)
 }

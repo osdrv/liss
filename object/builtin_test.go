@@ -7,44 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetFuncNumArgs(t *testing.T) {
-	tests := []struct {
-		name     string
-		fn       any
-		wantArgc int
-		wantErr  error
-	}{
-		{
-			name:     "Function with no arguments",
-			fn:       func() {},
-			wantArgc: 0,
-		},
-		{
-			name:     "Function with one argument",
-			fn:       func(a int) {},
-			wantArgc: 1,
-		},
-		{
-			name:     "Function with multiple arguments",
-			fn:       func(a int, b string, c float64) {},
-			wantArgc: 3,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			argc, err := getFuncNumArgs(tt.fn)
-			if err != tt.wantErr {
-				t.Errorf("getFuncNumArgs() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if argc != tt.wantArgc {
-				t.Errorf("getFuncNumArgs() = %v, want %v", argc, tt.wantArgc)
-			}
-		})
-	}
-}
-
 func TestBuiltinLen(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -79,7 +41,7 @@ func TestBuiltinLen(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinLen(tt.input)
+			got, err := builtinLen([]Object{tt.input})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuiltinLen() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -137,7 +99,7 @@ func TestBuiltinHead(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinHead(tt.input)
+			got, err := builtinHead([]Object{tt.input})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("builtinHead() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -191,7 +153,7 @@ func TestBuiltinLast(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinLast(tt.input)
+			got, err := builtinLast([]Object{tt.input})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuiltinLast() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -257,7 +219,7 @@ func TestBuiltinTail(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinTail(tt.input)
+			got, err := builtinTail([]Object{tt.input})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("builtinTail() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -308,7 +270,7 @@ func TestBuiltinList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinList(tt.input...)
+			got, err := builtinList(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuiltinList() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -364,7 +326,7 @@ func TestBuiltinGet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinGet(tt.input, tt.key)
+			got, err := builtinGet([]Object{tt.input, tt.key})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuiltinGet() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -398,7 +360,7 @@ func TestBuiltinMatchIx(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builtinReCaptureIx(tt.pattern, tt.input)
+			got, err := builtinReCaptureIx([]Object{tt.pattern, tt.input})
 			if tt.wantErr != nil {
 				assert.ErrorContains(t, err, tt.wantErr.Error(), "BuiltinReCaptureIx() unexpected error")
 				return

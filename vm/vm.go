@@ -30,11 +30,11 @@ var True = object.NewBool(true)
 var False = object.NewBool(false)
 var Null = object.NewNull()
 
-type builtinHook func(*VM, *object.BuiltinFunction, []object.Object) (*object.BuiltinFunction, []object.Object, error)
+type builtinHook func(*VM, *object.BuiltinFunc, []object.Object) (*object.BuiltinFunc, []object.Object, error)
 
 var appendStdoutHook builtinHook = func(
-	vm *VM, fn *object.BuiltinFunction, args []object.Object,
-) (*object.BuiltinFunction, []object.Object, error) {
+	vm *VM, fn *object.BuiltinFunc, args []object.Object,
+) (*object.BuiltinFunc, []object.Object, error) {
 	if len(args) < 1 {
 		return nil, nil, fmt.Errorf("print expects at least 1 argument, got %d", len(args))
 	}
@@ -48,8 +48,8 @@ var appendStdoutHook builtinHook = func(
 }
 
 var appendDotPathHook builtinHook = func(
-	vm *VM, fn *object.BuiltinFunction, args []object.Object,
-) (*object.BuiltinFunction, []object.Object, error) {
+	vm *VM, fn *object.BuiltinFunc, args []object.Object,
+) (*object.BuiltinFunc, []object.Object, error) {
 	if len(args) == 1 {
 		// Put current module's dot path as the second argument
 		args = append(args, object.NewString(vm.currentFrame().cl.Module.Path))
@@ -489,13 +489,13 @@ func (vm *VM) Run() (exit_err error) {
 				vm.currentFrame().cl = fn
 				vm.currentFrame().ip = -1
 				vm.sp = vm.currentFrame().bptr + fn.Fn.NumLocals
-			case *object.BuiltinFunction:
+			case *object.BuiltinFunc:
 				args := make([]object.Object, argc)
 				for i := range argc {
 					args[i] = vm.stack[vm.sp-argc+i]
 				}
 
-				if hook, ok := vm.hooks[fn.Name()]; ok {
+				if hook, ok := vm.hooks[fn.Name]; ok {
 					var err error
 					fn, args, err = hook(vm, fn, args)
 					if err != nil {
@@ -503,7 +503,7 @@ func (vm *VM) Run() (exit_err error) {
 					}
 				}
 
-				res, err := fn.Invoke(args...)
+				res, err := fn.Invoke(args)
 				if err != nil {
 					return err
 				}
@@ -648,13 +648,13 @@ func (vm *VM) callFunction(argc int) error {
 		frame := NewFrame(fn, vm.sp-argc)
 		vm.pushFrame(frame)
 		vm.sp = frame.bptr + fn.Fn.NumLocals
-	case *object.BuiltinFunction:
+	case *object.BuiltinFunc:
 		args := make([]object.Object, argc)
 		for i := range argc {
 			args[i] = vm.stack[vm.sp-argc+i]
 		}
 
-		if hook, ok := vm.hooks[fn.Name()]; ok {
+		if hook, ok := vm.hooks[fn.Name]; ok {
 			var err error
 			fn, args, err = hook(vm, fn, args)
 			if err != nil {
@@ -662,7 +662,7 @@ func (vm *VM) callFunction(argc int) error {
 			}
 		}
 
-		res, err := fn.Invoke(args...)
+		res, err := fn.Invoke(args)
 		if err != nil {
 			return err
 		}
