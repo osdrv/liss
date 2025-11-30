@@ -17,6 +17,7 @@ const (
 )
 
 const MaxFrames = 1024
+const MaxArgs = 255
 const StackSize = 2048
 const GlobalsSize = 65536
 
@@ -70,6 +71,18 @@ type VMOptions struct {
 	Debug int
 }
 
+type VMMetrics struct {
+	NumInstructionsExecuted int64
+	NumBuiltinCalls         int64
+	NumBuiltinTailCalls     int64
+	NumTailCalls            int64
+	NumPushClosureCalls     int64
+	NumIntegerAdditions     int64
+	NumFloatAdditions       int64
+	NumStringAdditions      int64
+	NumListAdditions        int64
+}
+
 type VM struct {
 	stack []object.Object
 	sp    int // program counter
@@ -79,14 +92,16 @@ type VM struct {
 	framesix     int
 	framePool    []*Frame
 
-	hooks map[string]builtinHook
-
-	files map[string]*object.File
+	hooks   map[string]builtinHook
+	files   map[string]*object.File
+	argPool [MaxArgs]object.Object
 
 	opts VMOptions
 
 	lastPopped object.Object
 	lastAnchor *anchor
+
+	metrics VMMetrics
 }
 
 func New(mod *compiler.Module) *VM {
@@ -139,6 +154,18 @@ func (vm *VM) Shutdown() {
 			f.Close()
 		}
 	}
+	if vm.opts.Debug > 0 {
+		fmt.Printf("VM Metrics:\n")
+		fmt.Printf("  Number of instructions executed: %d\n", vm.metrics.NumInstructionsExecuted)
+		fmt.Printf("  Number of builtin function calls: %d\n", vm.metrics.NumBuiltinCalls)
+		fmt.Printf("  Number of builtin tail calls: %d\n", vm.metrics.NumBuiltinTailCalls)
+		fmt.Printf("  Number of tail calls: %d\n", vm.metrics.NumTailCalls)
+		fmt.Printf("  Number of push closure calls: %d\n", vm.metrics.NumPushClosureCalls)
+		fmt.Printf("  Number of integer additions: %d\n", vm.metrics.NumIntegerAdditions)
+		fmt.Printf("  Number of float additions: %d\n", vm.metrics.NumFloatAdditions)
+		fmt.Printf("  Number of string additions: %d\n", vm.metrics.NumStringAdditions)
+		fmt.Printf("  Number of list additions: %d\n", vm.metrics.NumListAdditions)
+	}
 }
 
 func (vm *VM) WithOptions(opts VMOptions) *VM {
@@ -169,19 +196,15 @@ func (vm *VM) Run() (exit_err error) {
 		}
 	}()
 
-	for vm.currentFrame.ip < len(vm.currentFrame.Instructions())-1 {
+	for vm.currentFrame.ip < len(vm.currentFrame.cl.Fn.Instrs)-1 {
+		vm.metrics.NumInstructionsExecuted++
+
 		vm.currentFrame.ip++
 
 		ip = vm.currentFrame.ip
-		instrs = vm.currentFrame.Instructions()
+		instrs = vm.currentFrame.cl.Fn.Instrs
 		env = vm.currentFrame.cl.Env
 		op = code.OpCode(instrs[ip])
-
-		if vm.opts.Debug > 1 {
-			fmt.Printf("Current frame:\n%s\n", code.PrintInstr(instrs))
-			fmt.Printf("Curtrent instruction pointer: %d\n", ip)
-			fmt.Printf("VM is executing operation: %s (%d)\n", code.PrintOpCode(op), op)
-		}
 
 		switch op {
 		case code.OpConst:
@@ -199,6 +222,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 			switch elem.Type() {
 			case object.IntegerType:
+				vm.metrics.NumIntegerAdditions++
 				sum := int64(0)
 				for range argc {
 					sum += int64(vm.pop().(*object.Integer).Value)
@@ -207,6 +231,7 @@ func (vm *VM) Run() (exit_err error) {
 					return err
 				}
 			case object.FloatType:
+				vm.metrics.NumFloatAdditions++
 				sum := float64(0.0)
 				for range argc {
 					sum += float64(vm.pop().(*object.Float).Value)
@@ -215,6 +240,7 @@ func (vm *VM) Run() (exit_err error) {
 					return err
 				}
 			case object.StringType:
+				vm.metrics.NumStringAdditions++
 				var b strings.Builder
 				strs := make([]*object.String, 0, argc)
 				for range argc {
@@ -232,6 +258,7 @@ func (vm *VM) Run() (exit_err error) {
 					return err
 				}
 			case object.ListType:
+				vm.metrics.NumListAdditions++
 				items := make([]object.Object, 0)
 				for range argc {
 					elem := vm.pop()
@@ -498,6 +525,7 @@ func (vm *VM) Run() (exit_err error) {
 				return err
 			}
 		case code.OpTailCall:
+			vm.metrics.NumTailCalls++
 			argc := int(code.ReadUint8(instrs[ip+1:]))
 			vm.currentFrame.ip += 1
 			switch fn := vm.stack[vm.sp-1-argc].(type) {
@@ -512,7 +540,8 @@ func (vm *VM) Run() (exit_err error) {
 				vm.currentFrame.ip = -1
 				vm.sp = vm.currentFrame.bptr + fn.Fn.NumLocals
 			case *object.BuiltinFunc:
-				args := make([]object.Object, argc)
+				vm.metrics.NumBuiltinTailCalls++
+				args := vm.argPool[:argc]
 				for i := range argc {
 					args[i] = vm.stack[vm.sp-argc+i]
 				}
@@ -642,6 +671,7 @@ func (vm *VM) pushModuleSymbol(modix int, constix int) error {
 }
 
 func (vm *VM) pushClosure(cix int, numfree int) error {
+	vm.metrics.NumPushClosureCalls++
 	fn, ok := vm.currentFrame.cl.Env.Consts[cix].(*object.Function)
 	if !ok {
 		return fmt.Errorf("constant at index %d is not a function", cix)
@@ -668,7 +698,8 @@ func (vm *VM) callFunction(argc int) error {
 		vm.pushFrame(frame)
 		vm.sp = frame.bptr + fn.Fn.NumLocals
 	case *object.BuiltinFunc:
-		args := make([]object.Object, argc)
+		vm.metrics.NumBuiltinCalls++
+		args := vm.argPool[:argc]
 		for i := range argc {
 			args[i] = vm.stack[vm.sp-argc+i]
 		}
