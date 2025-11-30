@@ -145,7 +145,21 @@ type Integer struct {
 var _ Object = (*Integer)(nil)
 var _ Numeric = (*Integer)(nil)
 
+const MaxIntCacheHalf = 256
+
+var INT_OBJ_CACHE = [MaxIntCacheHalf << 1]*Integer{}
+
+// Pre-populate integer cache with values: -MaxIntCacheHalf .. MaxIntCacheHalf-1
+func init() {
+	for i := int64(0); i < (MaxIntCacheHalf << 1); i++ {
+		INT_OBJ_CACHE[i] = &Integer{Value: i - MaxIntCacheHalf}
+	}
+}
+
 func NewInteger(value int64) *Integer {
+	if value >= MaxIntCacheHalf && value < MaxIntCacheHalf {
+		return INT_OBJ_CACHE[value+MaxIntCacheHalf]
+	}
 	return &Integer{Value: value}
 }
 
