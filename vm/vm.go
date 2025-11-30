@@ -48,7 +48,7 @@ var appendDotPathHook builtinHook = func(
 ) (*object.BuiltinFunc, []object.Object, error) {
 	if len(args) == 1 {
 		// Put current module's dot path as the second argument
-		args = append(args, object.NewString(vm.currentFrame().cl.Module.Path))
+		args = append(args, object.NewString(vm.currentFrame.cl.Module.Path))
 	}
 	return fn, args, nil
 }
@@ -74,8 +74,10 @@ type VM struct {
 	stack []object.Object
 	sp    int // program counter
 
-	frames   []*Frame
-	framesix int
+	frames       []*Frame
+	currentFrame *Frame // optimization for faster dereferencing
+	framesix     int
+	framePool    []*Frame
 
 	hooks map[string]builtinHook
 
@@ -103,15 +105,13 @@ func New(mod *compiler.Module) *VM {
 		Env:     env,
 	}
 	maincl := object.NewClosure(mainfn, nil, env, cmpmod)
-	mframe := NewFrame(maincl, 0)
 	frames := make([]*Frame, MaxFrames)
-	frames[0] = mframe
 
 	files := make(map[string]*object.File)
 	files[STDOUT] = object.NewFile(os.Stdout, STDOUT)
 	files[STDERR] = object.NewFile(os.Stderr, STDERR)
 
-	return &VM{
+	vm := &VM{
 		stack: make([]object.Object, StackSize),
 		sp:    0,
 
@@ -122,6 +122,15 @@ func New(mod *compiler.Module) *VM {
 
 		files: files,
 	}
+	vm.framePool = make([]*Frame, 0, MaxFrames)
+	for range MaxFrames {
+		vm.framePool = append(vm.framePool, &Frame{})
+	}
+
+	mframe := vm.newPooledFrame(maincl, 0)
+	vm.frames[0] = mframe
+	vm.currentFrame = mframe
+	return vm
 }
 
 func (vm *VM) Shutdown() {
@@ -148,22 +157,23 @@ func (vm *VM) Run() (exit_err error) {
 	var ip int
 	var instrs code.Instructions
 	var op code.OpCode
+	var env *object.Environment
 	defer func() {
 		if exit_err != nil && vm.lastAnchor != nil {
 			exit_err = fmt.Errorf("%s (at %s:%d)", exit_err.Error(), vm.lastAnchor.path, vm.lastAnchor.line)
 		}
 	}()
 
-	for vm.currentFrame().ip < len(vm.currentFrame().Instructions())-1 {
-		vm.currentFrame().ip++
+	for vm.currentFrame.ip < len(vm.currentFrame.Instructions())-1 {
+		vm.currentFrame.ip++
 
-		ip = vm.currentFrame().ip
-		instrs = vm.currentFrame().Instructions()
-		env := vm.currentFrame().cl.Env
+		ip = vm.currentFrame.ip
+		instrs = vm.currentFrame.Instructions()
+		env = vm.currentFrame.cl.Env
 		op = code.OpCode(instrs[ip])
 
 		if vm.opts.Debug > 1 {
-			fmt.Printf("Current frame:\n%s\n", code.PrintInstr(vm.currentFrame().Instructions()))
+			fmt.Printf("Current frame:\n%s\n", code.PrintInstr(instrs))
 			fmt.Printf("Curtrent instruction pointer: %d\n", ip)
 			fmt.Printf("VM is executing operation: %s (%d)\n", code.PrintOpCode(op), op)
 		}
@@ -171,13 +181,13 @@ func (vm *VM) Run() (exit_err error) {
 		switch op {
 		case code.OpConst:
 			ix := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame().ip += 2
+			vm.currentFrame.ip += 2
 			if err := vm.push(env.Consts[ix]); err != nil {
 				return err
 			}
 		case code.OpAdd:
 			argc := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame().ip += 2
+			vm.currentFrame.ip += 2
 			elem := vm.peek()
 			if elem == nil {
 				return errors.New("stack underflow")
@@ -251,7 +261,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 		case code.OpMul:
 			argc := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame().ip += 2
+			vm.currentFrame.ip += 2
 
 			elem := vm.peek()
 			switch elem.Type() {
@@ -341,7 +351,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 		case code.OpList:
 			size := int(code.ReadUint16(instrs[ip+1:]))
-			vm.currentFrame().ip += 2
+			vm.currentFrame.ip += 2
 			items := make([]object.Object, size)
 			for i := size - 1; i >= 0; i-- {
 				items[i] = vm.pop()
@@ -384,7 +394,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 		case code.OpAnd:
 			argc := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame().ip += 2
+			vm.currentFrame.ip += 2
 			val := true
 			for range int(argc) {
 				arg := vm.pop()
@@ -404,7 +414,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 		case code.OpOr:
 			argc := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame().ip += 2
+			vm.currentFrame.ip += 2
 			val := false
 			for range int(argc) {
 				arg := vm.pop()
@@ -438,39 +448,37 @@ func (vm *VM) Run() (exit_err error) {
 			vm.pop()
 		case code.OpJump:
 			pos := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame().ip = int(pos) - 1
+			vm.currentFrame.ip = int(pos) - 1
 		case code.OpJumpIfFalse:
 			pos := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame().ip += 2
+			vm.currentFrame.ip += 2
 			cond := vm.pop()
 			if cond.IsNull() || (cond.Type() == object.BoolType && !cond.(*object.Bool).Value) {
-				vm.currentFrame().ip = int(pos) - 1 // -1 because we will increment ip at the end of the loop
+				vm.currentFrame.ip = int(pos) - 1 // -1 because we will increment ip at the end of the loop
 			}
 		case code.OpSetGlobal:
 			gix := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame().ip += 2
+			vm.currentFrame.ip += 2
 			env.Globals[gix] = vm.pop()
 		case code.OpGetGlobal:
 			gix := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame().ip += 2
+			vm.currentFrame.ip += 2
 			if err := vm.push(env.Globals[gix]); err != nil {
 				return err
 			}
 		case code.OpSetLocal:
 			lix := code.ReadUint8(instrs[ip+1:])
-			vm.currentFrame().ip += 1
-			frame := vm.currentFrame()
-			vm.stack[frame.bptr+int(lix)] = vm.pop()
+			vm.currentFrame.ip += 1
+			vm.stack[vm.currentFrame.bptr+int(lix)] = vm.pop()
 		case code.OpGetLocal:
 			lix := code.ReadUint8(instrs[ip+1:])
-			vm.currentFrame().ip += 1
-			frame := vm.currentFrame()
-			if err := vm.push(vm.stack[frame.bptr+int(lix)]); err != nil {
+			vm.currentFrame.ip += 1
+			if err := vm.push(vm.stack[vm.currentFrame.bptr+int(lix)]); err != nil {
 				return err
 			}
 		case code.OpGetBuiltin:
 			bix := code.ReadUint8(instrs[ip+1:])
-			vm.currentFrame().ip += 1
+			vm.currentFrame.ip += 1
 			bltn, ok := object.GetBuiltinByIndex(int(bix))
 			if !ok {
 				return fmt.Errorf("builtin function with index %d not found", bix)
@@ -480,13 +488,13 @@ func (vm *VM) Run() (exit_err error) {
 			}
 		case code.OpCall:
 			argc := code.ReadUint8(instrs[ip+1:])
-			vm.currentFrame().ip += 1
+			vm.currentFrame.ip += 1
 			if err := vm.callFunction(int(argc)); err != nil {
 				return err
 			}
 		case code.OpTailCall:
 			argc := int(code.ReadUint8(instrs[ip+1:]))
-			vm.currentFrame().ip += 1
+			vm.currentFrame.ip += 1
 
 			fnobj := vm.stack[vm.sp-1-argc]
 			switch fn := fnobj.(type) {
@@ -495,12 +503,12 @@ func (vm *VM) Run() (exit_err error) {
 					return fmt.Errorf("Function %s expects %d arguments, got %d", fn.Fn.Name, len(fn.Fn.Args), argc)
 				}
 				for i := range argc {
-					vm.stack[vm.currentFrame().bptr+i] = vm.stack[vm.sp-argc+i]
+					vm.stack[vm.currentFrame.bptr+i] = vm.stack[vm.sp-argc+i]
 				}
 
-				vm.currentFrame().cl = fn
-				vm.currentFrame().ip = -1
-				vm.sp = vm.currentFrame().bptr + fn.Fn.NumLocals
+				vm.currentFrame.cl = fn
+				vm.currentFrame.ip = -1
+				vm.sp = vm.currentFrame.bptr + fn.Fn.NumLocals
 			case *object.BuiltinFunc:
 				args := make([]object.Object, argc)
 				for i := range argc {
@@ -528,9 +536,9 @@ func (vm *VM) Run() (exit_err error) {
 				if vm.opts.Debug > 0 {
 					msg += "\n\n" + fmt.Sprintf("Stack dump:\n%s\n\nClosure:\n  %s\n\nInstructions:\n%s\n\nInstruction pointer: %d\n\nStack trace:\n%s\n\nLocal vars: %s\n",
 						vm.PrintStack(),
-						vm.currentFrame().cl.String(),
-						code.PrintInstr(vm.currentFrame().Instructions()),
-						vm.currentFrame().ip,
+						vm.currentFrame.cl.String(),
+						code.PrintInstr(vm.currentFrame.Instructions()),
+						vm.currentFrame.ip,
 						vm.PrintStackTrace(),
 						vm.PrintLocalVariables(),
 					)
@@ -542,7 +550,7 @@ func (vm *VM) Run() (exit_err error) {
 			// Example: `((fn []))`: this execution should return null.
 			// check if there is anything new on the stack.
 			// If not, push null.
-			if vm.sp == vm.currentFrame().bptr {
+			if vm.sp == vm.currentFrame.bptr {
 				if err := vm.push(object.NULL); err != nil {
 					return err
 				}
@@ -559,34 +567,34 @@ func (vm *VM) Run() (exit_err error) {
 		case code.OpClosure:
 			cix := code.ReadUint16(instrs[ip+1:])
 			numfree := code.ReadUint8(instrs[ip+3:]) // number of free variables, not used currently
-			vm.currentFrame().ip += 3
+			vm.currentFrame.ip += 3
 			if err := vm.pushClosure(int(cix), int(numfree)); err != nil {
 				return err
 			}
 		case code.OpGetFree:
 			fix := code.ReadUint8(instrs[ip+1:])
-			vm.currentFrame().ip += 1
-			currentClosure := vm.currentFrame().cl
+			vm.currentFrame.ip += 1
+			currentClosure := vm.currentFrame.cl
 			if err := vm.push(currentClosure.Free[int(fix)]); err != nil {
 				return err
 			}
 		case code.OpCurrentClosure:
-			cur := vm.currentFrame().cl
+			cur := vm.currentFrame.cl
 			if err := vm.push(cur); err != nil {
 				return err
 			}
 		case code.OpSrcAnchor:
 			line := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame().ip += 2
-			vm.lastAnchor = &anchor{path: vm.currentFrame().cl.Module.Path, line: int(line)}
+			vm.currentFrame.ip += 2
+			vm.lastAnchor = &anchor{path: vm.currentFrame.cl.Module.Path, line: int(line)}
 			if vm.opts.Debug > 1 {
-				fmt.Printf("Source file: %s\n", vm.currentFrame().cl.Module.Path)
+				fmt.Printf("Source file: %s\n", vm.currentFrame.cl.Module.Path)
 				fmt.Printf("Executing line: %d\n", line)
 			}
 		case code.OpBreakpoint:
 			line := code.ReadUint16(instrs[ip+1:])
 			col := code.ReadUint16(instrs[ip+3:])
-			vm.currentFrame().ip += 4
+			vm.currentFrame.ip += 4
 			if vm.opts.Debug > 0 {
 				fmt.Printf("Breakpoint reached at: line: %d, column: %d\n", line, col)
 				runtime.Breakpoint()
@@ -596,11 +604,11 @@ func (vm *VM) Run() (exit_err error) {
 			return NewRuntimeError(errObj.String())
 		case code.OpLoadModule:
 			// Nothing at the moment: modules are loaded during compilation
-			vm.currentFrame().ip += 2
+			vm.currentFrame.ip += 2
 		case code.OpGetModule:
 			modix := code.ReadUint16(instrs[ip+1:])
 			globix := code.ReadUint16(instrs[ip+3:])
-			vm.currentFrame().ip += 4
+			vm.currentFrame.ip += 4
 			if err := vm.pushModuleSymbol(int(modix), int(globix)); err != nil {
 				return err
 			}
@@ -613,7 +621,7 @@ func (vm *VM) Run() (exit_err error) {
 }
 
 func (vm *VM) pushModuleSymbol(modix int, constix int) error {
-	mod := vm.currentFrame().cl.Env.Consts[modix]
+	mod := vm.currentFrame.cl.Env.Consts[modix]
 	modObj, ok := mod.(*object.Module)
 	if !ok {
 		return fmt.Errorf("constant at index %d is not a module", modix)
@@ -632,9 +640,7 @@ func (vm *VM) pushModuleSymbol(modix int, constix int) error {
 }
 
 func (vm *VM) pushClosure(cix int, numfree int) error {
-	env := vm.currentFrame().cl.Env
-	cnst := env.Consts[cix]
-	fn, ok := cnst.(*object.Function)
+	fn, ok := vm.currentFrame.cl.Env.Consts[cix].(*object.Function)
 	if !ok {
 		return fmt.Errorf("constant at index %d is not a function", cix)
 	}
@@ -643,7 +649,7 @@ func (vm *VM) pushClosure(cix int, numfree int) error {
 		free[i] = vm.stack[vm.sp-numfree+i]
 	}
 	vm.sp = vm.sp - numfree
-	closure := object.NewClosure(fn, free, vm.currentFrame().cl.Env, vm.currentFrame().cl.Module)
+	closure := object.NewClosure(fn, free, vm.currentFrame.cl.Env, vm.currentFrame.cl.Module)
 	return vm.push(closure)
 }
 
@@ -651,13 +657,12 @@ func (vm *VM) callFunction(argc int) error {
 	if vm.sp-1-argc < 0 {
 		runtime.Breakpoint()
 	}
-	fnobj := vm.stack[vm.sp-1-argc]
-	switch fn := fnobj.(type) {
+	switch fn := vm.stack[vm.sp-1-argc].(type) {
 	case *object.Closure:
 		if len(fn.Fn.Args) != argc {
 			return fmt.Errorf("Function %s expects %d arguments, got %d", fn.Fn.Name, len(fn.Fn.Args), argc)
 		}
-		frame := NewFrame(fn, vm.sp-argc)
+		frame := vm.newPooledFrame(fn, vm.sp-argc)
 		vm.pushFrame(frame)
 		vm.sp = frame.bptr + fn.Fn.NumLocals
 	case *object.BuiltinFunc:
@@ -720,10 +725,9 @@ func (vm *VM) PrintStackTrace() string {
 
 func (vm *VM) PrintLocalVariables() string {
 	var b strings.Builder
-	frame := vm.currentFrame()
 	b.WriteString("{\n")
-	for i := range frame.cl.Fn.NumLocals {
-		localVar := vm.stack[frame.bptr+i]
+	for i := range vm.currentFrame.cl.Fn.NumLocals {
+		localVar := vm.stack[vm.currentFrame.bptr+i]
 		b.WriteString(fmt.Sprintf("  %d: %s\n", i, localVar.String()))
 	}
 	b.WriteString("}")
@@ -731,12 +735,12 @@ func (vm *VM) PrintLocalVariables() string {
 }
 
 func (vm *VM) Env() *object.Environment {
-	return vm.currentFrame().cl.Env
+	return vm.currentFrame.cl.Env
 }
 
 // DEPRECATED: use Env().Consts instead
 func (vm *VM) Consts() []object.Object {
-	return vm.currentFrame().cl.Consts
+	return vm.currentFrame.cl.Consts
 }
 
 func (vm *VM) LastPopped() object.Object {
@@ -770,17 +774,39 @@ func (vm *VM) pop() object.Object {
 	return obj
 }
 
-func (vm *VM) currentFrame() *Frame {
-	return vm.frames[vm.framesix-1]
-}
-
 func (vm *VM) pushFrame(f *Frame) {
 	vm.frames[vm.framesix] = f
+	vm.currentFrame = f
 	vm.framesix++
 }
 func (vm *VM) popFrame() *Frame {
 	vm.framesix--
-	return vm.frames[vm.framesix]
+	frame := vm.frames[vm.framesix]
+	vm.frames[vm.framesix] = nil
+	vm.releaseFrame(frame)
+	vm.currentFrame = vm.frames[vm.framesix-1]
+	return frame
+}
+
+func (vm *VM) newPooledFrame(cl *object.Closure, bptr int) *Frame {
+	var frame *Frame
+	if len(vm.framePool) > 0 {
+		frame = vm.framePool[len(vm.framePool)-1]
+		vm.framePool = vm.framePool[:len(vm.framePool)-1]
+	} else {
+		// Fallback, though we hope this doesn't happen.
+		frame = &Frame{}
+	}
+
+	frame.cl = cl
+	frame.ip = -1
+	frame.bptr = bptr
+	return frame
+}
+
+func (vm *VM) releaseFrame(f *Frame) {
+	f.cl = nil // prevent memory leaks
+	vm.framePool = append(vm.framePool, f)
 }
 
 func castTypes(a, b object.Object, cmp code.OpCode) (object.Object, object.Object) {
