@@ -157,7 +157,7 @@ func init() {
 }
 
 func NewInteger(value int64) *Integer {
-	if value >= MaxIntCacheHalf && value < MaxIntCacheHalf {
+	if value >= -MaxIntCacheHalf && value < MaxIntCacheHalf {
 		return INT_OBJ_CACHE[value+MaxIntCacheHalf]
 	}
 	return &Integer{Value: value}
