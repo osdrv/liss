@@ -26,11 +26,24 @@ const (
 	ModuleType
 )
 
+// Cache integers in range -256 .. 255
+const MaxIntCacheHalf = 256
+
 var (
 	TRUE  = NewBool(true)
 	FALSE = NewBool(false)
 	NULL  = NewNull()
 )
+
+// Small int cache
+var INT_OBJ_CACHE = [MaxIntCacheHalf << 1]*Integer{}
+
+// Pre-populate integer cache with values: -MaxIntCacheHalf .. MaxIntCacheHalf-1
+func init() {
+	for i := int64(0); i < (MaxIntCacheHalf << 1); i++ {
+		INT_OBJ_CACHE[i] = &Integer{Value: i - MaxIntCacheHalf}
+	}
+}
 
 func (t ObjectType) String() string {
 	switch t {
@@ -144,17 +157,6 @@ type Integer struct {
 
 var _ Object = (*Integer)(nil)
 var _ Numeric = (*Integer)(nil)
-
-const MaxIntCacheHalf = 256
-
-var INT_OBJ_CACHE = [MaxIntCacheHalf << 1]*Integer{}
-
-// Pre-populate integer cache with values: -MaxIntCacheHalf .. MaxIntCacheHalf-1
-func init() {
-	for i := int64(0); i < (MaxIntCacheHalf << 1); i++ {
-		INT_OBJ_CACHE[i] = &Integer{Value: i - MaxIntCacheHalf}
-	}
-}
 
 func NewInteger(value int64) *Integer {
 	if value >= -MaxIntCacheHalf && value < MaxIntCacheHalf {

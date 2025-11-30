@@ -154,7 +154,7 @@ func (vm *VM) Shutdown() {
 			f.Close()
 		}
 	}
-	if vm.opts.Debug > 0 {
+	if vm.opts.Debug > 1 {
 		fmt.Printf("VM Metrics:\n")
 		fmt.Printf("  Number of instructions executed: %d\n", vm.metrics.NumInstructionsExecuted)
 		fmt.Printf("  Number of builtin function calls: %d\n", vm.metrics.NumBuiltinCalls)
