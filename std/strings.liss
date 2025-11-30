@@ -81,7 +81,7 @@
         null
         (
             (let _res (_next [] 0 0))
-            (list:reduce _res (fn [acc chunk] (list:push acc (join chunk "")) ) [])
+            (list:reduce _res (fn [acc chunk] (list:push acc chunk) ) [])
         )
     )
 )
