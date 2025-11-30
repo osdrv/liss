@@ -1,4 +1,4 @@
-.PHONY: all build run test bench clean
+.PHONY: all build run test bench clean watch-test
 
 BINARY_NAME=liss
 
@@ -32,3 +32,8 @@ test-std:
 	@echo "Running Liss standard library tests..."
 	./${BINARY_NAME} -src ./std/list_test.liss
 	./${BINARY_NAME} -src ./std/strings_test.liss
+
+# Example: make watch-test FILE=vm/vm.go
+watch-test:
+	@echo "Watching $(FILE) for changes and running tests..."
+	fswatch -o $(FILE) | xargs -n1 -I{} make test
