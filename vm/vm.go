@@ -158,6 +158,11 @@ func (vm *VM) Run() (exit_err error) {
 	var instrs code.Instructions
 	var op code.OpCode
 	var env *object.Environment
+
+	// Avoid allocating these variables on each iteration
+	var ix, argc uint16
+	var elem, a, b object.Object
+
 	defer func() {
 		if exit_err != nil && vm.lastAnchor != nil {
 			exit_err = fmt.Errorf("%s (at %s:%d)", exit_err.Error(), vm.lastAnchor.path, vm.lastAnchor.line)
@@ -180,15 +185,15 @@ func (vm *VM) Run() (exit_err error) {
 
 		switch op {
 		case code.OpConst:
-			ix := code.ReadUint16(instrs[ip+1:])
+			ix = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
 			if err := vm.push(env.Consts[ix]); err != nil {
 				return err
 			}
 		case code.OpAdd:
-			argc := code.ReadUint16(instrs[ip+1:])
+			argc = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
-			elem := vm.peek()
+			elem = vm.peek()
 			if elem == nil {
 				return errors.New("stack underflow")
 			}
@@ -213,11 +218,11 @@ func (vm *VM) Run() (exit_err error) {
 				var b strings.Builder
 				strs := make([]*object.String, 0, argc)
 				for range argc {
-					obj := vm.pop()
-					if obj.Type() != object.StringType {
+					elem := vm.pop()
+					if elem.Type() != object.StringType {
 						return errors.New("all arguments for string concatenation must be strings")
 					}
-					str := obj.(*object.String)
+					str := elem.(*object.String)
 					strs = append(strs, str)
 				}
 				for i := len(strs) - 1; i >= 0; i-- {
@@ -229,11 +234,11 @@ func (vm *VM) Run() (exit_err error) {
 			case object.ListType:
 				items := make([]object.Object, 0)
 				for range argc {
-					obj := vm.pop()
-					if obj.Type() != object.ListType {
+					elem := vm.pop()
+					if elem.Type() != object.ListType {
 						return errors.New("all arguments for list addition must be lists")
 					}
-					listObj := obj.(*object.List)
+					listObj := elem.(*object.List)
 					items = append(listObj.Items(), items...)
 				}
 				newList := object.NewList(items)
@@ -245,8 +250,8 @@ func (vm *VM) Run() (exit_err error) {
 				return errors.New("invalid type for addition")
 			}
 		case code.OpSub:
-			b := vm.pop()
-			a := vm.pop()
+			b = vm.pop()
+			a = vm.pop()
 			var res object.Object
 			if a.Type() == object.IntegerType && b.Type() == object.IntegerType {
 				sub := a.(object.Numeric).Int64() - b.(object.Numeric).Int64()
@@ -260,7 +265,7 @@ func (vm *VM) Run() (exit_err error) {
 				return err
 			}
 		case code.OpMul:
-			argc := code.ReadUint16(instrs[ip+1:])
+			argc = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
 
 			elem := vm.peek()
@@ -321,8 +326,8 @@ func (vm *VM) Run() (exit_err error) {
 				}
 			}
 		case code.OpDiv:
-			b := vm.pop()
-			a := vm.pop()
+			b = vm.pop()
+			a = vm.pop()
 			var res object.Object
 			if a.Type() == object.IntegerType && b.Type() == object.IntegerType {
 				if b.(*object.Integer).Value == 0 {
@@ -339,8 +344,8 @@ func (vm *VM) Run() (exit_err error) {
 				return err
 			}
 		case code.OpMod:
-			b := vm.pop()
-			a := vm.pop()
+			b = vm.pop()
+			a = vm.pop()
 			if a.Type() != object.IntegerType || b.Type() != object.IntegerType {
 				return NewTypeMismatchError(
 					fmt.Sprintf("expected integer types for modulo operation, got %s and %s", a.Type().String(), b.Type().String()))
@@ -366,8 +371,8 @@ func (vm *VM) Run() (exit_err error) {
 			code.OpGreaterEqual,
 			code.OpLessThan,
 			code.OpLessEqual:
-			b := vm.pop()
-			a := vm.pop()
+			b = vm.pop()
+			a = vm.pop()
 			cmp, err := compare(a, b, op)
 			if err != nil {
 				return err
@@ -380,7 +385,7 @@ func (vm *VM) Run() (exit_err error) {
 				return err
 			}
 		case code.OpNot:
-			a := vm.pop()
+			a = vm.pop()
 			if a.Type() != object.BoolType {
 				return NewTypeMismatchError(
 					fmt.Sprintf("expected boolean type, got %s", a.Type().String()))
@@ -393,17 +398,17 @@ func (vm *VM) Run() (exit_err error) {
 				return err
 			}
 		case code.OpAnd:
-			argc := code.ReadUint16(instrs[ip+1:])
+			argc = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
 			val := true
 			for range int(argc) {
-				arg := vm.pop()
-				if arg.Type() != object.BoolType {
+				elem = vm.pop()
+				if elem.Type() != object.BoolType {
 					return NewTypeMismatchError(
-						fmt.Sprintf("expected boolean type, got %s", arg.Type().String()),
+						fmt.Sprintf("expected boolean type, got %s", elem.Type().String()),
 					)
 				}
-				val = val && arg.(*object.Bool).Value
+				val = val && elem.(*object.Bool).Value
 			}
 			pval := object.FALSE
 			if val {
@@ -413,17 +418,17 @@ func (vm *VM) Run() (exit_err error) {
 				return err
 			}
 		case code.OpOr:
-			argc := code.ReadUint16(instrs[ip+1:])
+			argc = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
 			val := false
 			for range int(argc) {
-				arg := vm.pop()
-				if arg.Type() != object.BoolType {
+				elem = vm.pop()
+				if elem.Type() != object.BoolType {
 					return NewTypeMismatchError(
-						fmt.Sprintf("expected boolean type, got %s", arg.Type().String()),
+						fmt.Sprintf("expected boolean type, got %s", elem.Type().String()),
 					)
 				}
-				val = val || arg.(*object.Bool).Value
+				val = val || elem.(*object.Bool).Value
 			}
 			pval := object.FALSE
 			if val {
@@ -447,23 +452,23 @@ func (vm *VM) Run() (exit_err error) {
 		case code.OpPop:
 			vm.pop()
 		case code.OpJump:
-			pos := code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame.ip = int(pos) - 1
+			ix = code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame.ip = int(ix) - 1
 		case code.OpJumpIfFalse:
-			pos := code.ReadUint16(instrs[ip+1:])
+			ix = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
-			cond := vm.pop()
-			if cond.IsNull() || (cond.Type() == object.BoolType && !cond.(*object.Bool).Value) {
-				vm.currentFrame.ip = int(pos) - 1 // -1 because we will increment ip at the end of the loop
+			elem := vm.pop()
+			if elem.IsNull() || (elem.Type() == object.BoolType && !elem.(*object.Bool).Value) {
+				vm.currentFrame.ip = int(ix) - 1 // -1 because we will increment ip at the end of the loop
 			}
 		case code.OpSetGlobal:
-			gix := code.ReadUint16(instrs[ip+1:])
+			ix = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
-			env.Globals[gix] = vm.pop()
+			env.Globals[ix] = vm.pop()
 		case code.OpGetGlobal:
-			gix := code.ReadUint16(instrs[ip+1:])
+			ix = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
-			if err := vm.push(env.Globals[gix]); err != nil {
+			if err := vm.push(env.Globals[ix]); err != nil {
 				return err
 			}
 		case code.OpSetLocal:
@@ -495,9 +500,7 @@ func (vm *VM) Run() (exit_err error) {
 		case code.OpTailCall:
 			argc := int(code.ReadUint8(instrs[ip+1:]))
 			vm.currentFrame.ip += 1
-
-			fnobj := vm.stack[vm.sp-1-argc]
-			switch fn := fnobj.(type) {
+			switch fn := vm.stack[vm.sp-1-argc].(type) {
 			case *object.Closure:
 				if len(fn.Fn.Args) != argc {
 					return fmt.Errorf("Function %s expects %d arguments, got %d", fn.Fn.Name, len(fn.Fn.Args), argc)
@@ -505,7 +508,6 @@ func (vm *VM) Run() (exit_err error) {
 				for i := range argc {
 					vm.stack[vm.currentFrame.bptr+i] = vm.stack[vm.sp-argc+i]
 				}
-
 				vm.currentFrame.cl = fn
 				vm.currentFrame.ip = -1
 				vm.sp = vm.currentFrame.bptr + fn.Fn.NumLocals
@@ -555,20 +557,20 @@ func (vm *VM) Run() (exit_err error) {
 					return err
 				}
 			}
-			ret := vm.pop()
+			elem := vm.pop()
 			frame := vm.popFrame()
 			for i := vm.sp; i >= frame.bptr; i-- {
 				vm.stack[i] = nil
 			}
 			vm.sp = frame.bptr - 1
-			if err := vm.push(ret); err != nil {
+			if err := vm.push(elem); err != nil {
 				return err
 			}
 		case code.OpClosure:
-			cix := code.ReadUint16(instrs[ip+1:])
+			ix = code.ReadUint16(instrs[ip+1:])
 			numfree := code.ReadUint8(instrs[ip+3:]) // number of free variables, not used currently
 			vm.currentFrame.ip += 3
-			if err := vm.pushClosure(int(cix), int(numfree)); err != nil {
+			if err := vm.pushClosure(int(ix), int(numfree)); err != nil {
 				return err
 			}
 		case code.OpGetFree:
@@ -584,12 +586,12 @@ func (vm *VM) Run() (exit_err error) {
 				return err
 			}
 		case code.OpSrcAnchor:
-			line := code.ReadUint16(instrs[ip+1:])
+			ix = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
-			vm.lastAnchor = &anchor{path: vm.currentFrame.cl.Module.Path, line: int(line)}
+			vm.lastAnchor = &anchor{path: vm.currentFrame.cl.Module.Path, line: int(ix)}
 			if vm.opts.Debug > 1 {
 				fmt.Printf("Source file: %s\n", vm.currentFrame.cl.Module.Path)
-				fmt.Printf("Executing line: %d\n", line)
+				fmt.Printf("Executing line: %d\n", ix)
 			}
 		case code.OpBreakpoint:
 			line := code.ReadUint16(instrs[ip+1:])
