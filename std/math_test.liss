@@ -1,0 +1,54 @@
+(import "assert")
+(import "list" ["map"])
+(import "math")
+
+((fn test_math_ceil []
+    (let tests [
+        (dict ["name" "ceil of 0"] ["input" 0] ["want" 0])
+        (dict ["name" "ceil of 0.0"] ["input" 0.0] ["want" 0])
+        (dict ["name" "ceil of 1.2"] ["input" 1.2] ["want" 2])
+        (dict ["name" "ceil of -1"] ["input" -1] ["want" -1])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let n (get test "input"))
+        (let got (math:ceil n))
+        (assert:equal got (get test "want"))
+        (println ": OK")
+    ))
+))
+
+((fn test_math_floor []
+    (let tests [
+        (dict ["name" "floor of 0"] ["input" 0] ["want" 0])
+        (dict ["name" "floor of 0.0"] ["input" 0.0] ["want" 0])
+        (dict ["name" "floor of 1.8"] ["input" 1.8] ["want" 1])
+        (dict ["name" "floor of -1"] ["input" -1] ["want" -1])
+        (dict ["name" "floor of -1.2"] ["input" -1.2] ["want" -2])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let n (get test "input"))
+        (let got (math:floor n))
+        (assert:equal got (get test "want"))
+        (println ": OK")
+    ))
+))
+
+((fn test_math_round []
+    (let tests [
+        (dict ["name" "round of 0"] ["input" 0] ["want" 0])
+        (dict ["name" "round of 0.0"] ["input" 0.0] ["want" 0])
+        (dict ["name" "round of 1.2"] ["input" 1.2] ["want" 1])
+        (dict ["name" "round of 1.5"] ["input" 1.5] ["want" 2])
+        (dict ["name" "round of -1.2"] ["input" -1.2] ["want" -1])
+        (dict ["name" "round of -1.5"] ["input" -1.5] ["want" -1])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let n (get test "input"))
+        (let got (math:round n))
+        (assert:equal got (get test "want"))
+        (println ": OK")
+    ))
+))

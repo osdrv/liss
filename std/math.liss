@@ -21,3 +21,31 @@
         b
     )
 )
+
+(fn ceil [n]
+    (let inum (int n))
+    (cond (= n inum)
+        inum
+        (+ inum 1)
+    )
+)
+
+(fn floor [n]
+    (let inum (int n))
+    (cond (= n inum)
+        inum
+        (cond (> n 0)
+            inum
+            (- inum 1)
+        )
+    )
+)
+
+(fn round [n]
+    (let fpart (- n (floor n)))
+    (let ipart (floor n))
+    (cond (>= fpart 0.5)
+        (+ ipart 1)
+        ipart
+    )
+)

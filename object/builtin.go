@@ -93,6 +93,7 @@ func init() {
 		NewBuiltinFunc("last", 1, false, builtinLast),
 		NewBuiltinFunc("tail", 1, false, builtinTail),
 		NewBuiltinFunc("str", 1, false, builtinStr),
+		NewBuiltinFunc("int", 1, false, builtinInt),
 
 		NewBuiltinFunc("list", 0, true, builtinList),
 		NewBuiltinFunc("range", 3, false, builtinRange),
@@ -195,6 +196,19 @@ func builtinIsNull(args []Object) (Object, error) {
 func builtinStr(args []Object) (Object, error) {
 	a := args[0]
 	return &String{Value: []rune(a.String())}, nil
+}
+
+func builtinInt(args []Object) (Object, error) {
+	a := args[0]
+	switch a.Type() {
+	case IntegerType:
+		return a, nil
+	case FloatType:
+		v := a.(*Float).Value
+		return NewInteger(int64(v)), nil
+	default:
+		return nil, fmt.Errorf("cannot convert %s to int", a.String())
+	}
 }
 
 func builtinHead(args []Object) (Object, error) {
