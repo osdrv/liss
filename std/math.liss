@@ -1,6 +1,7 @@
 (let PI 3.141592653589793)
 (let E 2.718281828459045)
 
+; `abs` returns the absolute value of `n`
 (fn abs [n]
     (cond (< n 0)
         (- 0 n)
@@ -8,6 +9,7 @@
     )
 )
 
+; `min` returns the smaller of `a` and `b`
 (fn min [a b]
     (cond (< a b)
         a
@@ -15,6 +17,7 @@
     )
 )
 
+; `max` returns the larger of `a` and `b`
 (fn max [a b]
     (cond (> a b)
         a
@@ -22,6 +25,7 @@
     )
 )
 
+; `ceil` returns the smallest integer greater than or equal to `n`
 (fn ceil [n]
     (let inum (int n))
     (cond (= n inum)
@@ -30,6 +34,7 @@
     )
 )
 
+; `floor` returns the largest integer less than or equal to `n`
 (fn floor [n]
     (let inum (int n))
     (cond (= n inum)
@@ -41,6 +46,7 @@
     )
 )
 
+; `round` returns the nearest integer to `n`
 (fn round [n]
     (let fpart (- n (floor n)))
     (let ipart (floor n))
