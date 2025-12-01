@@ -266,13 +266,6 @@ func main() {
 		fmt.Printf("Runtime flags: %+v\n", opts)
 	}
 
-	f, err := os.Create("cpu_profile.prof")
-	if err != nil {
-		fmt.Fprintf(er, "Error creating CPU profile file: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
 	loader := module_loader.New(exp, module_loader.Options{})
 
 	if *exec != "" {
@@ -290,6 +283,12 @@ func main() {
 	}
 
 	if *prof {
+		f, err := os.Create("cpu_profile.prof")
+		if err != nil {
+			fmt.Fprintf(er, "Error creating CPU profile file: %v\n", err)
+			os.Exit(1)
+		}
+		defer f.Close()
 		if err := pprof.StartCPUProfile(f); err != nil {
 			fmt.Fprintf(er, "Error starting CPU profile: %v\n", err)
 			os.Exit(1)
