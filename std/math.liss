@@ -55,3 +55,8 @@
         ipart
     )
 )
+
+; `rem` returns the remainder of `n` divided by `d`
+(fn rem [n d]
+    (- n (* d (floor (/ n d))))
+)

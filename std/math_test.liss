@@ -52,3 +52,20 @@
         (println ": OK")
     ))
 ))
+
+((fn test_math_rem []
+    (let tests [
+        (dict ["name" "rem of 5 % 2"] ["n" 5] ["d" 2] ["want" 1])
+        (dict ["name" "rem of 5.5 % 2"] ["n" 5.5] ["d" 2] ["want" 1.5])
+        (dict ["name" "rem of -5 % 2"] ["n" -5] ["d" 2] ["want" -1])
+        (dict ["name" "rem of 5 % -2"] ["n" 5] ["d" -2] ["want" 1])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let n (get test "n"))
+        (let d (get test "d"))
+        (let got (math:rem n d))
+        (assert:equal got (get test "want"))
+        (println ": OK")
+    ))
+))
