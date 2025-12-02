@@ -368,6 +368,15 @@ func (d *Dictionary) Keys() []Object {
 
 func (d *Dictionary) Values() []Object {
 	values := make([]Object, 0, d.len)
+	if d.oldItems != nil {
+		for _, kv := range d.oldItems {
+			ptr := kv
+			for ptr != nil {
+				values = append(values, ptr.Value)
+				ptr = ptr.next
+			}
+		}
+	}
 	for _, kv := range d.items {
 		ptr := kv
 		for ptr != nil {
