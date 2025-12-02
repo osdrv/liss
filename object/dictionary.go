@@ -298,11 +298,16 @@ func NewDictionaryWithItems(items []Object) (*Dictionary, error) {
 
 func (d *Dictionary) Raw() any {
 	m := make(map[any]any)
-	for _, kv := range d.items {
-		ptr := kv
-		for ptr != nil {
-			m[ptr.Key.Raw()] = ptr.Value.Raw()
-			ptr = ptr.next
+	for _, src := range [][]*KeyValue{d.oldItems, d.items} {
+		if src == nil {
+			continue
+		}
+		for _, kv := range src {
+			ptr := kv
+			for ptr != nil {
+				m[ptr.Key.Raw()] = ptr.Value.Raw()
+				ptr = ptr.next
+			}
 		}
 	}
 	return m
@@ -317,15 +322,20 @@ func (d *Dictionary) String() string {
 	var b bytes.Buffer
 	b.WriteString("(dict")
 
-	for _, kv := range d.items {
-		ptr := kv
-		for ptr != nil {
-			b.WriteString(" [")
-			b.WriteString(ptr.Key.String())
-			b.WriteByte(' ')
-			b.WriteString(ptr.Value.String())
-			b.WriteByte(']')
-			ptr = ptr.next
+	for _, src := range [][]*KeyValue{d.oldItems, d.items} {
+		if src == nil {
+			continue
+		}
+		for _, kv := range src {
+			ptr := kv
+			for ptr != nil {
+				b.WriteString(" [")
+				b.WriteString(ptr.Key.String())
+				b.WriteByte(' ')
+				b.WriteString(ptr.Value.String())
+				b.WriteByte(']')
+				ptr = ptr.next
+			}
 		}
 	}
 
@@ -347,8 +357,11 @@ func (d *Dictionary) IsLenable() bool {
 
 func (d *Dictionary) Keys() []Object {
 	keys := make([]Object, 0, d.len)
-	if d.oldItems != nil {
-		for _, kv := range d.oldItems {
+	for _, src := range [][]*KeyValue{d.oldItems, d.items} {
+		if src == nil {
+			continue
+		}
+		for _, kv := range src {
 			ptr := kv
 			for ptr != nil {
 				keys = append(keys, ptr.Key)
@@ -356,32 +369,22 @@ func (d *Dictionary) Keys() []Object {
 			}
 		}
 	}
-	for _, kv := range d.items {
-		ptr := kv
-		for ptr != nil {
-			keys = append(keys, ptr.Key)
-			ptr = ptr.next
-		}
-	}
+
 	return keys
 }
 
 func (d *Dictionary) Values() []Object {
 	values := make([]Object, 0, d.len)
-	if d.oldItems != nil {
-		for _, kv := range d.oldItems {
+	for _, src := range [][]*KeyValue{d.oldItems, d.items} {
+		if src == nil {
+			continue
+		}
+		for _, kv := range src {
 			ptr := kv
 			for ptr != nil {
 				values = append(values, ptr.Value)
 				ptr = ptr.next
 			}
-		}
-	}
-	for _, kv := range d.items {
-		ptr := kv
-		for ptr != nil {
-			values = append(values, ptr.Value)
-			ptr = ptr.next
 		}
 	}
 	return values
