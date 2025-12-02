@@ -167,3 +167,21 @@
         (println ": OK")
     ))
 ))
+
+((fn test_strings_trim_left []
+    (let tests [
+        (dict ["name" "trim_left no chars"] ["s" "  hello  "] ["chars" ""] ["want" "  hello  "])
+        (dict ["name" "trim_left spaces"] ["s" "   hello  "] ["chars" " "] ["want" "hello  "])
+        (dict ["name" "trim_left multiple chars"] ["s" "---***hello***---"] ["chars" "-*"] ["want" "hello***---"])
+        (dict ["name" "trim_left all chars"] ["s" "aaaaaa"] ["chars" "a"] ["want" ""])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let s (get test "s"))
+        (let chars (get test "chars"))
+        (let want (get test "want"))
+        (let got (strings:trim_left s chars))
+        (assert:equal got want)
+        (println ": OK")
+    ))
+))

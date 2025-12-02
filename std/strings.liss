@@ -152,3 +152,25 @@
         (raise! "trim_suffix: both arguments must be strings")
     )
 )
+
+(fn trim_left [s chs]
+    (cond (or (is_null? s) (is_empty? s) (is_null? chs) (is_empty? chs))
+        s
+        (
+            (let chmp (list:reduce chs (fn [acc ch]
+                (put acc ch null)
+                acc
+            ) (dict)))
+            (fn _next [ix]
+                (cond (>= ix (len s))
+                    ""
+                    (cond (has? chmp (get s ix))
+                        (_next (+ ix 1))
+                        (builtin:range s ix (len s))
+                    )
+                )
+            )
+            (_next 0)
+        )
+    )
+)
