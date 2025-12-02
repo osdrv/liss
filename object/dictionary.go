@@ -347,6 +347,15 @@ func (d *Dictionary) IsLenable() bool {
 
 func (d *Dictionary) Keys() []Object {
 	keys := make([]Object, 0, d.len)
+	if d.oldItems != nil {
+		for _, kv := range d.oldItems {
+			ptr := kv
+			for ptr != nil {
+				keys = append(keys, ptr.Key)
+				ptr = ptr.next
+			}
+		}
+	}
 	for _, kv := range d.items {
 		ptr := kv
 		for ptr != nil {
