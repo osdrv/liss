@@ -111,7 +111,7 @@
     (let _keys (keys a))
     (cond (is_null? a)
         true
-        (cond (list_equal _keys (keys b))
+        (cond (= (len _keys) (len (keys b)))
             (_next _keys 0)
             (raise! msg)
         )

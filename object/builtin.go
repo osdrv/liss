@@ -7,6 +7,7 @@ import (
 	"os"
 	"osdrv/liss/regexp"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -123,6 +124,10 @@ func init() {
 		NewBuiltinFunc("is_int?", 1, false, builtinIsInt),
 		NewBuiltinFunc("is_float?", 1, false, builtinIsFloat),
 		NewBuiltinFunc("is_bool?", 1, false, builtinIsBool),
+
+		// TODO: this is cheating. Go implement your own parsing primitives, Oleg!
+		NewBuiltinFunc("parse_int", 1, false, builtinParseInt),
+		NewBuiltinFunc("parse_float", 1, false, builtinParseFloat),
 	}
 
 	for ix, b := range builtins {
@@ -660,4 +665,30 @@ func builtinIsFloat(args []Object) (Object, error) {
 func builtinIsBool(args []Object) (Object, error) {
 	v := args[0]
 	return &Bool{Value: v.IsBool()}, nil
+}
+
+func builtinParseInt(args []Object) (Object, error) {
+	v := args[0]
+	if !v.IsString() {
+		return nil, fmt.Errorf("parse_int: expected string as argument, got %s", v.String())
+	}
+	str := string(v.(*String).Value)
+	intv, err := strconv.ParseInt(str, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	return NewInteger(intv), nil
+}
+
+func builtinParseFloat(args []Object) (Object, error) {
+	v := args[0]
+	if !v.IsString() {
+		return nil, fmt.Errorf("parse_float: expected string as argument, got %s", v.String())
+	}
+	str := string(v.(*String).Value)
+	floatv, err := strconv.ParseFloat(str, 64)
+	if err != nil {
+		return nil, err
+	}
+	return NewFloat(floatv), nil
 }

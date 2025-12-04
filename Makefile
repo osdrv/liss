@@ -33,6 +33,7 @@ test-std:
 	./${BINARY_NAME} -src ./std/list_test.liss
 	./${BINARY_NAME} -src ./std/strings_test.liss
 	./${BINARY_NAME} -src ./std/math_test.liss
+	./${BINARY_NAME} -src ./std/json_test.liss
 
 # Example: make watch-test FILE=vm/vm.go
 watch-test:

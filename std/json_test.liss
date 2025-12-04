@@ -1,0 +1,32 @@
+(import "assert")
+(import "json")
+(import "list" ["map"])
+
+((fn test_json_parse []
+    (let tests [
+        (dict ["name" "null value"] ["input" "null"] ["want" null])
+        (dict ["name" "boolean true"] ["input" "true"] ["want" true])
+        (dict ["name" "boolean false"] ["input" "false"] ["want" false])
+        (dict ["name" "simple string"] ["input" "\"hello\""] ["want" "hello"])
+        (dict ["name" "simple integer number"] ["input" "123"] ["want" 123])
+        (dict ["name" "simple float number"] ["input" "3.14"] ["want" 3.14])
+        (dict ["name" "negative integer"] ["input" "-42"] ["want" -42])
+        (dict ["name" "negative float"] ["input" "-0.001"] ["want" -0.001])
+        (dict ["name" "array with various primitives"]
+              ["input" "[null, \"foo\", 123, 456.789, true, false]"]
+              ["want" [null "foo" 123 456.789 true false]]
+        )
+        (dict ["name" "object with various keys"]
+              ["input" "{\"foo\": \"bar\", 123: 456, true: false, -1.23: 4.56}"]
+              ["want" (dict ["foo" "bar"] [123 456] [true false] [-1.23 4.56])]
+        )
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let want (get test "want"))
+        (let got (json:parse input))
+        (assert:deep_equal got want)
+        (println ": OK")
+    ))
+))
