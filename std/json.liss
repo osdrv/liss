@@ -248,12 +248,15 @@
             [(= (get S p1) "f") (_read_lexeme S p1 TOK_FALSE false)]
             [(= (get S p1) "\"") (_read_str S p1)]
             [(_is_numeric? S p1) (_read_number S p1)]
-            [* (raise! "not implemented")]
+            [* (raise! (fmt_err "Unexpected token" ptr))]
         )
     )
 )
 
-(fn parse [str]
-    (let ret (_parse_next str 0))
-    (head ret)
+(fn parse [S]
+    (let ret (_parse_next S 0))
+    (cond (= (last ret) (len S))
+        (head ret)
+        (raise! (+ "Unexpected trailing characters after pos: " (str (last ret))))
+    )
 )
