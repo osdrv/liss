@@ -163,6 +163,7 @@
             ) (dict)))
             (fn _next [ix]
                 (cond (>= ix (len s))
+
                     ""
                     (cond (has? chmp (get s ix))
                         (_next (+ ix 1))
@@ -171,6 +172,28 @@
                 )
             )
             (_next 0)
+        )
+    )
+)
+
+(fn trim_right [s chs]
+    (cond (or (is_null? s) (is_empty? s) (is_null? chs) (is_empty? chs))
+        s
+        (
+            (let chmp (list:reduce chs (fn [acc ch]
+                (put acc ch null)
+                acc
+            ) (dict)))
+            (fn _next [ix]
+                (cond (< ix 0)
+                    ""
+                    (cond (has? chmp (get s ix))
+                        (_next (- ix 1))
+                        (builtin:range s 0 (+ ix 1))
+                    )
+                )
+            )
+            (_next (- (len s) 1))
         )
     )
 )

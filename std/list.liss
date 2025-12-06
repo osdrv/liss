@@ -350,3 +350,19 @@
         )
     )
 )
+
+(fn seq [a b]
+    (fn _next [acc ix]
+        (cond (> ix b)
+            acc
+            (
+                (let _acc (push acc ix))
+                (_next _acc (+ ix 1))
+            )
+        )
+    )
+    (cond (> a b)
+        []
+        (_next [] a)
+    )
+)

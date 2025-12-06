@@ -281,6 +281,23 @@
     ))
 ))
 
+((fn test_string_seq []
+    (let tests [
+        (dict ["name" "seq a to b"] ["a" 3] ["b" 7] ["want" [3 4 5 6 7]])
+        (dict ["name" "seq a equals b"] ["a" 5] ["b" 5] ["want" [5]])
+        (dict ["name" "seq a greater than b"] ["a" 8] ["b" 4] ["want" []])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let a (get test "a"))
+        (let b (get test "b"))
+        (let want (get test "want"))
+        (let got (list:seq a b))
+        (assert:deep_equal got want)
+        (println ": OK")
+    ))
+))
+
 ((fn benchmark_list_sort []
     (print "Benchmarking list:sort ... ")
     (let vec (_mk_rand_vec 1000))
