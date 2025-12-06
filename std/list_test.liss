@@ -283,8 +283,8 @@
 
 ((fn test_string_seq []
     (let tests [
-        (dict ["name" "seq a to b"] ["a" 3] ["b" 7] ["want" [3 4 5 6 7]])
-        (dict ["name" "seq a equals b"] ["a" 5] ["b" 5] ["want" [5]])
+        (dict ["name" "seq a to b"] ["a" 3] ["b" 7] ["want" [3 4 5 6]])
+        (dict ["name" "seq a equals b"] ["a" 5] ["b" 5] ["want" []])
         (dict ["name" "seq a greater than b"] ["a" 8] ["b" 4] ["want" []])
     ])
     (list:map tests (fn [test]

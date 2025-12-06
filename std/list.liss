@@ -351,9 +351,10 @@
     )
 )
 
+; `seq` generates an array of integers in the range [a, b)
 (fn seq [a b]
     (fn _next [acc ix]
-        (cond (> ix b)
+        (cond (>= ix b)
             acc
             (
                 (let _acc (push acc ix))
