@@ -344,7 +344,7 @@ func TestCompileModule(t *testing.T) {
 				require.NoError(t, err, "Failed to read module file: %s", path)
 				src = string(data)
 			}
-			mod, err := CompileAll(src, loader, repl.Options{})
+			mod, err := CompileAll(src, loader, repl.Options{}, map[string]*compiler.Module{})
 			if tt.wantErr != nil {
 				require.ErrorContains(t, err, tt.wantErr.Error())
 			} else {

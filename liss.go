@@ -46,7 +46,7 @@ func Run(mod *compiler.Module, opts repl.Options) (Result, error) {
 }
 
 // CompileAll compiles the given source code along with its imports using the provided module loader.
-func CompileAll(src string, loader module_loader.Loader, opts repl.Options) (*compiler.Module, error) {
+func CompileAll(src string, loader module_loader.Loader, opts repl.Options, cache map[string]*compiler.Module) (*compiler.Module, error) {
 	mod := compiler.NewModule(src, loader.DotPath())
 
 	lex := lexer.NewLexer(mod.Src)
@@ -73,30 +73,39 @@ func CompileAll(src string, loader module_loader.Loader, opts repl.Options) (*co
 	}
 
 	for alias, ie := range imports {
-		if opts.Debug {
-			fmt.Printf("Compiling imported module %s(%s)\n", ie.ref, alias)
-		}
-		// TODO: implement circular import detection
 		path, err := loader.Resolve(ie.ref)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve imported module %s: %w", ie.ref, err)
 		}
-		src, err := loader.Load(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load imported module %s: %w", ie.ref, err)
+		if _, ok := cache[path]; !ok {
+			if opts.Debug {
+				fmt.Printf("Compiling imported module %s(%s)\n", ie.ref, alias)
+			}
+			// TODO: implement circular import detection
+			src, err := loader.Load(path)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load imported module %s: %w", ie.ref, err)
+			}
+
+			loader.PushDotPath(path)
+			impmod, err := CompileAll(string(src), loader, opts, cache)
+			impmod.Path = path
+			if err != nil {
+				return nil, fmt.Errorf("failed to compile imported module %s: %w", ie.ref, err)
+			}
+			loader.PopDotPath()
+
+			if err := InstantiateModule(impmod); err != nil {
+				return nil, fmt.Errorf("failed to instantiate imported module %s: %w", impmod.Name, err)
+			}
+			cache[path] = impmod
+		} else {
+			if opts.Debug {
+				fmt.Printf("Importing cached module %s(%s)\n", ie.ref, alias)
+			}
 		}
 
-		loader.PushDotPath(path)
-		impmod, err := CompileAll(string(src), loader, opts)
-		impmod.Path = path
-		if err != nil {
-			return nil, fmt.Errorf("failed to compile imported module %s: %w", ie.ref, err)
-		}
-		loader.PopDotPath()
-
-		if err := InstantiateModule(impmod); err != nil {
-			return nil, fmt.Errorf("failed to instantiate imported module %s: %w", impmod.Name, err)
-		}
+		impmod := cache[path]
 		if _, err := c.ImportModule(alias, impmod, ie.symbols); err != nil {
 			return nil, fmt.Errorf("failed to import module %s: %w", impmod.Name, err)
 		}
@@ -171,7 +180,8 @@ func InstantiateModule(mod *compiler.Module) error {
 }
 
 func Execute(src string, loader module_loader.Loader, opts repl.Options) (Result, error) {
-	mod, err := CompileAll(src, loader, opts)
+	cache := make(map[string]*compiler.Module)
+	mod, err := CompileAll(src, loader, opts, cache)
 	if err != nil {
 		return nil, err
 	}
