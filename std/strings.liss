@@ -1,5 +1,6 @@
 (import "list" ["push" "range"])
 
+; `join` concatenates the string elements of `arr` using `delim` as the separator
 (fn join [arr delim]
     (list:reduce arr (fn [acc chunk]
         (cond (is_empty? acc)
@@ -9,6 +10,7 @@
     ) "")
 )
 
+; `match_all` returns all non-overlapping matches of the regex pattern `pat` in string `s`
 (fn match_all [pat s]
     (fn _collect [_s acc mtch ix]
         (cond (>= ix (len mtch))
@@ -36,6 +38,7 @@
     (_next [] 0)
 )
 
+; `reverse` returns a new string with the characters of `s` in reverse order
 (fn reverse [s]
     (fn _next [acc ix]
         (cond (< ix 0)
@@ -56,6 +59,7 @@
     )
 )
 
+; `split` splits the string `s` into a list of substrings separated by the delimiter `delim`
 ; TODO: FIXME: at the moment, delimiter can only be a single rune
 (fn split [s delim]
     (fn _next [acc start ix]
@@ -86,6 +90,8 @@
     )
 )
 
+; `atoi` converts a string of digits into its integer representation.
+; Throws an error if the string is empty or contains non-digit characters.
 (fn atoi [s]
     (cond (is_null? s)
         null
@@ -113,6 +119,7 @@
     )
 )
 
+; `has_prefix?` checks if the string `str` starts with the prefix `pref`
 (fn has_prefix? [str pref]
     (cond (and (is_string? str) (is_string? pref))
         (cond (< (len str) (len pref))
@@ -123,6 +130,7 @@
     )
 )
 
+; `has_suffix?` checks if the string `str` ends with the suffix `suff`
 (fn has_suffix? [str suff]
     (cond (and (is_string? str) (is_string? suff))
         (cond (< (len str) (len suff))
@@ -133,6 +141,7 @@
     )
 )
 
+; `trim_prefix` removes the prefix `pref` from the start of the string `str` if it exists
 (fn trim_prefix [str pref]
     (cond (and (is_string? str) (is_string? pref))
         (cond (has_prefix? str pref)
@@ -143,6 +152,7 @@
     )
 )
 
+; `trim_suffix` removes the suffix `suff` from the end of the string `str` if it exists
 (fn trim_suffix [str suff]
     (cond (and (is_string? str) (is_string? suff))
         (cond (has_suffix? str suff)
@@ -153,6 +163,7 @@
     )
 )
 
+; `trim_left` removes all leading characters in `chs` from the start of the string `s`
 (fn trim_left [s chs]
     (cond (or (is_null? s) (is_empty? s) (is_null? chs) (is_empty? chs))
         s
@@ -176,6 +187,7 @@
     )
 )
 
+; `trim_right` removes all trailing characters in `chs` from the end of the string `s`
 (fn trim_right [s chs]
     (cond (or (is_null? s) (is_empty? s) (is_null? chs) (is_empty? chs))
         s
@@ -196,4 +208,9 @@
             (_next (- (len s) 1))
         )
     )
+)
+
+; `trim` removes all leading and trailing characters in `chs` from the string `s`
+(fn trim [s chs]
+    (trim_right (trim_left s chs) chs)
 )

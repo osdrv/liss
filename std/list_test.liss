@@ -281,7 +281,7 @@
     ))
 ))
 
-((fn test_string_seq []
+((fn test_list_seq []
     (let tests [
         (dict ["name" "seq a to b"] ["a" 3] ["b" 7] ["want" [3 4 5 6]])
         (dict ["name" "seq a equals b"] ["a" 5] ["b" 5] ["want" []])
@@ -294,6 +294,23 @@
         (let want (get test "want"))
         (let got (list:seq a b))
         (assert:deep_equal got want)
+        (println ": OK")
+    ))
+))
+
+((fn test_list_sum []
+    (let tests [
+        (dict ["name" "sum null"] ["input" null] ["want" null])
+        (dict ["name" "sum empty list"] ["input" []] ["want" 0])
+        (dict ["name" "sum single element"] ["input" [5]] ["want" 5])
+        (dict ["name" "sum multiple elements"] ["input" [1 2 3 4]] ["want" 10])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let want (get test "want"))
+        (let got (list:sum input))
+        (assert:equal got want)
         (println ": OK")
     ))
 ))

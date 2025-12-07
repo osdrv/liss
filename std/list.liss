@@ -367,3 +367,11 @@
         (_next [] a)
     )
 )
+
+; `sum` returns the sum of all elements in the array `arr`
+(fn sum [arr]
+    (cond (is_null? arr)
+        null
+        (reduce arr (fn [acc x] (+ acc x)) 0)
+    )
+)
