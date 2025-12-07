@@ -2,7 +2,7 @@
     (let _start (time_ms))
     (let _res (fun))
     (let _end (time_ms))
-    (print "Elapsed time(" label "): ")
+    (print "Elapsed time (" label "): ")
     (println (- _end _start) "ms")
     _res
 )

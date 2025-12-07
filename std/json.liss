@@ -1,25 +1,25 @@
 (import "list" ["push"])
 
-(let TOK_NULL "null")
-(let TOK_TRUE "true")
-(let TOK_FALSE "false")
+(let _TOK_NULL "null")
+(let _TOK_TRUE "true")
+(let _TOK_FALSE "false")
 
-(let ERR_UNEXPECTED_EOI "Unexpected end of input")
-(let ERR_STR_MISSING_DQUOT "Expected '\"' at beginning of string")
-(let ERR_STR_READ_FAILED "Failed to read string")
-(let ERR_STR_UNTERM_DQUOT "Unterminated string")
-(let ERR_ARR_MISSING_OP_SQBRKT "Expected '[' at beginning of array")
-(let ERR_ARR_MISSING_CL_SQBRKT "Expected ']' at end of array")
-(let ERR_ARR_READ_FAILED "Failed to read array")
-(let ERR_OBJ_MISSING_OP_CRLBRKT "Expected '{' at beginning of object")
-(let ERR_OBJ_MISSING_CL_CRLBRKT "Expected '}' at end of object")
-(let ERR_OBJ_READ_FAILED "Failed to read object")
-(let ERR_OBJ_MISSING_COLON "Expected ':' after object key")
+(let _ERR_UNEXPECTED_EOI "Unexpected end of input")
+(let _ERR_STR_MISSING_DQUOT "Expected '\"' at beginning of string")
+(let _ERR_STR_READ_FAILED "Failed to read string")
+(let _ERR_STR_UNTERM_DQUOT "Unterminated string")
+(let _ERR_ARR_MISSING_OP_SQBRKT "Expected '[' at beginning of array")
+(let _ERR_ARR_MISSING_CL_SQBRKT "Expected ']' at end of array")
+(let _ERR_ARR_READ_FAILED "Failed to read array")
+(let _ERR_OBJ_MISSING_OP_CRLBRKT "Expected '{' at beginning of object")
+(let _ERR_OBJ_MISSING_CL_CRLBRKT "Expected '}' at end of object")
+(let _ERR_OBJ_READ_FAILED "Failed to read object")
+(let _ERR_OBJ_MISSING_COLON "Expected ':' after object key")
 
-(let WHITESPACE (dict
+(let _WHITESPACE (dict
     [" " null] ["\t" null] ["\n" null] ["\r" null]
 ))
-(let DIGITS (dict
+(let _DIGITS (dict
     ["0" null] ["1" null] ["2" null] ["3" null] ["4" null]
     ["5" null] ["6" null] ["7" null] ["8" null] ["9" null]
 ))
@@ -29,7 +29,7 @@
     (fn _next [ix]
         (cond (>= ix slen)
             ix
-            (cond (has? WHITESPACE (get str ix))
+            (cond (has? _WHITESPACE (get str ix))
                 (_next (+ ix 1))
                 ix
             )
@@ -45,7 +45,7 @@
     )
 )
 
-(fn fmt_err [msg pos]
+(fn _fmt_err [msg pos]
     (+ "Error at pos " (str pos) ": " msg)
 )
 
@@ -65,15 +65,15 @@
     )
     (let p1 (_read_char S ptr "\""))
     (cond (is_null? p1)
-        (raise! (fmt_err ERR_STR_MISSING_DQUOT ptr))
+        (raise! (_fmt_err _ERR_STR_MISSING_DQUOT ptr))
     )
     (let p2 (_next p1 false))
     (cond (is_null? p2)
-        (raise! (fmt_err ERR_STR_READ_FAILED p1))
+        (raise! (_fmt_err _ERR_STR_READ_FAILED p1))
     )
     (let p3 (_read_char S p2 "\""))
     (cond (is_null? p3)
-        (raise! (fmt_err ERR_STR_UNTERM_DQUOT p2))
+        (raise! (_fmt_err _ERR_STR_UNTERM_DQUOT p2))
     )
     [(range S p1 p2) p3]
 )
@@ -85,7 +85,7 @@
         (cond (>= tix tlen)
             [want six] ; success, we got what we need
             (cond (>= six slen)
-                (raise! (fmt_err ERR_UNEXPECTED_EOI six))
+                (raise! (_fmt_err _ERR_UNEXPECTED_EOI six))
                 (cond (= (get S six) (get T tix))
                     (_next (+ six 1) (+ tix 1))
                     (raise! (+ "Invalid token, expected '" T "'"))
@@ -99,7 +99,7 @@
 (fn _is_numeric? [S ptr]
     (let ch (get S ptr))
     (or
-        (has? DIGITS ch)
+        (has? _DIGITS ch)
         (= ch ".")
         (= ch "e")
         (= ch "E")
@@ -119,7 +119,7 @@
                 (cond (not (_is_numeric? S ix))
                     ix
                     (switch
-                        [(has? DIGITS ch) (_next (+ ix 1))]
+                        [(has? _DIGITS ch) (_next (+ ix 1))]
                         [(= ch ".") (cond (get flags "dot")
                             null
                             (
@@ -148,7 +148,7 @@
     )
     (let p1 (_next ptr))
     (cond (is_null? p1)
-        (raise! (fmt_err "Invalid number format" ptr))
+        (raise! (_fmt_err "Invalid number format" ptr))
     )
     (cond (get flags "dot")
         [(builtin:parse_float (range S ptr p1)) p1]
@@ -159,7 +159,7 @@
 (fn _read_array [S ptr parse_fn]
     (let slen (len S))
     (let p1 (_read_char S ptr "["))
-    (cond (is_null? p1) (raise! (fmt_err ERR_ARR_MISSING_OP_SQBRKT ptr)))
+    (cond (is_null? p1) (raise! (_fmt_err _ERR_ARR_MISSING_OP_SQBRKT ptr)))
     (fn _next [acc ix]
         (cond (>= ix slen)
             acc
@@ -182,18 +182,18 @@
         )
     )
     (let res (_next [] p1))
-    (cond (is_null? res) (raise! ERR_ARR_READ_FAILED))
+    (cond (is_null? res) (raise! _ERR_ARR_READ_FAILED))
     (let ret_arr (get res 0))
     (let p2 (get res 1))
     (let p3 (_read_char S p2 "]"))
-    (cond (is_null? p3) (raise! (fmt_err ERR_ARR_MISSING_CL_SQBRKT p2)))
+    (cond (is_null? p3) (raise! (_fmt_err _ERR_ARR_MISSING_CL_SQBRKT p2)))
     [ret_arr p3]
 )
 
 (fn _read_object [S ptr parse_fn]
     (let slen (len S))
     (let p1 (_read_char S ptr "{"))
-    (cond (is_null? p1) (raise! (fmt_err ERR_OBJ_MISSING_OP_CRLBRKT ptr)))
+    (cond (is_null? p1) (raise! (_fmt_err _ERR_OBJ_MISSING_OP_CRLBRKT ptr)))
     (fn _next [acc ix]
         (cond (>= ix slen)
             acc
@@ -206,7 +206,7 @@
                         (let p2 (get K 1))
                         (let p3 (_eat_whitespace S p2))
                         (cond (is_null? (_read_char S p3 ":"))
-                            (raise! (fmt_err ERR_OBJ_MISSING_COLON p3))
+                            (raise! (_fmt_err _ERR_OBJ_MISSING_COLON p3))
                         )
                         (let V (parse_fn S (+ p3 1)))
                         (cond (is_null? V)
@@ -228,11 +228,11 @@
         )
     )
     (let res (_next (dict) p1))
-    (cond (is_null? res) (raise! ERR_OBJ_READ_FAILED))
+    (cond (is_null? res) (raise! _ERR_OBJ_READ_FAILED))
     (let ret_obj (get res 0))
     (let p2 (get res 1))
     (let p3 (_read_char S p2 "}"))
-    (cond (is_null? p3) (raise! (fmt_err ERR_OBJ_MISSING_CL_CRLBRKT p2)))
+    (cond (is_null? p3) (raise! (_fmt_err _ERR_OBJ_MISSING_CL_CRLBRKT p2)))
     [ret_obj p3]
 )
 
@@ -243,16 +243,17 @@
         (switch
             [(= (get S p1) "[") (_read_array S p1 _parse_next)]
             [(= (get S p1) "{") (_read_object S p1 _parse_next)]
-            [(= (get S p1) "n") (_read_lexeme S p1 TOK_NULL null)]
-            [(= (get S p1) "t") (_read_lexeme S p1 TOK_TRUE true)]
-            [(= (get S p1) "f") (_read_lexeme S p1 TOK_FALSE false)]
+            [(= (get S p1) "n") (_read_lexeme S p1 _TOK_NULL null)]
+            [(= (get S p1) "t") (_read_lexeme S p1 _TOK_TRUE true)]
+            [(= (get S p1) "f") (_read_lexeme S p1 _TOK_FALSE false)]
             [(= (get S p1) "\"") (_read_str S p1)]
             [(_is_numeric? S p1) (_read_number S p1)]
-            [* (raise! (fmt_err "Unexpected token" ptr))]
+            [* (raise! (_fmt_err "Unexpected token" ptr))]
         )
     )
 )
 
+; `parse` parses a JSON-formatted string `S` and returns the corresponding Liss data structure
 (fn parse [S]
     (let ret (_parse_next S 0))
     (cond (= (last ret) (len S))
