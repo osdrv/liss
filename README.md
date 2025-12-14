@@ -1,6 +1,6 @@
 # Liss Programming Language
 
-![Liss Logo](https://github.com/osdrv/liss-doc/blob/main/img/liss-1.png?raw=true)
+![Liss Logo](https://github.com/osdrv/liss-doc/blob/main/img/liss-motto.png?raw=true)
 
 ## About
 
