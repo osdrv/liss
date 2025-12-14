@@ -18,7 +18,7 @@ const (
 
 const MaxFrames = 1024
 const MaxArgs = 255
-const StackSize = 2048
+const StackSize = 2048 << 2 // TODO: fixme
 const GlobalsSize = 65536
 
 var ErrStackOverflow = errors.New("stack overflow")
@@ -335,7 +335,9 @@ func (vm *VM) Run() (exit_err error) {
 					listObj := vm.pop().(*object.List)
 					items := make([]object.Object, 0, factor*int64(listObj.Len()))
 					for i := int64(0); i < factor; i++ {
-						items = append(items, listObj.Items()...)
+						for j := range listObj.Items() {
+							items = append(items, listObj.Items()[j].Clone())
+						}
 					}
 					if err := vm.push(object.NewList(items)); err != nil {
 						return err
