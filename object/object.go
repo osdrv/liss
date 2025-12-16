@@ -30,9 +30,11 @@ const (
 const MaxIntCacheHalf = 256
 
 var (
-	TRUE  = NewBool(true)
-	FALSE = NewBool(false)
-	NULL  = NewNull()
+	TRUE       = NewBool(true)
+	FALSE      = NewBool(false)
+	NULL       = NewNull()
+	EMPTY_LIST = NewList([]Object{})
+	EMPTY_STR  = NewString("")
 )
 
 // Small int cache
@@ -430,6 +432,7 @@ type Function struct {
 	Name      string
 	Args      []string
 	Instrs    code.Instructions
+	NumInstrs int
 	NumLocals int
 }
 
@@ -437,9 +440,10 @@ var _ Object = (*Function)(nil)
 
 func NewFunction(name string, args []string, instrs code.Instructions) *Function {
 	return &Function{
-		Name:   name,
-		Args:   args,
-		Instrs: instrs,
+		Name:      name,
+		Args:      args,
+		Instrs:    instrs,
+		NumInstrs: len(instrs),
 	}
 }
 

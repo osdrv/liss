@@ -110,7 +110,8 @@ func New(mod *compiler.Module) *VM {
 	env.Consts = mod.Bytecode.Consts
 
 	mainfn := &object.Function{
-		Instrs: mod.Bytecode.Instrs,
+		Instrs:    mod.Bytecode.Instrs,
+		NumInstrs: len(mod.Bytecode.Instrs),
 	}
 	cmpmod := &object.Module{
 		Name:    mod.Name,
@@ -189,28 +190,34 @@ func (vm *VM) Run() (exit_err error) {
 	// Avoid allocating these variables on each iteration
 	var ix, argc uint16
 	var elem, a, b object.Object
+	var cmp bool
+	var ocmp *object.Bool
+	var err error
 
 	defer func() {
 		if exit_err != nil && vm.lastAnchor != nil {
 			exit_err = fmt.Errorf("%s (at %s:%d)", exit_err.Error(), vm.lastAnchor.path, vm.lastAnchor.line)
 		}
 	}()
+	metrics := &vm.metrics
+	var cloj *object.Closure
 
-	for vm.currentFrame.ip < len(vm.currentFrame.cl.Fn.Instrs)-1 {
-		vm.metrics.NumInstructionsExecuted++
+	for vm.currentFrame.ip < vm.currentFrame.cl.Fn.NumInstrs-1 {
+		cloj = vm.currentFrame.cl
+		metrics.NumInstructionsExecuted++
 
 		vm.currentFrame.ip++
 
 		ip = vm.currentFrame.ip
-		instrs = vm.currentFrame.cl.Fn.Instrs
-		env = vm.currentFrame.cl.Env
+		instrs = cloj.Fn.Instrs
+		env = cloj.Env
 		op = code.OpCode(instrs[ip])
 
 		switch op {
 		case code.OpConst:
 			ix = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
-			if err := vm.push(env.Consts[ix]); err != nil {
+			if err = vm.push(env.Consts[ix]); err != nil {
 				return err
 			}
 		case code.OpAdd:
@@ -222,7 +229,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 			switch elem.Type() {
 			case object.IntegerType:
-				vm.metrics.NumIntegerAdditions++
+				metrics.NumIntegerAdditions++
 				sum := int64(0)
 				for range argc {
 					sum += int64(vm.pop().(*object.Integer).Value)
@@ -231,16 +238,16 @@ func (vm *VM) Run() (exit_err error) {
 					return err
 				}
 			case object.FloatType:
-				vm.metrics.NumFloatAdditions++
+				metrics.NumFloatAdditions++
 				sum := float64(0.0)
 				for range argc {
 					sum += float64(vm.pop().(*object.Float).Value)
 				}
-				if err := vm.push(object.NewFloat(sum)); err != nil {
+				if err = vm.push(object.NewFloat(sum)); err != nil {
 					return err
 				}
 			case object.StringType:
-				vm.metrics.NumStringAdditions++
+				metrics.NumStringAdditions++
 				var b strings.Builder
 				strs := make([]*object.String, 0, argc)
 				for range argc {
@@ -254,11 +261,11 @@ func (vm *VM) Run() (exit_err error) {
 				for i := len(strs) - 1; i >= 0; i-- {
 					b.WriteString(string(strs[i].Value))
 				}
-				if err := vm.push(object.NewString(b.String())); err != nil {
+				if err = vm.push(object.NewString(b.String())); err != nil {
 					return err
 				}
 			case object.ListType:
-				vm.metrics.NumListAdditions++
+				metrics.NumListAdditions++
 				items := make([]object.Object, 0)
 				for range argc {
 					elem := vm.pop()
@@ -269,7 +276,7 @@ func (vm *VM) Run() (exit_err error) {
 					items = append(listObj.Items(), items...)
 				}
 				newList := object.NewList(items)
-				if err := vm.push(newList); err != nil {
+				if err = vm.push(newList); err != nil {
 					return err
 				}
 			default:
@@ -288,7 +295,7 @@ func (vm *VM) Run() (exit_err error) {
 				bf := b.(object.Numeric).Float64()
 				res = object.NewFloat(af - bf)
 			}
-			if err := vm.push(res); err != nil {
+			if err = vm.push(res); err != nil {
 				return err
 			}
 		case code.OpMul:
@@ -305,7 +312,7 @@ func (vm *VM) Run() (exit_err error) {
 					for range argc - 1 {
 						product *= vm.pop().(*object.Integer).Value
 					}
-					if err := vm.push(object.NewInteger(product)); err != nil {
+					if err = vm.push(object.NewInteger(product)); err != nil {
 						return err
 					}
 				case object.FloatType:
@@ -313,7 +320,7 @@ func (vm *VM) Run() (exit_err error) {
 					for range argc - 1 {
 						product *= float64(vm.pop().(*object.Float).Value)
 					}
-					if err := vm.push(object.NewFloat(product)); err != nil {
+					if err = vm.push(object.NewFloat(product)); err != nil {
 						return err
 					}
 				case object.StringType:
@@ -325,7 +332,7 @@ func (vm *VM) Run() (exit_err error) {
 					for i := int64(0); i < factor; i++ {
 						b.WriteString(str)
 					}
-					if err := vm.push(object.NewString(b.String())); err != nil {
+					if err = vm.push(object.NewString(b.String())); err != nil {
 						return nil
 					}
 				case object.ListType:
@@ -339,7 +346,7 @@ func (vm *VM) Run() (exit_err error) {
 							items = append(items, listObj.Items()[j].Clone())
 						}
 					}
-					if err := vm.push(object.NewList(items)); err != nil {
+					if err = vm.push(object.NewList(items)); err != nil {
 						return err
 					}
 				default:
@@ -350,7 +357,7 @@ func (vm *VM) Run() (exit_err error) {
 				for range argc {
 					product *= float64(vm.pop().(*object.Float).Value)
 				}
-				if err := vm.push(object.NewFloat(product)); err != nil {
+				if err = vm.push(object.NewFloat(product)); err != nil {
 					return err
 				}
 			}
@@ -369,7 +376,7 @@ func (vm *VM) Run() (exit_err error) {
 				bf := b.(object.Numeric).Float64()
 				res = object.NewFloat(af / bf)
 			}
-			if err := vm.push(res); err != nil {
+			if err = vm.push(res); err != nil {
 				return err
 			}
 		case code.OpMod:
@@ -380,7 +387,7 @@ func (vm *VM) Run() (exit_err error) {
 					fmt.Sprintf("expected integer types for modulo operation, got %s and %s", a.Type().String(), b.Type().String()))
 			}
 			mod := a.(object.Numeric).Int64() % b.(object.Numeric).Int64()
-			if err := vm.push(object.NewInteger(mod)); err != nil {
+			if err = vm.push(object.NewInteger(mod)); err != nil {
 				return err
 			}
 		case code.OpList:
@@ -391,7 +398,7 @@ func (vm *VM) Run() (exit_err error) {
 				items[i] = vm.pop()
 			}
 			list := object.NewList(items)
-			if err := vm.push(list); err != nil {
+			if err = vm.push(list); err != nil {
 				return err
 			}
 		case code.OpEql,
@@ -402,15 +409,15 @@ func (vm *VM) Run() (exit_err error) {
 			code.OpLessEqual:
 			b = vm.pop()
 			a = vm.pop()
-			cmp, err := compare(a, b, op)
+			cmp, err = compare(a, b, op)
 			if err != nil {
 				return err
 			}
-			pcmp := object.FALSE
+			ocmp := object.FALSE
 			if cmp {
-				pcmp = object.TRUE
+				ocmp = object.TRUE
 			}
-			if err := vm.push(pcmp); err != nil {
+			if err = vm.push(ocmp); err != nil {
 				return err
 			}
 		case code.OpNot:
@@ -419,17 +426,17 @@ func (vm *VM) Run() (exit_err error) {
 				return NewTypeMismatchError(
 					fmt.Sprintf("expected boolean type, got %s", a.Type().String()))
 			}
-			pval := object.TRUE
+			ocmp = object.TRUE
 			if a.(*object.Bool).Value {
-				pval = object.FALSE
+				ocmp = object.FALSE
 			}
-			if err := vm.push(pval); err != nil {
+			if err = vm.push(ocmp); err != nil {
 				return err
 			}
 		case code.OpAnd:
 			argc = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
-			val := true
+			cmp = true
 			for range int(argc) {
 				elem = vm.pop()
 				if elem.Type() != object.BoolType {
@@ -437,19 +444,19 @@ func (vm *VM) Run() (exit_err error) {
 						fmt.Sprintf("expected boolean type, got %s", elem.Type().String()),
 					)
 				}
-				val = val && elem.(*object.Bool).Value
+				cmp = cmp && elem.(*object.Bool).Value
 			}
-			pval := object.FALSE
-			if val {
-				pval = object.TRUE
+			ocmp = object.FALSE
+			if cmp {
+				ocmp = object.TRUE
 			}
-			if err := vm.push(pval); err != nil {
+			if err = vm.push(ocmp); err != nil {
 				return err
 			}
 		case code.OpOr:
 			argc = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
-			val := false
+			cmp = false
 			for range int(argc) {
 				elem = vm.pop()
 				if elem.Type() != object.BoolType {
@@ -457,25 +464,25 @@ func (vm *VM) Run() (exit_err error) {
 						fmt.Sprintf("expected boolean type, got %s", elem.Type().String()),
 					)
 				}
-				val = val || elem.(*object.Bool).Value
+				cmp = cmp || elem.(*object.Bool).Value
 			}
-			pval := object.FALSE
-			if val {
-				pval = object.TRUE
+			ocmp = object.FALSE
+			if cmp {
+				ocmp = object.TRUE
 			}
-			if err := vm.push(pval); err != nil {
+			if err = vm.push(ocmp); err != nil {
 				return err
 			}
 		case code.OpTrue:
-			if err := vm.push(object.TRUE); err != nil {
+			if err = vm.push(object.TRUE); err != nil {
 				return err
 			}
 		case code.OpFalse:
-			if err := vm.push(object.FALSE); err != nil {
+			if err = vm.push(object.FALSE); err != nil {
 				return err
 			}
 		case code.OpNull:
-			if err := vm.push(object.NULL); err != nil {
+			if err = vm.push(object.NULL); err != nil {
 				return err
 			}
 		case code.OpPop:
@@ -497,7 +504,7 @@ func (vm *VM) Run() (exit_err error) {
 		case code.OpGetGlobal:
 			ix = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
-			if err := vm.push(env.Globals[ix]); err != nil {
+			if err = vm.push(env.Globals[ix]); err != nil {
 				return err
 			}
 		case code.OpSetLocal:
@@ -507,7 +514,7 @@ func (vm *VM) Run() (exit_err error) {
 		case code.OpGetLocal:
 			lix := code.ReadUint8(instrs[ip+1:])
 			vm.currentFrame.ip += 1
-			if err := vm.push(vm.stack[vm.currentFrame.bptr+int(lix)]); err != nil {
+			if err = vm.push(vm.stack[vm.currentFrame.bptr+int(lix)]); err != nil {
 				return err
 			}
 		case code.OpGetBuiltin:
@@ -517,17 +524,17 @@ func (vm *VM) Run() (exit_err error) {
 			if !ok {
 				return fmt.Errorf("builtin function with index %d not found", bix)
 			}
-			if err := vm.push(bltn); err != nil {
+			if err = vm.push(bltn); err != nil {
 				return err
 			}
 		case code.OpCall:
 			argc := code.ReadUint8(instrs[ip+1:])
 			vm.currentFrame.ip += 1
-			if err := vm.callFunction(int(argc)); err != nil {
+			if err = vm.callFunction(int(argc)); err != nil {
 				return err
 			}
 		case code.OpTailCall:
-			vm.metrics.NumTailCalls++
+			metrics.NumTailCalls++
 			argc := int(code.ReadUint8(instrs[ip+1:]))
 			vm.currentFrame.ip += 1
 			switch fn := vm.stack[vm.sp-1-argc].(type) {
@@ -542,7 +549,7 @@ func (vm *VM) Run() (exit_err error) {
 				vm.currentFrame.ip = -1
 				vm.sp = vm.currentFrame.bptr + fn.Fn.NumLocals
 			case *object.BuiltinFunc:
-				vm.metrics.NumBuiltinTailCalls++
+				metrics.NumBuiltinTailCalls++
 				args := vm.argPool[:argc]
 				for i := range argc {
 					args[i] = vm.stack[vm.sp-argc+i]
@@ -556,12 +563,13 @@ func (vm *VM) Run() (exit_err error) {
 					}
 				}
 
-				res, err := fn.Invoke(args)
+				var res object.Object
+				res, err = fn.Invoke(args)
 				if err != nil {
 					return err
 				}
 				vm.sp = vm.sp - argc - 1
-				if err := vm.push(res); err != nil {
+				if err = vm.push(res); err != nil {
 					return err
 				}
 			default:
@@ -594,26 +602,26 @@ func (vm *VM) Run() (exit_err error) {
 				vm.stack[i] = nil
 			}
 			vm.sp = frame.bptr - 1
-			if err := vm.push(elem); err != nil {
+			if err = vm.push(elem); err != nil {
 				return err
 			}
 		case code.OpClosure:
 			ix = code.ReadUint16(instrs[ip+1:])
 			numfree := code.ReadUint8(instrs[ip+3:]) // number of free variables, not used currently
 			vm.currentFrame.ip += 3
-			if err := vm.pushClosure(int(ix), int(numfree)); err != nil {
+			if err = vm.pushClosure(int(ix), int(numfree)); err != nil {
 				return err
 			}
 		case code.OpGetFree:
 			fix := code.ReadUint8(instrs[ip+1:])
 			vm.currentFrame.ip += 1
 			currentClosure := vm.currentFrame.cl
-			if err := vm.push(currentClosure.Free[int(fix)]); err != nil {
+			if err = vm.push(currentClosure.Free[int(fix)]); err != nil {
 				return err
 			}
 		case code.OpCurrentClosure:
 			cur := vm.currentFrame.cl
-			if err := vm.push(cur); err != nil {
+			if err = vm.push(cur); err != nil {
 				return err
 			}
 		case code.OpSrcAnchor:
@@ -642,7 +650,7 @@ func (vm *VM) Run() (exit_err error) {
 			modix := code.ReadUint16(instrs[ip+1:])
 			globix := code.ReadUint16(instrs[ip+3:])
 			vm.currentFrame.ip += 4
-			if err := vm.pushModuleSymbol(int(modix), int(globix)); err != nil {
+			if err = vm.pushModuleSymbol(int(modix), int(globix)); err != nil {
 				return err
 			}
 		default:

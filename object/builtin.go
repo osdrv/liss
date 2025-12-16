@@ -179,7 +179,7 @@ func builtinLen(args []Object) (Object, error) {
 	a := args[0]
 	if a.IsLenable() {
 		al := a.(lenable)
-		return &Integer{Value: int64(al.Len())}, nil
+		return NewInteger(int64(al.Len())), nil
 	}
 	return nil, fmt.Errorf("object %s is not lenable", a.String())
 }
@@ -188,14 +188,20 @@ func builtinEmpty(args []Object) (Object, error) {
 	a := args[0]
 	if a.IsLenable() {
 		al := a.(lenable)
-		return &Bool{Value: al.Len() == 0}, nil
+		if al.Len() == 0 {
+			return TRUE, nil
+		}
+		return FALSE, nil
 	}
 	return nil, fmt.Errorf("object %s is not lennable", a.String())
 }
 
 func builtinIsNull(args []Object) (Object, error) {
 	v := args[0]
-	return &Bool{Value: v.IsNull()}, nil
+	if v.IsNull() {
+		return TRUE, nil
+	}
+	return FALSE, nil
 }
 
 func builtinStr(args []Object) (Object, error) {
@@ -223,13 +229,13 @@ func builtinHead(args []Object) (Object, error) {
 		if len(arr.items) > 0 {
 			return arr.items[0], nil
 		}
-		return &Null{}, nil
+		return NULL, nil
 	} else if a.IsString() {
 		str := a.(*String)
 		if len(str.Value) > 0 {
 			return &String{Value: (str.Value[0:1])}, nil
 		}
-		return &Null{}, nil
+		return NULL, nil
 	}
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
 }
@@ -241,13 +247,13 @@ func builtinLast(args []Object) (Object, error) {
 		if len(arr.items) > 0 {
 			return arr.items[len(arr.items)-1], nil
 		}
-		return &Null{}, nil
+		return NULL, nil
 	} else if a.IsString() {
 		str := a.(*String)
 		if len(str.Value) > 0 {
 			return &String{Value: []rune{str.Value[len(str.Value)-1]}}, nil
 		}
-		return &Null{}, nil
+		return NULL, nil
 	}
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
 }
@@ -260,13 +266,13 @@ func builtinTail(args []Object) (Object, error) {
 			return &List{items: arr.items[1:]}, nil
 		}
 		// empty list
-		return &List{}, nil
+		return EMPTY_LIST, nil
 	} else if a.IsString() {
 		str := a.(*String)
 		if len(str.Value) > 1 {
 			return &String{Value: str.Value[1:]}, nil
 		}
-		return &String{}, nil
+		return EMPTY_STR, nil
 	}
 	return nil, fmt.Errorf("object %s is not array or string", a.String())
 }
@@ -331,7 +337,7 @@ func builtinGetFromDict(args []Object) (Object, error) {
 		return nil, err
 	}
 	if !ok {
-		return &Null{}, nil
+		return NULL, nil
 	}
 	return value, nil
 }
@@ -345,7 +351,7 @@ func builtinGetFromList(args []Object) (Object, error) {
 	}
 	index := indexObj.Value
 	if index < 0 || int(index) >= len(list.items) {
-		return &Null{}, nil
+		return NULL, nil
 	}
 	return list.items[index], nil
 }
@@ -359,7 +365,7 @@ func builtinGetFromString(args []Object) (Object, error) {
 	}
 	index := indexObj.Value
 	if index < 0 || int(index) >= len(str.Value) {
-		return &Null{}, nil
+		return NULL, nil
 	}
 	return &String{Value: []rune{str.Value[index]}}, nil
 }
@@ -388,14 +394,14 @@ func builtinPut(args []Object) (Object, error) {
 			return nil, fmt.Errorf("put: index %d out of bounds for list of length %d", ix, len(list.items))
 		}
 		list.items[ix] = value
-		return &Null{}, nil
+		return NULL, nil
 	} else if container.IsDictionary() {
 		dict := container.(*Dictionary)
 		err := dict.Put(key, value)
 		if err != nil {
 			return nil, err
 		}
-		return &Null{}, nil
+		return NULL, nil
 	} else {
 		return nil, fmt.Errorf("put: expected list or dictionary as first argument, got %s", container.String())
 	}
@@ -411,7 +417,10 @@ func builtinDel(args []Object) (Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Bool{Value: ok}, nil
+	if !ok {
+		return FALSE, nil
+	}
+	return TRUE, nil
 }
 
 func builtinHas(args []Object) (Object, error) {
@@ -424,7 +433,10 @@ func builtinHas(args []Object) (Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Bool{Value: ok}, nil
+	if !ok {
+		return FALSE, nil
+	}
+	return TRUE, nil
 }
 
 func builtinKeys(args []Object) (Object, error) {
@@ -467,7 +479,10 @@ func builtinReMatch(args []Object) (Object, error) {
 	// pat could be a Regexp object or a string
 	if pat.IsRegexp() {
 		re := pat.(*Regexp)
-		return &Bool{Value: re.Match(sstr)}, nil
+		if re.Match(sstr) {
+			return TRUE, nil
+		}
+		return FALSE, nil
 	} else if pat.IsString() {
 		strPat := pat.(*String)
 		re, err := NewRegexp(string(strPat.Value))
@@ -618,7 +633,7 @@ func builtinFClose(args []Object) (Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Null{}, nil
+	return NULL, nil
 }
 
 func builtinFReadAll(args []Object) (Object, error) {
@@ -632,39 +647,49 @@ func builtinFReadAll(args []Object) (Object, error) {
 		return nil, err
 	}
 	// TODO: implement blobs
-	return &String{Value: []rune(string(data))}, nil
+	return NewString(string(data)), nil
 }
 
 func builtinIsList(args []Object) (Object, error) {
-	v := args[0]
-	return &Bool{Value: v.IsList()}, nil
+	if args[0].IsList() {
+		return TRUE, nil
+	}
+	return FALSE, nil
 }
 
 func builtinIsDictionary(args []Object) (Object, error) {
-	v := args[0]
-	return &Bool{Value: v.IsDictionary()}, nil
+	if args[0].IsDictionary() {
+		return TRUE, nil
+	}
+	return FALSE, nil
 }
 
 func builtinIsString(args []Object) (Object, error) {
-	v := args[0]
-	return &Bool{Value: v.IsString()}, nil
+	if args[0].IsString() {
+		return TRUE, nil
+	}
+	return FALSE, nil
 }
 
 func builtinIsInt(args []Object) (Object, error) {
-	v := args[0]
-	_, ok := v.(*Integer)
-	return &Bool{Value: ok}, nil
+	if _, ok := args[0].(*Integer); ok {
+		return TRUE, nil
+	}
+	return FALSE, nil
 }
 
 func builtinIsFloat(args []Object) (Object, error) {
-	v := args[0]
-	_, ok := v.(*Float)
-	return &Bool{Value: ok}, nil
+	if _, ok := args[0].(*Float); ok {
+		return TRUE, nil
+	}
+	return FALSE, nil
 }
 
 func builtinIsBool(args []Object) (Object, error) {
-	v := args[0]
-	return &Bool{Value: v.IsBool()}, nil
+	if args[0].IsBool() {
+		return TRUE, nil
+	}
+	return FALSE, nil
 }
 
 func builtinParseInt(args []Object) (Object, error) {

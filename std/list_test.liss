@@ -264,6 +264,23 @@
     ))
 ))
 
+((fn test_list_mergesort_fn []
+    (let tests [
+        ;(dict ["name" "mergesort_fn null"] ["input" null] ["want" null])
+        (dict ["name" "mergesort_fn empty list"] ["input" []] ["want" []])
+        (dict ["name" "mergesort_fn single element"] ["input" [1]] ["want" [1]])
+        (dict ["name" "mergesort_fn multiple elements"] ["input" [4 2 5 1 3]] ["want" [1 2 3 4 5]])
+    ])
+    (list:map tests (fn [test]
+        (print "Running test: " (get test "name"))
+        (let input (get test "input"))
+        (let want (get test "want"))
+        (let got (list:mergesort_fn input list:SORT_ASC))
+        (assert:list_equal got want)
+        (println ": OK")
+    ))
+))
+
 ((fn test_list_sort_fn []
     (let tests [
         (dict ["name" "sort_fn null"] ["input" null] ["want" null])
