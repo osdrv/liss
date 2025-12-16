@@ -200,17 +200,27 @@ func (vm *VM) Run() (exit_err error) {
 		}
 	}()
 	metrics := &vm.metrics
-	var cloj *object.Closure
 
-	for vm.currentFrame.ip < vm.currentFrame.cl.Fn.NumInstrs-1 {
-		cloj = vm.currentFrame.cl
+	frame := vm.currentFrame
+	cloj := vm.currentFrame.cl
+	shouldReload := true
+	for {
+		if shouldReload {
+			frame = vm.currentFrame
+			cloj = frame.cl
+			env = cloj.Env
+			instrs = cloj.Fn.Instrs
+			shouldReload = false
+		}
+
+		if frame.ip >= cloj.Fn.NumInstrs-1 {
+			break
+		}
+
 		metrics.NumInstructionsExecuted++
 
-		vm.currentFrame.ip++
-
-		ip = vm.currentFrame.ip
-		instrs = cloj.Fn.Instrs
-		env = cloj.Env
+		frame.ip++
+		ip = frame.ip
 		op = code.OpCode(instrs[ip])
 
 		switch op {
@@ -530,7 +540,8 @@ func (vm *VM) Run() (exit_err error) {
 		case code.OpCall:
 			argc := code.ReadUint8(instrs[ip+1:])
 			vm.currentFrame.ip += 1
-			if err = vm.callFunction(int(argc)); err != nil {
+			shouldReload, err = vm.callFunction(int(argc))
+			if err != nil {
 				return err
 			}
 		case code.OpTailCall:
@@ -548,6 +559,7 @@ func (vm *VM) Run() (exit_err error) {
 				vm.currentFrame.cl = fn
 				vm.currentFrame.ip = -1
 				vm.sp = vm.currentFrame.bptr + fn.Fn.NumLocals
+				shouldReload = true
 			case *object.BuiltinFunc:
 				metrics.NumBuiltinTailCalls++
 				args := vm.argPool[:argc]
@@ -607,6 +619,7 @@ func (vm *VM) Run() (exit_err error) {
 			if err = vm.push(elem); err != nil {
 				return err
 			}
+			shouldReload = true
 		case code.OpClosure:
 			ix = code.ReadUint16(instrs[ip+1:])
 			numfree := code.ReadUint8(instrs[ip+3:]) // number of free variables, not used currently
@@ -697,18 +710,20 @@ func (vm *VM) pushClosure(cix int, numfree int) error {
 	return vm.push(closure)
 }
 
-func (vm *VM) callFunction(argc int) error {
+func (vm *VM) callFunction(argc int) (bool, error) {
 	if vm.sp-1-argc < 0 {
 		runtime.Breakpoint()
 	}
 	switch fn := vm.stack[vm.sp-1-argc].(type) {
 	case *object.Closure:
 		if len(fn.Fn.Args) != argc {
-			return fmt.Errorf("Function %s expects %d arguments, got %d", fn.Fn.Name, len(fn.Fn.Args), argc)
+			return false, fmt.Errorf("Function %s expects %d arguments, got %d", fn.Fn.Name, len(fn.Fn.Args), argc)
 		}
 		frame := vm.newPooledFrame(fn, vm.sp-argc)
 		vm.pushFrame(frame)
 		vm.sp = frame.bptr + fn.Fn.NumLocals
+		// Only reload when we explicitly create a new frame
+		return true, nil
 	case *object.BuiltinFunc:
 		vm.metrics.NumBuiltinCalls++
 		args := vm.argPool[:argc]
@@ -721,27 +736,27 @@ func (vm *VM) callFunction(argc int) error {
 				var err error
 				fn, args, err = hook(vm, fn, args)
 				if err != nil {
-					return err
+					return false, err
 				}
 			}
 		}
 
 		res, err := fn.Invoke(args)
 		if err != nil {
-			return err
+			return false, err
 		}
 		for i := vm.sp; i >= vm.sp-argc; i-- {
 			vm.stack[i] = nil
 		}
 		vm.sp = vm.sp - argc - 1
 		if err := vm.push(res); err != nil {
-			return err
+			return false, err
 		}
 	default:
-		return fmt.Errorf("Object %s is not a function", vm.stack[vm.sp-1].String())
+		return false, fmt.Errorf("Object %s is not a function", vm.stack[vm.sp-1].String())
 	}
 
-	return nil
+	return false, nil
 }
 
 func (vm *VM) PrintStack() string {
@@ -826,6 +841,7 @@ func (vm *VM) pushFrame(f *Frame) {
 	vm.currentFrame = f
 	vm.framesix++
 }
+
 func (vm *VM) popFrame() *Frame {
 	vm.framesix--
 	frame := vm.frames[vm.framesix]

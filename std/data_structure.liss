@@ -1,0 +1,96 @@
+(import "list" ["push"])
+(import "math" ["floor"])
+
+(let _HEAP_ITEMS "items")
+(let _HEAP_CMP  "cmp")
+
+(fn mkheap [cmp_fn]
+    (dict [_HEAP_CMP cmp_fn]
+          [_HEAP_ITEMS []]
+    )
+)
+
+(fn heap_empty? [H]
+    (is_empty? (get H _HEAP_ITEMS))
+)
+
+(fn heap_size [H]
+    (len (get H _HEAP_ITEMS))
+)
+
+(fn heap_push [H item]
+    (let last_ix (len (get H _HEAP_ITEMS)))
+    (let items (list:push (get H _HEAP_ITEMS) item))
+    (let cmp (get H _HEAP_CMP))
+    (fn _reheap [ix]
+        (cond (= ix 0)
+            null
+            (
+                (let p_ix (math:floor (/ (- ix 1) 2)))
+                (cond (cmp (get items ix) (get items p_ix))
+                    (
+                        (let tmp (get items ix))
+                        (put items ix (get items p_ix))
+                        (put items p_ix tmp)
+                        (_reheap p_ix)
+                    )
+                    null
+                )
+            )
+        )
+    )
+    (_reheap last_ix)
+    (put H _HEAP_ITEMS items)
+    true
+)
+
+(fn _bubble_down [items ix]
+    (cond (>= ix (len items))
+        items
+        (
+            (let left_ix (+ (* ix 2) 1))
+            (let right_ix (+ (* ix 2) 2))
+            (cond (and (< right_ix (len items)) (< (get items right_ix) (get items ix)))
+                (
+                    (let tmp1 (get items ix))
+                    (put items ix (get items right_ix))
+                    (put items right_ix tmp1)
+                    (_bubble_down items right_ix)
+                )
+                (cond (and (< left_ix (len items)) (< (get items left_ix) (get items ix)))
+                    (
+                        (let tmp2 (get items ix))
+                        (put items ix (get items left_ix))
+                        (put items left_ix tmp2)
+                        (_bubble_down items left_ix)
+                    )
+                    items
+                )
+            )
+        )
+    )
+)
+
+(fn heap_pop [H]
+    (let items (get H _HEAP_ITEMS))
+    (let cmp (get H _HEAP_CMP))
+    (cond (heap_empty? H)
+        null
+        (
+            (let last_ix (- (len items) 1))
+            (let ret (get items 0))
+            (put items 0 (get items last_ix))
+            (put H _HEAP_ITEMS
+                (_bubble_down (list:range items (- (len items) 1)) 0)
+            )
+            ret
+        )
+    )
+)
+
+(fn heap_peek [H]
+    (cond (heap_empty? H)
+        null
+        (get (get H _HEAP_ITEMS) 0)
+    )
+)
