@@ -22,17 +22,37 @@
     )
 )
 
+; `seq` generates an array of integers in the range [a, b)
+(fn seq [a b]
+    (fn _next [acc ix]
+        (cond (>= (+ a ix) b)
+            acc
+            (
+                (put acc ix (+ a ix))
+                (_next acc (+ ix 1))
+            )
+        )
+    )
+    (cond (> a b)
+        []
+        (_next (* [null] (- b a)) 0)
+    )
+)
+
 ; `reduce` applies function `fun` cumulatively to the items of array `arr`,
 ; aggregating them into a single value, starting with initial accumulator `acc`
 (fn reduce [arr fun acc]
+    (fn _next [acc ix lenA]
+        (cond (>= ix lenA)
+            acc
+            (_next (fun acc (get arr ix)) (+ ix 1) lenA)
+        )
+    )
     (cond (is_null? arr)
         null
         (cond (is_empty? arr)
             acc
-            (
-                (let _acc (fun acc (head arr)))
-                (reduce (tail arr) fun _acc)
-            )
+            (_next acc 0 (len arr))
         )
     )
 )
@@ -40,9 +60,26 @@
 ; `map` applies function `fun` to each item of array `arr`,
 ; returning a new array of the results
 (fn map [arr fun]
-    (reduce arr (fn [acc x]
-        (+ acc [(fun x)])
-    ) [])
+    (fn _next [acc ix lenA]
+        (cond (>= ix lenA)
+            acc
+            (
+                (put acc ix (fun (get arr ix)))
+                (_next acc (+ ix 1) lenA)
+            )
+        )
+    )
+    (cond (is_null? arr)
+        null
+        (cond (is_empty? arr)
+            []
+            (
+                (let lenA (len arr))
+                (let acc (* [null] lenA))
+                (_next acc 0 lenA)
+            )
+        )
+    )
 )
 
 ; `filter` returns a new array containing only the items of array `arr`
@@ -348,23 +385,6 @@
                 (mergesort_fn arr fun)
             )
         )
-    )
-)
-
-; `seq` generates an array of integers in the range [a, b)
-(fn seq [a b]
-    (fn _next [acc ix]
-        (cond (>= ix b)
-            acc
-            (
-                (let _acc (push acc ix))
-                (_next _acc (+ ix 1))
-            )
-        )
-    )
-    (cond (> a b)
-        []
-        (_next [] a)
     )
 )
 
