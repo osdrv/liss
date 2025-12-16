@@ -19,19 +19,27 @@ type builtinFuncRaw func(args []Object) (Object, error)
 
 type BuiltinFunc struct {
 	defaultObject
-	Name     string
-	Argc     int
-	Variadic bool
-	Fn       builtinFuncRaw
+	Name       string
+	Argc       int
+	Variadic   bool
+	IsHookable bool
+	Fn         builtinFuncRaw
 }
 
 func NewBuiltinFunc(name string, argc int, variadic bool, fn builtinFuncRaw) *BuiltinFunc {
 	return &BuiltinFunc{
-		Name:     name,
-		Argc:     argc,
-		Variadic: variadic,
-		Fn:       fn,
+		Name:       name,
+		Argc:       argc,
+		Variadic:   variadic,
+		IsHookable: false,
+		Fn:         fn,
 	}
+}
+
+func NewHookableBuiltinFunc(name string, argc int, variadic bool, fn builtinFuncRaw) *BuiltinFunc {
+	bf := NewBuiltinFunc(name, argc, variadic, fn)
+	bf.IsHookable = true
+	return bf
 }
 
 var _ Object = (*BuiltinFunc)(nil)
@@ -109,10 +117,10 @@ func init() {
 		NewBuiltinFunc("match?", 2, false, builtinReMatch),
 		NewBuiltinFunc("match", 2, false, builtinReCapture),
 		NewBuiltinFunc("match_ix", 2, false, builtinReCaptureIx),
-		NewBuiltinFunc("print", 2, true, builtinPrint),
-		NewBuiltinFunc("println", 2, true, builtinPrintln),
+		NewHookableBuiltinFunc("print", 2, true, builtinPrint),
+		NewHookableBuiltinFunc("println", 2, true, builtinPrintln),
 
-		NewBuiltinFunc("fopen", 1, true, builtinFOpen),
+		NewHookableBuiltinFunc("fopen", 1, true, builtinFOpen),
 		NewBuiltinFunc("fclose", 1, false, builtinFClose),
 		NewBuiltinFunc("fread_all", 1, false, builtinFReadAll),
 

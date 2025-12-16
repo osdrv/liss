@@ -18,7 +18,7 @@ const (
 
 const MaxFrames = 1024
 const MaxArgs = 255
-const StackSize = 2048 << 2 // TODO: fixme
+const StackSize = 4096
 const GlobalsSize = 65536
 
 var ErrStackOverflow = errors.New("stack overflow")
@@ -555,11 +555,13 @@ func (vm *VM) Run() (exit_err error) {
 					args[i] = vm.stack[vm.sp-argc+i]
 				}
 
-				if hook, ok := vm.hooks[fn.Name]; ok {
-					var err error
-					fn, args, err = hook(vm, fn, args)
-					if err != nil {
-						return err
+				if fn.IsHookable {
+					if hook, ok := vm.hooks[fn.Name]; ok {
+						var err error
+						fn, args, err = hook(vm, fn, args)
+						if err != nil {
+							return err
+						}
 					}
 				}
 
@@ -714,11 +716,13 @@ func (vm *VM) callFunction(argc int) error {
 			args[i] = vm.stack[vm.sp-argc+i]
 		}
 
-		if hook, ok := vm.hooks[fn.Name]; ok {
-			var err error
-			fn, args, err = hook(vm, fn, args)
-			if err != nil {
-				return err
+		if fn.IsHookable {
+			if hook, ok := vm.hooks[fn.Name]; ok {
+				var err error
+				fn, args, err = hook(vm, fn, args)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
