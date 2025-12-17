@@ -189,7 +189,7 @@ func (vm *VM) Run() (exit_err error) {
 
 	// Avoid allocating these variables on each iteration
 	var ix, argc uint16
-	var elem, a, b object.Object
+	var objA, objB object.Object
 	var cmp bool
 	var ocmp *object.Bool
 	var err error
@@ -233,11 +233,11 @@ func (vm *VM) Run() (exit_err error) {
 		case code.OpAdd:
 			argc = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
-			elem = vm.peek()
-			if elem == nil {
+			objA = vm.peek()
+			if objA == nil {
 				return errors.New("stack underflow")
 			}
-			switch elem.Type() {
+			switch objA.Type() {
 			case object.IntegerType:
 				metrics.NumIntegerAdditions++
 				sum := int64(0)
@@ -294,16 +294,16 @@ func (vm *VM) Run() (exit_err error) {
 				return errors.New("invalid type for addition")
 			}
 		case code.OpSub:
-			b = vm.pop()
-			a = vm.pop()
+			objB = vm.pop()
+			objA = vm.pop()
 			var res object.Object
-			if a.Type() == object.IntegerType && b.Type() == object.IntegerType {
-				sub := a.(object.Numeric).Int64() - b.(object.Numeric).Int64()
+			if objA.Type() == object.IntegerType && objB.Type() == object.IntegerType {
+				sub := objA.(object.Numeric).Int64() - objB.(object.Numeric).Int64()
 				res = object.NewInteger(sub)
 			} else {
-				af := a.(object.Numeric).Float64()
-				bf := b.(object.Numeric).Float64()
-				res = object.NewFloat(af - bf)
+				res = object.NewFloat(
+					objA.(object.Numeric).Float64() - objB.(object.Numeric).Float64(),
+				)
 			}
 			if err = vm.push(res); err != nil {
 				return err
@@ -312,8 +312,8 @@ func (vm *VM) Run() (exit_err error) {
 			argc = code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
 
-			elem := vm.peek()
-			switch elem.Type() {
+			objA = vm.peek()
+			switch objA.Type() {
 			case object.IntegerType:
 				factor := vm.pop().(*object.Integer).Value
 				switch vm.peek().Type() {
@@ -372,31 +372,33 @@ func (vm *VM) Run() (exit_err error) {
 				}
 			}
 		case code.OpDiv:
-			b = vm.pop()
-			a = vm.pop()
+			objB = vm.pop()
+			objA = vm.pop()
 			var res object.Object
-			if a.Type() == object.IntegerType && b.Type() == object.IntegerType {
-				if b.(*object.Integer).Value == 0 {
+			if objA.Type() == object.IntegerType && objB.Type() == object.IntegerType {
+				if objB.(*object.Integer).Value == 0 {
 					return errors.New("division by zero")
 				}
-				sub := a.(object.Numeric).Int64() / b.(object.Numeric).Int64()
-				res = object.NewInteger(sub)
+				res = object.NewInteger(
+					objA.(object.Numeric).Int64() / objB.(object.Numeric).Int64(),
+				)
 			} else {
-				af := a.(object.Numeric).Float64()
-				bf := b.(object.Numeric).Float64()
-				res = object.NewFloat(af / bf)
+				res = object.NewFloat(
+					objA.(object.Numeric).Float64() / objB.(object.Numeric).Float64(),
+				)
 			}
 			if err = vm.push(res); err != nil {
 				return err
 			}
 		case code.OpMod:
-			b = vm.pop()
-			a = vm.pop()
-			if a.Type() != object.IntegerType || b.Type() != object.IntegerType {
+			objB = vm.pop()
+			objA = vm.pop()
+			if objA.Type() != object.IntegerType || objB.Type() != object.IntegerType {
 				return NewTypeMismatchError(
-					fmt.Sprintf("expected integer types for modulo operation, got %s and %s", a.Type().String(), b.Type().String()))
+					fmt.Sprintf("expected integer types for modulo operation, got %s and %s",
+						objA.Type().String(), objB.Type().String()))
 			}
-			mod := a.(object.Numeric).Int64() % b.(object.Numeric).Int64()
+			mod := objA.(object.Numeric).Int64() % objB.(object.Numeric).Int64()
 			if err = vm.push(object.NewInteger(mod)); err != nil {
 				return err
 			}
@@ -417,9 +419,9 @@ func (vm *VM) Run() (exit_err error) {
 			code.OpGreaterEqual,
 			code.OpLessThan,
 			code.OpLessEqual:
-			b = vm.pop()
-			a = vm.pop()
-			cmp, err = compare(a, b, op)
+			objB = vm.pop()
+			objA = vm.pop()
+			cmp, err = compare(objA, objB, op)
 			if err != nil {
 				return err
 			}
@@ -431,13 +433,13 @@ func (vm *VM) Run() (exit_err error) {
 				return err
 			}
 		case code.OpNot:
-			a = vm.pop()
-			if a.Type() != object.BoolType {
+			objA = vm.pop()
+			if objA.Type() != object.BoolType {
 				return NewTypeMismatchError(
-					fmt.Sprintf("expected boolean type, got %s", a.Type().String()))
+					fmt.Sprintf("expected boolean type, got %s", objA.Type().String()))
 			}
 			ocmp = object.TRUE
-			if a.(*object.Bool).Value {
+			if objA.(*object.Bool).Value {
 				ocmp = object.FALSE
 			}
 			if err = vm.push(ocmp); err != nil {
@@ -448,13 +450,13 @@ func (vm *VM) Run() (exit_err error) {
 			vm.currentFrame.ip += 2
 			cmp = true
 			for range int(argc) {
-				elem = vm.pop()
-				if elem.Type() != object.BoolType {
+				objA = vm.pop()
+				if objA.Type() != object.BoolType {
 					return NewTypeMismatchError(
-						fmt.Sprintf("expected boolean type, got %s", elem.Type().String()),
+						fmt.Sprintf("expected boolean type, got %s", objA.Type().String()),
 					)
 				}
-				cmp = cmp && elem.(*object.Bool).Value
+				cmp = cmp && objA.(*object.Bool).Value
 			}
 			ocmp = object.FALSE
 			if cmp {
@@ -468,13 +470,13 @@ func (vm *VM) Run() (exit_err error) {
 			vm.currentFrame.ip += 2
 			cmp = false
 			for range int(argc) {
-				elem = vm.pop()
-				if elem.Type() != object.BoolType {
+				objA = vm.pop()
+				if objA.Type() != object.BoolType {
 					return NewTypeMismatchError(
-						fmt.Sprintf("expected boolean type, got %s", elem.Type().String()),
+						fmt.Sprintf("expected boolean type, got %s", objA.Type().String()),
 					)
 				}
-				cmp = cmp || elem.(*object.Bool).Value
+				cmp = cmp || objA.(*object.Bool).Value
 			}
 			ocmp = object.FALSE
 			if cmp {
