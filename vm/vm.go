@@ -226,13 +226,13 @@ func (vm *VM) Run() (exit_err error) {
 		switch op {
 		case code.OpConst:
 			ix = code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame.ip += 2
+			frame.ip += 2
 			if err = vm.push(env.Consts[ix]); err != nil {
 				return err
 			}
 		case code.OpAdd:
 			argc = code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame.ip += 2
+			frame.ip += 2
 			objA = vm.peek()
 			if objA == nil {
 				return errors.New("stack underflow")
@@ -310,7 +310,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 		case code.OpMul:
 			argc = code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame.ip += 2
+			frame.ip += 2
 
 			objA = vm.peek()
 			switch objA.Type() {
@@ -404,7 +404,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 		case code.OpList:
 			size := int(code.ReadUint16(instrs[ip+1:]))
-			vm.currentFrame.ip += 2
+			frame.ip += 2
 			items := make([]object.Object, size)
 			for i := size - 1; i >= 0; i-- {
 				items[i] = vm.pop()
@@ -447,7 +447,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 		case code.OpAnd:
 			argc = code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame.ip += 2
+			frame.ip += 2
 			cmp = true
 			for range int(argc) {
 				objA = vm.pop()
@@ -467,7 +467,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 		case code.OpOr:
 			argc = code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame.ip += 2
+			frame.ip += 2
 			cmp = false
 			for range int(argc) {
 				objA = vm.pop()
@@ -501,37 +501,37 @@ func (vm *VM) Run() (exit_err error) {
 			vm.pop()
 		case code.OpJump:
 			ix = code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame.ip = int(ix) - 1
+			frame.ip = int(ix) - 1
 		case code.OpJumpIfFalse:
 			ix = code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame.ip += 2
+			frame.ip += 2
 			elem := vm.pop()
 			if elem.IsNull() || (elem.Type() == object.BoolType && !elem.(*object.Bool).Value) {
-				vm.currentFrame.ip = int(ix) - 1 // -1 because we will increment ip at the end of the loop
+				frame.ip = int(ix) - 1 // -1 because we will increment ip at the end of the loop
 			}
 		case code.OpSetGlobal:
 			ix = code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame.ip += 2
+			frame.ip += 2
 			env.Globals[ix] = vm.pop()
 		case code.OpGetGlobal:
 			ix = code.ReadUint16(instrs[ip+1:])
-			vm.currentFrame.ip += 2
+			frame.ip += 2
 			if err = vm.push(env.Globals[ix]); err != nil {
 				return err
 			}
 		case code.OpSetLocal:
 			lix := code.ReadUint8(instrs[ip+1:])
-			vm.currentFrame.ip += 1
-			vm.stack[vm.currentFrame.bptr+int(lix)] = vm.pop()
+			frame.ip += 1
+			vm.stack[frame.bptr+int(lix)] = vm.pop()
 		case code.OpGetLocal:
 			lix := code.ReadUint8(instrs[ip+1:])
-			vm.currentFrame.ip += 1
-			if err = vm.push(vm.stack[vm.currentFrame.bptr+int(lix)]); err != nil {
+			frame.ip += 1
+			if err = vm.push(vm.stack[frame.bptr+int(lix)]); err != nil {
 				return err
 			}
 		case code.OpGetBuiltin:
 			bix := code.ReadUint8(instrs[ip+1:])
-			vm.currentFrame.ip += 1
+			frame.ip += 1
 			bltn, ok := object.GetBuiltinByIndex(int(bix))
 			if !ok {
 				return fmt.Errorf("builtin function with index %d not found", bix)
@@ -541,7 +541,7 @@ func (vm *VM) Run() (exit_err error) {
 			}
 		case code.OpCall:
 			argc := code.ReadUint8(instrs[ip+1:])
-			vm.currentFrame.ip += 1
+			frame.ip += 1
 			shouldReload, err = vm.callFunction(int(argc))
 			if err != nil {
 				return err
@@ -549,18 +549,18 @@ func (vm *VM) Run() (exit_err error) {
 		case code.OpTailCall:
 			metrics.NumTailCalls++
 			argc := int(code.ReadUint8(instrs[ip+1:]))
-			vm.currentFrame.ip += 1
+			frame.ip += 1
 			switch fn := vm.stack[vm.sp-1-argc].(type) {
 			case *object.Closure:
 				if len(fn.Fn.Args) != argc {
 					return fmt.Errorf("Function %s expects %d arguments, got %d", fn.Fn.Name, len(fn.Fn.Args), argc)
 				}
 				for i := range argc {
-					vm.stack[vm.currentFrame.bptr+i] = vm.stack[vm.sp-argc+i]
+					vm.stack[frame.bptr+i] = vm.stack[vm.sp-argc+i]
 				}
-				vm.currentFrame.cl = fn
-				vm.currentFrame.ip = -1
-				vm.sp = vm.currentFrame.bptr + fn.Fn.NumLocals
+				frame.cl = fn
+				frame.ip = -1
+				vm.sp = frame.bptr + fn.Fn.NumLocals
 				shouldReload = true
 			case *object.BuiltinFunc:
 				metrics.NumBuiltinTailCalls++
