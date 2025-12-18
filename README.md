@@ -19,7 +19,7 @@ The current VM implementation is based on Thorsten Ball's book "Writing a Compil
 *   **Closures:** Supports first-class functions and closures.
 *   **Modules**: Std lib and local LISS code imports.
 
-## Example
+## Examples
 
 Here are some examples demonstrating key features of the Liss programming language:
 
@@ -43,10 +43,10 @@ This example showcases basic string manipulation (`strings:reverse`) and conditi
 
 ### Example 2: Data Processing Pipeline (List & String stdlib)
 
-This example demonstrates a common data processing task: splitting a sentence, filtering words by length, (conceptually) uppercasing them, and rejoining. It highlights the functional style and the use of the `list` and `strings` standard library modules.
+This example demonstrates a common data processing task: splitting a sentence, filtering words by length and rejoining. It highlights the functional style and the use of the `list` and `strings` standard library modules.
 
 <pre>
-(<B>import</B> <I>"list"</I> [<I>"map"</I> <I>"filter"</I>])
+(<B>import</B> <I>"list"</I> [<I>"filter"</I>])
 (<B>import</B> <I>"strings"</I> [<I>"split"</I> <I>"join"</I>])
 
 (<B>let</B> sentence <I>"Liss is a fun and powerful language"</I>)
@@ -55,9 +55,7 @@ This example demonstrates a common data processing task: splitting a sentence, f
     (> (<B>len</B> word) 2)
 )))
 
-(<B>let</B> uppercased_words (<B>list:map</B> long_words to_uppercase))
-
-(<B>let</B> result (<B>strings:join</B> uppercased_words <I>", "</I>))
+(<B>let</B> result (<B>strings:join</B> long_words <I>", "</I>))
 
 (<B>println</B> <I>"Original: "</I> sentence)
 (<B>println</B> <I>"Processed: "</I> result)
