@@ -21,18 +21,77 @@ The current VM implementation is based on Thorsten Ball's book "Writing a Compil
 
 ## Example
 
-Here is an example of a Liss program that computes the factorial of a number:
+Here are some examples demonstrating key features of the Liss programming language:
+
+### Example 1: Palindrome Checker (String Manipulation)
+
+This example showcases basic string manipulation (`strings:reverse`) and conditional logic to check if a word is a palindrome.
 
 <pre>
-(<b>fn</b> fact [acc n]
-    (<b>cond</b> (= n 0)
-        acc
-        (fact (* acc n) (- n 1))
+(<B>import</B> <I>"strings"</I> [<I>"reverse"</I>])
+
+(<B>fn</B> is_palindrome? [word]
+    (<B>cond</B> (<B>or</B> (<B>is_null?</B> word) (<B>is_empty?</B> word))
+        <B>false</B>
+        (= word (<B>strings:reverse</B> word))
     )
 )
 
-(<b>println</b> <i>"the result is: "</i> (fact 1 30))
+(<B>println</B> <I>"'hello' is a palindrome? "</I> (is_palindrome? <I>"hello"</I>))
+(<B>println</B> <I>"'racecar' is a palindrome? "</I> (is_palindrome? <I>"racecar"</I>))
 </pre>
+
+### Example 2: Data Processing Pipeline (List & String stdlib)
+
+This example demonstrates a common data processing task: splitting a sentence, filtering words by length, (conceptually) uppercasing them, and rejoining. It highlights the functional style and the use of the `list` and `strings` standard library modules.
+
+<pre>
+(<B>import</B> <I>"list"</I> [<I>"map"</I> <I>"filter"</I>])
+(<B>import</B> <I>"strings"</I> [<I>"split"</I> <I>"join"</I>])
+
+(<B>let</B> sentence <I>"Liss is a fun and powerful language"</I>)
+
+(<B>let</B> long_words (<B>list:filter</B> (<B>strings:split</B> sentence <I>" "</I>) (<B>fn</B> [word]
+    (> (<B>len</B> word) 2)
+)))
+
+(<B>let</B> uppercased_words (<B>list:map</B> long_words to_uppercase))
+
+(<B>let</B> result (<B>strings:join</B> uppercased_words <I>", "</I>))
+
+(<B>println</B> <I>"Original: "</I> sentence)
+(<B>println</B> <I>"Processed: "</I> result)
+; Expected Output: "Processed: Liss, fun, and, powerful, language"
+</pre>
+
+### Example 3: Summing a Long List (Tail Recursion)
+
+This example demonstrates a tail-recursive function to sum a list of numbers. This implementation is optimized for memory efficiency, preventing stack overflows even with very large lists, showcasing a key feature of Liss's VM.
+
+<pre>
+(<B>import</B> <I>"list"</I> [<I>"seq"</I>])
+
+; A tail-recursive function to sum a list
+(<B>fn</B> sum_list [lst]
+    (<B>fn</B> _sum [acc l]
+        (<B>cond</B> (<B>is_empty?</B> l)
+            acc
+            (_sum (+ acc (<B>head</B> l)) (<B>tail</B> l))
+        )
+    )
+    (_sum 0 lst)
+)
+
+; Create a list with 10,000 numbers from 1 to 10,000
+(<B>let</B> numbers (<B>list:seq</B> 1 10001))
+
+(<B>println</B> <I>"Summing 10,000 numbers..."</I>)
+(<B>let</B> total (sum_list numbers))
+(<B>println</B> <I>"Total: "</I> total)
+; Expected Output: "Total: 50005000"
+</pre>
+
+
 
 ## References
 
