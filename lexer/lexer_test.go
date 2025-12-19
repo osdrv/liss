@@ -232,6 +232,44 @@ func TestNextToken(t *testing.T) {
 			},
 		},
 		{
+			name:  "Hexadecimal numeric literals",
+			input: "0x1A 0Xff 0xDeadBeef",
+			match: TokenTypeMatch | TokenLocationMatch | TokenLiteralMatch,
+			want: []token.Token{
+				{
+					Type:    token.Numeric,
+					Literal: "0x1A",
+					Location: token.Location{
+						Line:   1,
+						Column: 1,
+					},
+				},
+				{
+					Type:    token.Numeric,
+					Literal: "0Xff",
+					Location: token.Location{
+						Line:   1,
+						Column: 6,
+					},
+				},
+				{
+					Type:    token.Numeric,
+					Literal: "0xDeadBeef",
+					Location: token.Location{
+						Line:   1,
+						Column: 11,
+					},
+				},
+				{
+					Type: token.EOF,
+					Location: token.Location{
+						Line:   1,
+						Column: 21,
+					},
+				},
+			},
+		},
+		{
 			name:  "String literal single quotes",
 			input: "'hello'",
 			match: TokenTypeMatch | TokenLocationMatch | TokenLiteralMatch,

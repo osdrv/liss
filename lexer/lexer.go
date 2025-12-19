@@ -154,6 +154,7 @@ func (l *Lexer) emitNumeric() token.Token {
 	to := from
 	seenExponent := false
 	seenDecimal := false
+	seenHexPrefix := false
 	for !l.isEOF() {
 		ch := l.Source[l.pos]
 		pass := false
@@ -168,9 +169,16 @@ func (l *Lexer) emitNumeric() token.Token {
 				seenDecimal = true
 				pass = true
 			}
-		} else if isExponent(ch) {
+		} else if isExponent(ch) && !seenHexPrefix {
 			if to > from && !seenExponent {
 				seenExponent = true
+				pass = true
+			}
+		} else if (ch == 'x' || ch == 'X') && to == from+1 && l.Source[from] == '0' {
+			seenHexPrefix = true
+			pass = true
+		} else if (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F') {
+			if seenHexPrefix {
 				pass = true
 			}
 		}

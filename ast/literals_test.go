@@ -37,6 +37,20 @@ func TestIntegerLiteral(t *testing.T) {
 			},
 			wantErr: errors.New("expected token type Numeric, got String"),
 		},
+		{
+			name: "Hexadecimal integer literal",
+			input: token.Token{
+				Type:    token.Numeric,
+				Literal: "0x2A",
+			},
+			want: &IntegerLiteral{
+				Tok: token.Token{
+					Type:    token.Numeric,
+					Literal: "0x2A",
+				},
+				Value: 42,
+			},
+		},
 	}
 
 	for _, tt := range tests {

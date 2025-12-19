@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"osdrv/liss/token"
 	"strconv"
+	"strings"
 )
 
 type NullLiteral struct {
@@ -40,6 +41,13 @@ var _ Node = (*IntegerLiteral)(nil)
 func NewIntegerLiteral(tok token.Token) (*IntegerLiteral, error) {
 	if tok.Type != token.Numeric {
 		return nil, fmt.Errorf("expected token type Numeric, got %s", tok.Type.String())
+	}
+	if strings.HasPrefix(tok.Literal, "0x") || strings.HasPrefix(tok.Literal, "0X") {
+		v, err := strconv.ParseInt(tok.Literal[2:], 16, 64)
+		if err != nil {
+			return nil, err
+		}
+		return &IntegerLiteral{Tok: tok, Value: v}, nil
 	}
 
 	v, err := strconv.ParseInt(tok.Literal, 10, 64)

@@ -5,6 +5,7 @@ import (
 	"osdrv/liss/ast"
 	"osdrv/liss/lexer"
 	"osdrv/liss/token"
+	"strings"
 )
 
 type Parser struct {
@@ -458,9 +459,17 @@ func (p *Parser) parseBooleanLiteral() (ast.Node, error) {
 	return ast.NewBooleanLiteral(tok)
 }
 
+func hasHexPrefix(s string) bool {
+	return strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X")
+}
+
 func looksLikeInteger(tok token.Token) bool {
 	if len(tok.Literal) == 0 {
 		return false
+	}
+	if hasHexPrefix(tok.Literal) {
+		// after 0x everything should be a hex digit
+		return true
 	}
 	for ix, r := range tok.Literal {
 		if r == '+' || r == '-' {
