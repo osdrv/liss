@@ -132,7 +132,6 @@ var (
 		"bnot":       BNot,
 		"bsl":        BShiftLeft,
 		"bsr":        BShiftRight,
-		"equal":      Equal,
 		"let":        Let,
 		"and":        And,
 		"or":         Or,
