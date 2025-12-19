@@ -390,6 +390,83 @@ func (vm *VM) Run() (exit_err error) {
 			if err = vm.push(res); err != nil {
 				return err
 			}
+		case code.OpBAnd:
+			objB = vm.pop()
+			objA = vm.pop()
+			if objA.Type() != object.IntegerType || objB.Type() != object.IntegerType {
+				return NewTypeMismatchError(
+					fmt.Sprintf("expected integer types for bitwise AND operation, got %s and %s",
+						objA.Type().String(), objB.Type().String()))
+			}
+			if err = vm.push(
+				object.NewInteger(objA.(object.Numeric).Int64() & objB.(object.Numeric).Int64()),
+			); err != nil {
+				return err
+			}
+		case code.OpBOr:
+			objB = vm.pop()
+			objA = vm.pop()
+			if objA.Type() != object.IntegerType || objB.Type() != object.IntegerType {
+				return NewTypeMismatchError(
+					fmt.Sprintf("expected integer types for bitwise OR operation, got %s and %s",
+						objA.Type().String(), objB.Type().String()))
+			}
+			if err = vm.push(
+				object.NewInteger(objA.(object.Numeric).Int64() | objB.(object.Numeric).Int64()),
+			); err != nil {
+				return err
+			}
+		case code.OpBXor:
+			objB = vm.pop()
+			objA = vm.pop()
+			if objA.Type() != object.IntegerType || objB.Type() != object.IntegerType {
+				return NewTypeMismatchError(
+					fmt.Sprintf("expected integer types for bitwise XOR operation, got %s and %s",
+						objA.Type().String(), objB.Type().String()))
+			}
+			if err = vm.push(
+				object.NewInteger(objA.(object.Numeric).Int64() ^ objB.(object.Numeric).Int64()),
+			); err != nil {
+				return err
+			}
+		case code.OpBNot:
+			objA = vm.pop()
+			if objA.Type() != object.IntegerType {
+				return NewTypeMismatchError(
+					fmt.Sprintf("expected integer type for bitwise NOT operation, got %s",
+						objA.Type().String()))
+			}
+			if err = vm.push(
+				object.NewInteger(^objA.(object.Numeric).Int64()),
+			); err != nil {
+				return err
+			}
+		case code.OpBShiftLeft:
+			objB = vm.pop()
+			objA = vm.pop()
+			if objA.Type() != object.IntegerType || objB.Type() != object.IntegerType {
+				return NewTypeMismatchError(
+					fmt.Sprintf("expected integer types for bitwise shift left operation, got %s and %s",
+						objA.Type().String(), objB.Type().String()))
+			}
+			if err = vm.push(
+				object.NewInteger(objA.(object.Numeric).Int64() << objB.(object.Numeric).Int64()),
+			); err != nil {
+				return err
+			}
+		case code.OpBShiftRight:
+			objB = vm.pop()
+			objA = vm.pop()
+			if objA.Type() != object.IntegerType || objB.Type() != object.IntegerType {
+				return NewTypeMismatchError(
+					fmt.Sprintf("expected integer types for bitwise shift right operation, got %s and %s",
+						objA.Type().String(), objB.Type().String()))
+			}
+			if err = vm.push(
+				object.NewInteger(objA.(object.Numeric).Int64() >> objB.(object.Numeric).Int64()),
+			); err != nil {
+				return err
+			}
 		case code.OpMod:
 			objB = vm.pop()
 			objA = vm.pop()

@@ -146,17 +146,17 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		case ast.OperatorModulus:
 			c.emit(code.OpMod)
 		case ast.OperatorBitwiseAnd:
-			c.emit(code.OpBAnd, argc)
+			c.emit(code.OpBAnd)
 		case ast.OperatorBitwiseOr:
-			c.emit(code.OpBOr, argc)
+			c.emit(code.OpBOr)
 		case ast.OperatorBitwiseXor:
-			c.emit(code.OpBXor, argc)
+			c.emit(code.OpBXor)
 		case ast.OperatorBitwiseNot:
 			c.emit(code.OpBNot)
 		case ast.OperatorBitwiseShiftLeft:
-			c.emit(code.OpBShiftLeft, argc)
+			c.emit(code.OpBShiftLeft)
 		case ast.OperatorBitwiseShiftRight:
-			c.emit(code.OpBShiftRight, argc)
+			c.emit(code.OpBShiftRight)
 		default:
 			return fmt.Errorf("unsupported operator: %s", n.Operator)
 		}

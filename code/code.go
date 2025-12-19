@@ -85,6 +85,13 @@ var definitions = map[OpCode]*Definition{
 	OpDiv: {"OpDiv", []int{}},
 	OpMod: {"OpMod", []int{}},
 
+	OpBAnd:        {"OpBAnd", []int{}},
+	OpBOr:         {"OpBOr", []int{}},
+	OpBXor:        {"OpBXor", []int{}},
+	OpBNot:        {"OpBNot", []int{}},
+	OpBShiftLeft:  {"OpBShiftLeft", []int{}},
+	OpBShiftRight: {"OpBShiftRight", []int{}},
+
 	OpEql:          {"OpEql", []int{}},
 	OpNotEql:       {"OpNotEql", []int{}},
 	OpGreaterThan:  {"OpGreaterThan", []int{}},

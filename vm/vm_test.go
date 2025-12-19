@@ -816,6 +816,105 @@ func TestClosures(t *testing.T) {
 	}
 }
 
+func TestBitwiseOperations(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    any
+		wantErr error
+	}{
+		{
+			name:  "bitwise AND",
+			input: "(&& 1 1)",
+			want:  int64(1),
+		},
+		{
+			name:  "bitwise AND keyword",
+			input: "(band 1 3)",
+			want:  int64(1),
+		},
+		{
+			name:  "bitwise OR",
+			input: "(|| 1 0)",
+			want:  int64(1),
+		},
+		{
+			name:  "bitwise OR keyword",
+			input: "(bor 1 2)",
+			want:  int64(3),
+		},
+		{
+			name:  "bitwise XOR",
+			input: "(^ 5 3)",
+			want:  int64(6),
+		},
+		{
+			name:  "bitwise XOR keyword",
+			input: "(bxor 5 3)",
+			want:  int64(6),
+		},
+		{
+			name:  "bitwise NOT",
+			input: "(~ 0)",
+			want:  int64(-1),
+		},
+		{
+			name:  "bitwise NOT keyword",
+			input: "(bnot 0)",
+			want:  int64(-1),
+		},
+		{
+			name:  "bitwise left shift",
+			input: "(<< 1 3)",
+			want:  int64(8),
+		},
+		{
+			name:  "bitwise left shift keyword",
+			input: "(bsl 1 3)",
+			want:  int64(8),
+		},
+		{
+			name:  "bitwise right shift",
+			input: "(>> 8 2)",
+			want:  int64(2),
+		},
+		{
+			name:  "bitwise right shift keyword",
+			input: "(bsr 8 2)",
+			want:  int64(2),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			require.NoError(t, err, "Failed to parse input: %s", tt.input)
+			comp := compiler.New(compiler.CompilerOptions{})
+			require.NoError(t, comp.Compile(prog), "Failed to compile program: %s", tt.input)
+			mod := &compiler.Module{
+				Name:     "test",
+				Bytecode: comp.Bytecode(),
+				Symbols:  comp.Symbols(),
+				Env: &object.Environment{
+					Consts: comp.Bytecode().Consts,
+				},
+			}
+			vm := New(mod)
+
+			err = vm.Run()
+			if tt.wantErr != nil {
+				assert.Error(t, err, "Expected error for input: %s", tt.input)
+				assert.EqualError(t, err, tt.wantErr.Error(), "Error message does not match")
+				return
+			}
+
+			assert.NoError(t, err, "Failed to run program: %s", tt.input)
+			st := vm.LastPopped()
+			test.AssertObjectEql(t, st, tt.want)
+		})
+	}
+}
+
 func parse(source string) (ast.Node, error) {
 	lex := lexer.NewLexer(source)
 	par := parser.NewParser(lex)
