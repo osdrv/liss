@@ -214,13 +214,30 @@ func (l *Lexer) emitOperator() token.Token {
 		}
 	case '=':
 		typ = token.Equal
+	case '^':
+		typ = token.BXor
+	case '~':
+		typ = token.BNot
 	case '&':
-		typ = token.And
+		if l.pos < len(l.Source) && l.Source[l.pos] == '&' {
+			typ = token.BAnd
+			l.advance(LexerModeDefault)
+		} else {
+			typ = token.And
+		}
 	case '|':
-		typ = token.Or
+		if l.pos < len(l.Source) && l.Source[l.pos] == '|' {
+			typ = token.BOr
+			l.advance(LexerModeDefault)
+		} else {
+			typ = token.Or
+		}
 	case '>':
 		if l.pos < len(l.Source) && l.Source[l.pos] == '=' {
 			typ = token.GreaterThanOrEqual
+			l.advance(LexerModeDefault)
+		} else if l.pos < len(l.Source) && l.Source[l.pos] == '>' {
+			typ = token.BShiftRight
 			l.advance(LexerModeDefault)
 		} else {
 			typ = token.GreaterThan
@@ -228,6 +245,9 @@ func (l *Lexer) emitOperator() token.Token {
 	case '<':
 		if l.pos < len(l.Source) && l.Source[l.pos] == '=' {
 			typ = token.LessThanOrEqual
+			l.advance(LexerModeDefault)
+		} else if l.pos < len(l.Source) && l.Source[l.pos] == '<' {
+			typ = token.BShiftLeft
 			l.advance(LexerModeDefault)
 		} else {
 			typ = token.LessThan
@@ -383,7 +403,9 @@ func (l *Lexer) isOperator() bool {
 		ch == '&' ||
 		ch == '|' ||
 		ch == '>' ||
-		ch == '<'
+		ch == '<' ||
+		ch == '^' ||
+		ch == '~'
 }
 
 func (l *Lexer) isComment() bool {

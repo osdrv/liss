@@ -17,6 +17,13 @@ var AssertOperatorArgc = map[ast.Operator]int{
 	ast.OperatorLessThan:           2,
 	ast.OperatorLessThanOrEqual:    2,
 	ast.OperatorNot:                1,
+
+	ast.OperatorBitwiseAnd:        2,
+	ast.OperatorBitwiseOr:         2,
+	ast.OperatorBitwiseXor:        2,
+	ast.OperatorBitwiseNot:        1,
+	ast.OperatorBitwiseShiftLeft:  2,
+	ast.OperatorBitwiseShiftRight: 2,
 }
 
 type CompilerOptions struct {
@@ -138,6 +145,20 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 			c.emit(code.OpOr, argc)
 		case ast.OperatorModulus:
 			c.emit(code.OpMod)
+		case ast.OperatorBitwiseAnd:
+			c.emit(code.OpBAnd, argc)
+		case ast.OperatorBitwiseOr:
+			c.emit(code.OpBOr, argc)
+		case ast.OperatorBitwiseXor:
+			c.emit(code.OpBXor, argc)
+		case ast.OperatorBitwiseNot:
+			c.emit(code.OpBNot)
+		case ast.OperatorBitwiseShiftLeft:
+			c.emit(code.OpBShiftLeft, argc)
+		case ast.OperatorBitwiseShiftRight:
+			c.emit(code.OpBShiftRight, argc)
+		default:
+			return fmt.Errorf("unsupported operator: %s", n.Operator)
 		}
 		if !managed {
 			c.emit(code.OpPop)

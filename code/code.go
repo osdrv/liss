@@ -23,6 +23,13 @@ const (
 	OpDiv
 	OpMod
 
+	OpBAnd
+	OpBOr
+	OpBXor
+	OpBNot
+	OpBShiftLeft
+	OpBShiftRight
+
 	OpList
 
 	OpEql

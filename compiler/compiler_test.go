@@ -35,6 +35,473 @@ func TestComplilerScopes(t *testing.T) {
 	assert.Equal(t, code.OpTrue, c.scopes[c.scopeix].prev.OpCode, "Previous instruction in the outer scope should be an OpTrue")
 }
 
+func TestOperators(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantConsts []any
+		wantInstrs []code.Instructions
+		wantErr    error
+	}{
+		{
+			name:       "addition",
+			input:      "(+ 1 2 3)",
+			wantConsts: []any{int64(1), int64(2), int64(3)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpAdd, 3),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "addition keyword",
+			input:      "(plus 7 8)",
+			wantConsts: []any{int64(7), int64(8)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpAdd, 2),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "multiplication",
+			input:      "(* 4 5 6)",
+			wantConsts: []any{int64(4), int64(5), int64(6)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpConst, 2),
+				code.Make(code.OpMul, 3),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "multiplication keyword",
+			input:      "(mult 9 10)",
+			wantConsts: []any{int64(9), int64(10)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpMul, 2),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "subtraction",
+			input:      "(- 10 3)",
+			wantConsts: []any{int64(10), int64(3)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpSub),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "subtraction keyword",
+			input:      "(minus 15 5)",
+			wantConsts: []any{int64(15), int64(5)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpSub),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "division",
+			input:      "(/ 20 4)",
+			wantConsts: []any{int64(20), int64(4)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpDiv),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "division keyword",
+			input:      "(div 18 3)",
+			wantConsts: []any{int64(18), int64(3)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpDiv),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "modulus",
+			input:      "(% 22 5)",
+			wantConsts: []any{int64(22), int64(5)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpMod),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "modulus keyword",
+			input:      "(mod 29 6)",
+			wantConsts: []any{int64(29), int64(6)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpMod),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "not",
+			input:      "(! true)",
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpNot),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "not keyword",
+			input:      "(not false)",
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpFalse),
+				code.Make(code.OpNot),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "and",
+			input:      "(& true false)",
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpFalse),
+				code.Make(code.OpAnd, 2),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "and keyword",
+			input:      "(and true true)",
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpTrue),
+				code.Make(code.OpAnd, 2),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "or",
+			input:      "(| false true)",
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpFalse),
+				code.Make(code.OpTrue),
+				code.Make(code.OpOr, 2),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "or keyword",
+			input:      "(or false false)",
+			wantConsts: []any{},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpFalse),
+				code.Make(code.OpFalse),
+				code.Make(code.OpOr, 2),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "equal",
+			input:      "(= 5 5)",
+			wantConsts: []any{int64(5), int64(5)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpEql),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "equal keyword",
+			input:      "(eq 10 10)",
+			wantConsts: []any{int64(10), int64(10)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpEql),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "not equal",
+			input:      "(!= 5 3)",
+			wantConsts: []any{int64(5), int64(3)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpNotEql),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "not equal keyword",
+			input:      "(ne 10 7)",
+			wantConsts: []any{int64(10), int64(7)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpNotEql),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "greater than",
+			input:      "(> 8 3)",
+			wantConsts: []any{int64(8), int64(3)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpGreaterThan),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "greater than keyword",
+			input:      "(gt 9 4)",
+			wantConsts: []any{int64(9), int64(4)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpGreaterThan),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "less than",
+			input:      "(< 2 5)",
+			wantConsts: []any{int64(2), int64(5)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpLessThan),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "less than keyword",
+			input:      "(lt 3 6)",
+			wantConsts: []any{int64(3), int64(6)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpLessThan),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "greater equal",
+			input:      "(>= 7 7)",
+			wantConsts: []any{int64(7), int64(7)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpGreaterEqual),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "greater equal keyword",
+			input:      "(gte 8 6)",
+			wantConsts: []any{int64(8), int64(6)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpGreaterEqual),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "less equal",
+			input:      "(<= 4 4)",
+			wantConsts: []any{int64(4), int64(4)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpLessEqual),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "less equal keyword",
+			input:      "(lte 3 5)",
+			wantConsts: []any{int64(3), int64(5)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpLessEqual),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise and",
+			input:      "(&& 6 3)",
+			wantConsts: []any{int64(6), int64(3)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpBAnd),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise and keyword",
+			input:      "(band 5 2)",
+			wantConsts: []any{int64(5), int64(2)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpBAnd),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise or",
+			input:      "(|| 4 1)",
+			wantConsts: []any{int64(4), int64(1)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpBOr),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise or keyword",
+			input:      "(bor 2 8)",
+			wantConsts: []any{int64(2), int64(8)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpBOr),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise xor",
+			input:      "(^ 5 3)",
+			wantConsts: []any{int64(5), int64(3)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpBXor),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise xor keyword",
+			input:      "(bxor 7 2)",
+			wantConsts: []any{int64(7), int64(2)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpBXor),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise not",
+			input:      "(~ 6)",
+			wantConsts: []any{int64(6)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpBNot),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise not keyword",
+			input:      "(bnot 9)",
+			wantConsts: []any{int64(9)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpBNot),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise shift left",
+			input:      "(<< 3 2)",
+			wantConsts: []any{int64(3), int64(2)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpBShiftLeft),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise shift left keyword",
+			input:      "(bsl 4 1)",
+			wantConsts: []any{int64(4), int64(1)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpBShiftLeft),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise shift right",
+			input:      "(>> 8 2)",
+			wantConsts: []any{int64(8), int64(2)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpBShiftRight),
+				code.Make(code.OpPop),
+			},
+		},
+		{
+			name:       "bitwise shift right keyword",
+			input:      "(bsr 16 3)",
+			wantConsts: []any{int64(16), int64(3)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpConst, 1),
+				code.Make(code.OpBShiftRight),
+				code.Make(code.OpPop),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New(CompilerOptions{})
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
+}
+
 func TestClosures(t *testing.T) {
 	tests := []struct {
 		name       string

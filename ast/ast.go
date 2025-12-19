@@ -30,6 +30,13 @@ const (
 	OperatorDivide
 	OperatorModulus
 
+	OperatorBitwiseAnd
+	OperatorBitwiseOr
+	OperatorBitwiseXor
+	OperatorBitwiseNot
+	OperatorBitwiseShiftLeft
+	OperatorBitwiseShiftRight
+
 	OperatorEqual
 	OperatorNotEqual
 	OperatorLessThan
@@ -49,6 +56,13 @@ var tokenToOperator = map[token.TokenType]Operator{
 	token.Divide:   OperatorDivide,
 	token.Modulus:  OperatorModulus,
 
+	token.BAnd:        OperatorBitwiseAnd,
+	token.BOr:         OperatorBitwiseOr,
+	token.BXor:        OperatorBitwiseXor,
+	token.BNot:        OperatorBitwiseNot,
+	token.BShiftLeft:  OperatorBitwiseShiftLeft,
+	token.BShiftRight: OperatorBitwiseShiftRight,
+
 	token.Equal:              OperatorEqual,
 	token.NotEqual:           OperatorNotEqual,
 	token.LessThan:           OperatorLessThan,
@@ -66,6 +80,13 @@ var operatorToString = map[Operator]string{
 	OperatorMultiply: "*",
 	OperatorDivide:   "/",
 	OperatorModulus:  "%",
+
+	OperatorBitwiseAnd:        "&&",
+	OperatorBitwiseOr:         "||",
+	OperatorBitwiseXor:        "^",
+	OperatorBitwiseNot:        "~",
+	OperatorBitwiseShiftLeft:  "<<",
+	OperatorBitwiseShiftRight: ">>",
 
 	OperatorEqual:              "=",
 	OperatorNotEqual:           "!=",

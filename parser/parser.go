@@ -359,7 +359,13 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 		token.GreaterThanOrEqual,
 		token.And,
 		token.Or,
-		token.Not:
+		token.Not,
+		token.BAnd,
+		token.BOr,
+		token.BXor,
+		token.BNot,
+		token.BShiftLeft,
+		token.BShiftRight:
 		node, err = p.parseOperatorExpression()
 	case token.Import:
 		node, err = p.parseImportExpression()

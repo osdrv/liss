@@ -38,6 +38,13 @@ const (
 	Divide
 	Modulus
 
+	BAnd
+	BOr
+	BXor
+	BNot
+	BShiftLeft
+	BShiftRight
+
 	Equal
 	NotEqual
 	LessThan
@@ -91,6 +98,13 @@ var (
 		Or:                 "|",
 		Not:                "!",
 
+		BNot:        "~",
+		BAnd:        "&&",
+		BOr:         "||",
+		BXor:        "^",
+		BShiftLeft:  "<<",
+		BShiftRight: ">>",
+
 		Fn:         "fn",
 		True:       "true",
 		False:      "false",
@@ -112,6 +126,13 @@ var (
 		"null":       Null,
 		"cond":       Cond,
 		"switch":     Switch,
+		"band":       BAnd,
+		"bor":        BOr,
+		"bxor":       BXor,
+		"bnot":       BNot,
+		"bsl":        BShiftLeft,
+		"bsr":        BShiftRight,
+		"equal":      Equal,
 		"let":        Let,
 		"and":        And,
 		"or":         Or,
@@ -121,6 +142,12 @@ var (
 		"mult":       Multiply,
 		"div":        Divide,
 		"mod":        Modulus,
+		"eq":         Equal,
+		"ne":         NotEqual,
+		"lt":         LessThan,
+		"lte":        LessThanOrEqual,
+		"gt":         GreaterThan,
+		"gte":        GreaterThanOrEqual,
 		"import":     Import,
 		"as":         As,
 		"breakpoint": Breakpoint,
