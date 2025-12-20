@@ -323,17 +323,6 @@ func builtinRange(args []Object) (Object, error) {
 }
 
 func builtinDict(pairs []Object) (Object, error) {
-	dict := make(map[any]Object)
-	for _, pair := range pairs {
-		if !pair.IsList() {
-			return nil, fmt.Errorf("dict expects list pairs, got %s", pair.String())
-		}
-		list := pair.(*List)
-		if list.Len() != 2 {
-			return nil, fmt.Errorf("dict expects list pairs of length 2, got %d", list.Len())
-		}
-		dict[list.items[0].Raw()] = list.items[1]
-	}
 	return NewDictionaryWithItems(pairs)
 }
 
