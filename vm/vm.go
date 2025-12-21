@@ -743,30 +743,37 @@ func (vm *VM) Run() (exit_err error) {
 				fmt.Printf("Breakpoint reached at: line: %d, column: %d\n", line, col)
 				runtime.Breakpoint()
 			}
-		case code.OpRaise:
-			payload := vm.pop()
-			if vm.hptr == 0 {
-				return NewUnhandledError(payload.String())
-			}
-			h := vm.handlers[vm.hptr-1]
-			vm.sp = h.sp
-			vm.currentFrame = vm.frames[h.fix]
-			if err = vm.push(object.NewError(payload)); err != nil {
-				return err
-			}
-			vm.currentFrame.ip = h.jmpto - 1
-			vm.handlers[vm.hptr-1] = nil
-			vm.hptr--
 		case code.OpTryBegin:
 			jmpto := code.ReadUint16(instrs[ip+1:])
 			vm.currentFrame.ip += 2
 			vm.handlers[vm.hptr] = &Handler{
 				sp:    vm.sp,
 				ip:    frame.ip,
-				fix:   vm.framesix - 1,
+				fix:   vm.framesix,
 				jmpto: int(jmpto),
 			}
 			vm.hptr++
+		case code.OpRaise:
+			payload := vm.pop()
+			if vm.hptr == 0 {
+				return NewUnhandledError(payload.String())
+			}
+			h := vm.handlers[vm.hptr-1]
+			for i := vm.sp; i >= h.sp; i-- {
+				vm.stack[i] = nil
+			}
+			vm.sp = h.sp
+			for vm.framesix > h.fix {
+				fmt.Printf("vm.framesix: %d, h.fix: %d\n", vm.framesix, h.fix)
+				vm.popFrame()
+			}
+			vm.currentFrame.ip = h.jmpto - 1
+			vm.handlers[vm.hptr-1] = nil
+			vm.hptr--
+			shouldReload = true
+			if err = vm.push(object.NewError(payload)); err != nil {
+				return err
+			}
 		case code.OpTryEnd:
 			vm.handlers[vm.hptr] = nil
 			vm.hptr--
