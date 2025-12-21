@@ -79,8 +79,8 @@
 ((fn test_strings_atoi []
     (let tests [
         (dict ["name" "atoi null"] ["input" null] ["want" null])
-        ; This test is expected to raise an error, but we can't catch it yet
-        ; (dict ["name" "atoi empty string"] ["input" ""] ["want" null])
+        (dict ["name" "atoi empty string"] ["input" ""]
+            ["wantErr" "Error: \"atoi: empty string\""])
         (dict ["name" "atoi single digit"] ["input" "5"] ["want" 5])
         (dict ["name" "atoi multiple digits"] ["input" "12345"] ["want" 12345])
         (dict ["name" "atoi leading zeros"] ["input" "00042"] ["want" 42])
@@ -89,17 +89,22 @@
         (print "Running test: " (get test "name"))
         (let input (get test "input"))
         (let want (get test "want"))
-        (let got (strings:atoi input))
-        (assert:equal got want)
+        (let wantErr (get test "wantErr"))
+        (let got (try (strings:atoi input)))
+        (cond (is_null? wantErr)
+            (assert:equal got want)
+            (assert:is_error_signature got wantErr)
+        )
         (println ": OK")
     ))
 ))
 
 ((fn test_strings_has_prefix []
     (let tests [
-        ; TODO: enable null tests when error handling is implemented
-        ; (dict ["name" "has_prefix null string"] ["s" null] ["prefix" "pre"] ["want" false])
-        ; (dict ["name" "has_prefix null prefix"] ["s" "string"] ["prefix" null] ["want" false])
+        (dict ["name" "has_prefix null string"] ["s" null] ["prefix" "pre"]
+            ["wantErr" "Error: \"has_prefix?: both arguments must be strings\""])
+        (dict ["name" "has_prefix null prefix"] ["s" "string"] ["prefix" null]
+            ["wantErr" "Error: \"has_prefix?: both arguments must be strings\""])
         (dict ["name" "has_prefix empty prefix"] ["s" "string"] ["prefix" ""] ["want" true])
         (dict ["name" "has_prefix matching prefix"] ["s" "hello world"] ["prefix" "hello"] ["want" true])
         (dict ["name" "has_prefix non-matching prefix"] ["s" "hello world"] ["prefix" "world"] ["want" false])
@@ -109,8 +114,12 @@
         (let s (get test "s"))
         (let prefix (get test "prefix"))
         (let want (get test "want"))
-        (let got (strings:has_prefix? s prefix))
-        (assert:equal got want)
+        (let wantErr (get test "wantErr"))
+        (let got (try (strings:has_prefix? s prefix)))
+        (cond (is_null? wantErr)
+            (assert:equal got want)
+            (assert:is_error_signature got wantErr)
+        )
         (println ": OK")
     ))
 ))

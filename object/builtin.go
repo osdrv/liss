@@ -132,6 +132,7 @@ func init() {
 		NewBuiltinFunc("is_int?", 1, false, builtinIsInt),
 		NewBuiltinFunc("is_float?", 1, false, builtinIsFloat),
 		NewBuiltinFunc("is_bool?", 1, false, builtinIsBool),
+		NewBuiltinFunc("is_error?", 1, false, builtinIsError),
 
 		// TODO: this is cheating. Go implement your own parsing primitives, Oleg!
 		NewBuiltinFunc("parse_int", 1, false, builtinParseInt),
@@ -684,6 +685,13 @@ func builtinIsFloat(args []Object) (Object, error) {
 
 func builtinIsBool(args []Object) (Object, error) {
 	if args[0].IsBool() {
+		return TRUE, nil
+	}
+	return FALSE, nil
+}
+
+func builtinIsError(args []Object) (Object, error) {
+	if args[0].IsError() {
 		return TRUE, nil
 	}
 	return FALSE, nil

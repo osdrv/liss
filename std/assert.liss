@@ -52,6 +52,21 @@
     )
 )
 
+(fn is_error [val]
+    (let msg (+ "Value is not an error: " (str val)))
+    (cond (is_error? val)
+        true
+        (raise! msg)
+    )
+)
+
+(fn is_error_signature [val signature]
+    (cond (is_error? val)
+        (equal (str val) signature)
+        (raise! (+ "Value is not an error: " (str val)))
+    )
+)
+
 (fn _list_equal [a b cmp]
     (let msg (+ "Lists are not equal: \n" (str a) "\n" (str b)))
     (fn _next [ix]
