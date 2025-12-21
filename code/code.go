@@ -60,6 +60,8 @@ const (
 	OpReturn
 	OpBreakpoint
 	OpRaise
+	OpTryBegin
+	OpTryEnd
 	OpSrcAnchor
 	OpLoadModule
 	OpGetModule
@@ -117,10 +119,14 @@ var definitions = map[OpCode]*Definition{
 	OpCurrentClosure: {"OpCurrentClosure", []int{}},
 	OpReturn:         {"OpReturn", []int{}},
 	OpBreakpoint:     {"OpBreakpoint", []int{2, 2}},
-	OpRaise:          {"OpRaise", []int{}},
 	OpSrcAnchor:      {"OpSrcAnchor", []int{2}},
 	OpLoadModule:     {"OpLoadModule", []int{2}},
 	OpGetModule:      {"OpGetModule", []int{2, 2}},
+
+	// Error handling ops
+	OpRaise:    {"OpRaise", []int{}},
+	OpTryBegin: {"OpTryBegin", []int{}},
+	OpTryEnd:   {"OpTryEnd", []int{}},
 }
 
 func Lookup(op OpCode) (*Definition, error) {

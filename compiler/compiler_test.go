@@ -2098,6 +2098,48 @@ func TestListExpr(t *testing.T) {
 	}
 }
 
+func TestTryExpression(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantInstrs []code.Instructions
+		wantConsts []any
+		wantErr    error
+	}{
+		{
+			name:       "try expression",
+			input:      `(try (let foo 42))`,
+			wantConsts: []any{int64(42)},
+			wantInstrs: []code.Instructions{
+				code.Make(code.OpTryBegin),
+				code.Make(code.OpConst, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpTryEnd),
+				code.Make(code.OpPop),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prog, err := parse(tt.input)
+			assert.NoError(t, err, "Unexpected error parsing input: %s", tt.input)
+			c := New(CompilerOptions{})
+			err = c.Compile(prog)
+			if tt.wantErr != nil {
+				assert.EqualError(t, err, tt.wantErr.Error(), "Expected error does not match")
+				return
+			}
+			assert.NoError(t, err, "Unexpected error compiling program: %s", tt.input)
+
+			bc := c.Bytecode()
+			assertInstrs(t, tt.wantInstrs, bc.Instrs)
+			assertConsts(t, tt.wantConsts, bc.Consts)
+		})
+	}
+}
+
 func assertInstrs(t *testing.T, wants []code.Instructions, got code.Instructions) {
 	want := concatArr(wants)
 	wantStr := code.PrintInstr(want)

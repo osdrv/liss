@@ -774,6 +774,31 @@ func TestParse(t *testing.T) {
 			input:   "math:pi:value",
 			wantErr: errors.New("invalid identifier format: \"math:pi:value\""),
 		},
+		{
+			name:  "try expression",
+			input: `(try (raise! "catch me if you can!"))`,
+			want: []ast.Node{
+				&ast.TryExpression{
+					Tok: token.Token{
+						Type:    token.Try,
+						Literal: "try",
+					},
+					Body: &ast.RaiseExpression{
+						Tok: token.Token{
+							Type:    token.Raise,
+							Literal: "raise!",
+						},
+						Expr: &ast.StringLiteral{
+							Tok: token.Token{
+								Type:    token.String,
+								Literal: `"catch me if you can!"`,
+							},
+							Value: "catch me if you can!",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

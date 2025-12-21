@@ -25,6 +25,7 @@ const (
 	EOF
 	Error
 	Raise
+	Try
 
 	LParen
 	RParen
@@ -151,6 +152,7 @@ var (
 		"as":         As,
 		"breakpoint": Breakpoint,
 		"raise!":     Raise,
+		"try":        Try,
 	}
 )
 

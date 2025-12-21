@@ -529,3 +529,31 @@ func (e *SwitchExpression) Children() []Node {
 }
 
 func (e *SwitchExpression) expressionNode() {}
+
+type TryExpression struct {
+	Tok  token.Token
+	Body Node
+}
+
+var _ Node = (*TryExpression)(nil)
+
+func NewTryExpression(tok token.Token, body Node) (*TryExpression, error) {
+	return &TryExpression{
+		Tok:  tok,
+		Body: body,
+	}, nil
+}
+
+func (e *TryExpression) Token() token.Token {
+	return e.Tok
+}
+
+func (e *TryExpression) String() string {
+	return fmt.Sprintf("(try %s)", e.Body.String())
+}
+
+func (e *TryExpression) Children() []Node {
+	return []Node{e.Body}
+}
+
+func (e *TryExpression) expressionNode() {}

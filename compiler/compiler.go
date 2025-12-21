@@ -432,6 +432,15 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 			return err
 		}
 		c.emit(code.OpRaise)
+	case *ast.TryExpression:
+		c.emit(code.OpTryBegin)
+		if err := c.compileStep(n.Body, true, false); err != nil {
+			return err
+		}
+		c.emit(code.OpTryEnd)
+		if !managed {
+			c.emit(code.OpPop)
+		}
 	case *ast.ImportExpression:
 		ref := n.Ref.(*ast.StringLiteral).Value
 		modix, ok := c.symbols.LookupModule(ref)

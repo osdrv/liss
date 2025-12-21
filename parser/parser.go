@@ -212,6 +212,18 @@ func (p *Parser) parseBreakpointExpression() (ast.Node, error) {
 	return ast.NewBreakpointExpression(tok)
 }
 
+func (p *Parser) parseTryExpression() (ast.Node, error) {
+	tok := p.curToken
+	if err := p.consume(token.Try); err != nil {
+		return nil, err
+	}
+	body, err := p.parseNode()
+	if err != nil {
+		return nil, err
+	}
+	return ast.NewTryExpression(tok, body)
+}
+
 func (p *Parser) parseRaiseExpression() (ast.Node, error) {
 	tok := p.curToken
 	if err := p.consume(token.Raise); err != nil {
@@ -372,6 +384,8 @@ func (p *Parser) parseExpression() (ast.Node, error) {
 		node, err = p.parseImportExpression()
 	case token.Breakpoint:
 		node, err = p.parseBreakpointExpression()
+	case token.Try:
+		node, err = p.parseTryExpression()
 	case token.Raise:
 		node, err = p.parseRaiseExpression()
 	default:
