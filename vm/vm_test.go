@@ -393,6 +393,29 @@ func TestRun(t *testing.T) {
 			`,
 			want: true,
 		},
+		{
+			name:  "try block with no exception",
+			input: `(try (let foo 42))`,
+			want:  int64(42),
+		},
+		{
+			name:  "try block with a trivial unfolded raise!",
+			input: `(try (raise! "catch me!"))`,
+			want:  object.NewError(object.NewString("catch me!")),
+		},
+		{
+			name: "try block with a raise in a function call",
+			input: `(fn foo [] (raise! "catch me!"))
+			(try (foo))`,
+			want: object.NewError(object.NewString("catch me!")),
+		},
+		{
+			name: "try block with a raise in a folded function call",
+			input: `(fn foo [] (raise! "catch me!"))
+			(fn bar [] (foo))
+			(try (bar))`,
+			want: object.NewError(object.NewString("catch me!")),
+		},
 	}
 
 	for _, tt := range tests {

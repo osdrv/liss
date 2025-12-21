@@ -433,11 +433,12 @@ func (c *Compiler) compileStep(node ast.Node, managed bool, isTail bool) error {
 		}
 		c.emit(code.OpRaise)
 	case *ast.TryExpression:
-		c.emit(code.OpTryBegin)
+		loc1 := c.emit(code.OpTryBegin, 9999)
 		if err := c.compileStep(n.Body, true, false); err != nil {
 			return err
 		}
 		c.emit(code.OpTryEnd)
+		c.updOperand(loc1, len(c.currentInstrs()))
 		if !managed {
 			c.emit(code.OpPop)
 		}

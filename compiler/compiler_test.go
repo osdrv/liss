@@ -2111,7 +2111,7 @@ func TestTryExpression(t *testing.T) {
 			input:      `(try (let foo 42))`,
 			wantConsts: []any{int64(42)},
 			wantInstrs: []code.Instructions{
-				code.Make(code.OpTryBegin),
+				code.Make(code.OpTryBegin, 13),
 				code.Make(code.OpConst, 0),
 				code.Make(code.OpSetGlobal, 0),
 				code.Make(code.OpGetGlobal, 0),

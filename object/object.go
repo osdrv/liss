@@ -24,6 +24,7 @@ const (
 	RegexpType
 	FileType
 	ModuleType
+	ErrorType
 )
 
 // Cache integers in range -256 .. 255
@@ -73,6 +74,8 @@ func (t ObjectType) String() string {
 		return "Regexp"
 	case FileType:
 		return "File"
+	case ErrorType:
+		return "Error"
 	default:
 		return "Unknown"
 	}
@@ -92,6 +95,7 @@ type Object interface {
 	IsRegexp() bool
 	IsFile() bool
 	IsModule() bool
+	IsError() bool
 	Raw() any
 	Clone() Object
 }
@@ -139,6 +143,10 @@ func (d defaultObject) IsFile() bool {
 }
 
 func (d defaultObject) IsModule() bool {
+	return false
+}
+
+func (d defaultObject) IsError() bool {
 	return false
 }
 
@@ -582,4 +590,35 @@ func (c *Closure) IsFunction() bool {
 
 func (c *Closure) Raw() any {
 	return c
+}
+
+type Error struct {
+	defaultObject
+	Payload Object
+}
+
+var _ Object = (*Error)(nil)
+
+func NewError(payload Object) *Error {
+	return &Error{Payload: payload}
+}
+
+func (e *Error) Type() ObjectType {
+	return ErrorType
+}
+
+func (e *Error) Clone() Object {
+	return &Error{Payload: e.Payload.Clone()}
+}
+
+func (e *Error) String() string {
+	return "Error: " + e.Payload.String()
+}
+
+func (e *Error) IsError() bool {
+	return true
+}
+
+func (e *Error) Raw() any {
+	return e.Payload.Raw()
 }

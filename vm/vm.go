@@ -17,6 +17,7 @@ const (
 )
 
 const MaxFrames = 1024
+const MaxHandlers = 256
 const MaxArgs = 255
 const StackSize = 4096
 const GlobalsSize = 65536
@@ -25,6 +26,10 @@ var ErrStackOverflow = errors.New("stack overflow")
 
 func NewRuntimeError(msg string) error {
 	return fmt.Errorf("runtime error: %s", msg)
+}
+
+func NewUnhandledError(msg string) error {
+	return fmt.Errorf("unhandled error: %s", msg)
 }
 
 type builtinHook func(*VM, *object.BuiltinFunc, []object.Object) (*object.BuiltinFunc, []object.Object, error)
@@ -91,6 +96,8 @@ type VM struct {
 	currentFrame *Frame // optimization for faster dereferencing
 	framesix     int
 	framePool    []*Frame
+	handlers     []*Handler
+	hptr         int
 
 	hooks   map[string]builtinHook
 	files   map[string]*object.File
@@ -133,6 +140,8 @@ func New(mod *compiler.Module) *VM {
 
 		frames:   frames,
 		framesix: 1,
+		handlers: make([]*Handler, MaxHandlers),
+		hptr:     0,
 
 		hooks: DefaultHooks,
 
@@ -735,8 +744,32 @@ func (vm *VM) Run() (exit_err error) {
 				runtime.Breakpoint()
 			}
 		case code.OpRaise:
-			errObj := vm.pop()
-			return NewRuntimeError(errObj.String())
+			payload := vm.pop()
+			if vm.hptr == 0 {
+				return NewUnhandledError(payload.String())
+			}
+			h := vm.handlers[vm.hptr-1]
+			vm.sp = h.sp
+			vm.currentFrame = vm.frames[h.fix]
+			if err = vm.push(object.NewError(payload)); err != nil {
+				return err
+			}
+			vm.currentFrame.ip = h.jmpto - 1
+			vm.handlers[vm.hptr-1] = nil
+			vm.hptr--
+		case code.OpTryBegin:
+			jmpto := code.ReadUint16(instrs[ip+1:])
+			vm.currentFrame.ip += 2
+			vm.handlers[vm.hptr] = &Handler{
+				sp:    vm.sp,
+				ip:    frame.ip,
+				fix:   vm.framesix - 1,
+				jmpto: int(jmpto),
+			}
+			vm.hptr++
+		case code.OpTryEnd:
+			vm.handlers[vm.hptr] = nil
+			vm.hptr--
 		case code.OpLoadModule:
 			// Nothing at the moment: modules are loaded during compilation
 			vm.currentFrame.ip += 2

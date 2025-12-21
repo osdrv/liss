@@ -125,7 +125,7 @@ var definitions = map[OpCode]*Definition{
 
 	// Error handling ops
 	OpRaise:    {"OpRaise", []int{}},
-	OpTryBegin: {"OpTryBegin", []int{}},
+	OpTryBegin: {"OpTryBegin", []int{2}},
 	OpTryEnd:   {"OpTryEnd", []int{}},
 }
 

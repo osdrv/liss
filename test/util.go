@@ -35,6 +35,9 @@ func AssertObjectEql(t *testing.T, got object.Object, want any) {
 		for i, item := range obj.Items() {
 			AssertObjectEql(t, item, wantSlice[i])
 		}
+	case *object.Error:
+		assert.IsType(t, &object.Error{}, want)
+		assert.Equal(t, obj.Payload, want.(*object.Error).Payload)
 	default:
 		t.Logf("Object: %+v", obj)
 		t.Fatalf("Unimplemented object type for assertion: %s", obj.Type())
