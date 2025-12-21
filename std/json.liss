@@ -1,4 +1,5 @@
-(import "list" ["push"])
+(import "list" ["push" "reduce"])
+(import "strings" ["join"])
 
 (let _TOK_NULL "null")
 (let _TOK_TRUE "true")
@@ -259,5 +260,33 @@
     (cond (= (last ret) (len S))
         (head ret)
         (raise! (+ "Unexpected trailing characters after pos: " (str (last ret))))
+    )
+)
+
+(fn encode [obj]
+    (switch
+        [(is_null? obj) "null"]
+        [(is_bool? obj) (cond obj "true" "false")]
+        [(is_int? obj) (str obj)]
+        [(is_float? obj) (str obj)]
+        [(is_string? obj) (+ "\"" obj "\"")]
+        [(is_list? obj)
+            (
+                (let lparts (list:reduce obj (fn [acc item]
+                    (list:push acc (encode item))
+                ) []))
+                (+ "[" (strings:join lparts ",") "]")
+            )
+        ]
+        [(is_dict? obj)
+            (
+                (let dparts (list:reduce (keys obj) (fn [acc k]
+                    (let v (get obj k))
+                    (list:push acc (+ (encode (cond (is_string? k) k (str k))) ":" (encode v)))
+                ) []))
+                (+ "{" (strings:join dparts ",") "}")
+            )
+        ]
+        [* (raise! (+ "Unsupported type for JSON encoding: " (str obj)))]
     )
 )
