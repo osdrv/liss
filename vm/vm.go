@@ -764,7 +764,6 @@ func (vm *VM) Run() (exit_err error) {
 			}
 			vm.sp = h.sp
 			for vm.framesix > h.fix {
-				fmt.Printf("vm.framesix: %d, h.fix: %d\n", vm.framesix, h.fix)
 				vm.popFrame()
 			}
 			vm.currentFrame.ip = h.jmpto - 1
