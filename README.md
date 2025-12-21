@@ -17,7 +17,8 @@ The current VM implementation is based on Thorsten Ball's book "Writing a Compil
 *   **REPL:** Includes an interactive Read-Eval-Print Loop for experimentation.
 *   **Regexp Support:** Built-in support for regular expressions (Thompson's construction).
 *   **Closures:** Supports first-class functions and closures.
-*   **Modules**: Std lib and local LISS code imports.
+*   **Modules:** Std lib and local LISS code imports.
+*   **Error Handling:** A native epxression support for dealing with exceptional cases.
 
 ## Examples
 
