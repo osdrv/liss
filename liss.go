@@ -48,7 +48,6 @@ func Run(mod *compiler.Module, opts repl.Options) (Result, error) {
 // CompileAll compiles the given source code along with its imports using the provided module loader.
 func CompileAll(src string, loader module_loader.Loader, opts repl.Options, cache map[string]*compiler.Module) (*compiler.Module, error) {
 	mod := compiler.NewModule(src, loader.DotPath())
-
 	lex := lexer.NewLexer(mod.Src)
 	par := parser.NewParser(lex)
 	prog, err := par.Parse()
@@ -89,6 +88,8 @@ func CompileAll(src string, loader module_loader.Loader, opts repl.Options, cach
 
 			loader.PushDotPath(path)
 			impmod, err := CompileAll(string(src), loader, opts, cache)
+			// Using alias as a module name wouldn't work with module caching: aliases may differ per import site
+			impmod.Name = getModuleNameFromRef(ie.ref)
 			impmod.Path = path
 			if err != nil {
 				return nil, fmt.Errorf("failed to compile imported module %s: %w", ie.ref, err)

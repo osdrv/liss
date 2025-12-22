@@ -510,7 +510,7 @@ func (c *Compiler) ImportModule(ref string, mod *Module, symbols []string) (*obj
 	}
 
 	for _, sym := range mod.Symbols.Export(symbols) {
-		c.Symbols().Define(objmod.Name, sym.Name)
+		c.Symbols().Define(ref, sym.Name)
 	}
 
 	return objmod, nil

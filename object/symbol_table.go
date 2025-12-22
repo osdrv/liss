@@ -104,17 +104,16 @@ func (st *SymbolTable) Define(module string, name string) (Symbol, error) {
 			return Symbol{}, fmt.Errorf("Cannot define module-scoped symbol %s in nested scope", name)
 		}
 	}
-	fullName := name
 	if module != MODULE_SELF {
 		symbol.Scope = ModuleScope
 		symbol.ModIndex = mix
-		fullName = fmt.Sprintf("%s:%s", module, name)
+		//fullName = fmt.Sprintf("%s:%s", module, name)
 	} else if st.Outer != nil {
 		symbol.Scope = LocalScope
 	} else {
 		symbol.Scope = GlobalScope
 	}
-	st.Vars[fullName] = symbol
+	st.Vars[name] = symbol
 	st.NumVars++
 	return symbol, nil
 }
@@ -209,7 +208,6 @@ func (st *SymbolTable) Resolve(module string, name string) (Symbol, bool) {
 }
 
 func (st *SymbolTable) Export(list []string) []Symbol {
-	wantAll := len(list) == 0
 	wantSet := make(map[string]bool)
 	for _, name := range list {
 		wantSet[name] = true
@@ -219,7 +217,7 @@ func (st *SymbolTable) Export(list []string) []Symbol {
 		if !isPublicSymbol(sym) {
 			continue
 		}
-		if wantAll || wantSet[sym.Name] {
+		if wantSet[sym.Name] {
 			exp = append(exp, sym)
 		}
 	}
