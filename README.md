@@ -34,7 +34,7 @@ This example showcases basic string manipulation (`strings:reverse`) and conditi
 (<B>fn</B> is_palindrome? [word]
     (<B>cond</B> (<B>or</B> (<B>is_null?</B> word) (<B>is_empty?</B> word))
         <B>false</B>
-        (= word (<B>strings:reverse</B> word))
+        (= word (<B>reverse</B> word))
     )
 )
 
@@ -52,7 +52,7 @@ This example demonstrates a common data processing task: splitting a sentence, f
 
 (<B>let</B> sentence <I>"Liss is a fun and powerful language"</I>)
 
-(<B>let</B> long_words (<B>list:filter</B> (<B>strings:split</B> sentence <I>" "</I>) (<B>fn</B> [word]
+(<B>let</B> long_words (<B>filter</B> (<B>split</B> sentence <I>" "</I>) (<B>fn</B> [word]
     (> (<B>len</B> word) 2)
 )))
 
@@ -82,7 +82,7 @@ This example demonstrates a tail-recursive function to sum a list of numbers. Th
 )
 
 ; Create a list with 10,000 numbers from 1 to 10,000
-(<B>let</B> numbers (<B>list:seq</B> 1 10001))
+(<B>let</B> numbers (<B>seq</B> 1 10001))
 
 (<B>println</B> <I>"Summing 10,000 numbers..."</I>)
 (<B>let</B> total (sum_list numbers))
