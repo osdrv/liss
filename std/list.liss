@@ -6,6 +6,15 @@
 ; `SORT_DESC` is a comparison function for descending order
 (let SORT_DESC (fn [a b] (> a b)))
 
+; `SUM` is a reducer function that sums up list numbers
+(let SUM (fn [a b] (+ a b)))
+
+; `PROD` is a reducer function that multiplies list numbers
+(let PROD (fn [a b] (* a b)))
+
+; `NOT` is a logical negation mapper function
+(let NOT (fn [a] (! a)))
+
 ; `push` returns a new array with the value `v` appended to the end
 ; of array `arr`
 (fn push [arr v]

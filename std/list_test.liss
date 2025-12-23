@@ -58,7 +58,7 @@
         (print "Running test: " (get test "name"))
         (let input (get test "input"))
         (let want (get test "want"))
-        (let got (list:reduce input (fn [acc x] (+ acc x)) 0))
+        (let got (list:reduce input list:SUM 0))
         (assert:equal got want)
         (println ": OK")
     ))
