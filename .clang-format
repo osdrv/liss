@@ -1,0 +1,6 @@
+# Based on Google's C++ style guide: https://google.github.io/styleguide/cppguide.html
+# For a full list of options, see: https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+Language: C
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 80
