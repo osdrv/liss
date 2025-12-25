@@ -18,7 +18,7 @@ BINDIR = bin
 TESTDIR = tests
 
 # Source files and object files
-SRCS = $(wildcard $(SRCDIR)/*.c) $(SRCDIR)/object.c
+SRCS = $(wildcard $(SRCDIR)/*.c) $(SRCDIR)/object.c $(SRCDIR)/chunk.c $(SRCDIR)/memory.c
 OBJS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
 # Application objects excluding main, for linking into tests
 OBJS_NO_MAIN = $(filter-out $(OBJDIR)/main.o, $(OBJS))

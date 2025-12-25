@@ -4,18 +4,24 @@
 #include "common.h"
 #include "value.h"
 #include "object.h"
+#include "chunk.h" // Include for Chunk definition
 
 #define STACK_MAX 256
 
+typedef enum {
+    INTERPRET_OK,
+    INTERPRET_COMPILE_ERROR,
+    INTERPRET_RUNTIME_ERROR
+} InterpretResult;
+
 typedef struct VM {
+    Chunk* chunk; // The chunk of code this VM is executing
     size_t stack_capacity;
     Value* stack_top;
     
-    // Linked list of all heap-allocated objects for GC
-    Obj* objects;
+    Obj* objects; // Linked list of all heap-allocated objects for GC
 
-    // The stack is a flexible array member, allocated at runtime.
-    Value stack[];
+    Value stack[]; // Flexible Array Member for the stack
 } VM;
 
 // Creates and initializes a new VM with a given stack capacity.
@@ -23,6 +29,9 @@ VM* newVM(size_t stack_capacity);
 
 // Destroys the VM and frees all associated memory.
 void destroyVM(VM* vm);
+
+// The main entry point for running source code.
+InterpretResult interpret(VM* vm, const char* source);
 
 // Stack operations
 void push(VM* vm, Value value);

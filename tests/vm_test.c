@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
     (void)argv; // Suppress unused warning
 
     run_all_tests();
-    
+
     printf("\n");
     if (result == 0) {
         printf("ALL TESTS PASSED\n");
