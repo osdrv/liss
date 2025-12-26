@@ -4,15 +4,16 @@
 #include "common.h"
 
 // Calculates a new capacity for a dynamic array based on its old capacity.
-#define GROW_CAPACITY(capacity) \
-    ((capacity) < 8 ? 8 : (capacity) * 2)
+#define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
 
 // A generic macro to reallocate an array to a new size.
 // It handles the casting and sizing automatically.
-#define GROW_ARRAY(type, pointer, oldCount, newCount) \
-    (type*)reallocate(pointer, sizeof(type) * (oldCount), sizeof(type) * (newCount))
+#define GROW_ARRAY(type, pointer, oldCount, newCount)     \
+    (type*)reallocate(pointer, sizeof(type) * (oldCount), \
+                      sizeof(type) * (newCount))
 
-// A macro to free an array's memory. It just uses reallocate with a new size of 0.
+// A macro to free an array's memory. It just uses reallocate with a new size of
+// 0.
 #define FREE_ARRAY(type, pointer, oldCount) \
     reallocate(pointer, sizeof(type) * (oldCount), 0)
 

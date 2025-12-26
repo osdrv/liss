@@ -1,10 +1,10 @@
 #ifndef liss_vm_h
 #define liss_vm_h
 
+#include "chunk.h"  // Include for Chunk definition
 #include "common.h"
-#include "value.h"
 #include "object.h"
-#include "chunk.h" // Include for Chunk definition
+#include "value.h"
 
 #define STACK_MAX 256
 
@@ -15,13 +15,13 @@ typedef enum {
 } InterpretResult;
 
 typedef struct VM {
-    Chunk* chunk; // The chunk of code this VM is executing
+    Chunk* chunk;  // The chunk of code this VM is executing
     size_t stack_capacity;
     Value* stack_top;
-    
-    Obj* objects; // Linked list of all heap-allocated objects for GC
 
-    Value stack[]; // Flexible Array Member for the stack
+    Obj* objects;  // Linked list of all heap-allocated objects for GC
+
+    Value stack[];  // Flexible Array Member for the stack
 } VM;
 
 // Creates and initializes a new VM with a given stack capacity.

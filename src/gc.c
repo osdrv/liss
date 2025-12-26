@@ -1,5 +1,7 @@
-#include <stdio.h>
 #include "gc.h"
+
+#include <stdio.h>
+
 #include "memory.h"
 #include "object.h"
 #include "value.h"

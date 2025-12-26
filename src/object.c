@@ -1,17 +1,18 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
-#include "memory.h"
 #include "object.h"
-#include "value.h"
-#include "vm.h" // For the VM->objects linked list
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "gc.h"
+#include "memory.h"
+#include "value.h"
+#include "vm.h"  // For the VM->objects linked list
 
 // A helper for allocating any object type.
 // It initializes the base Obj header and adds the new object to the VM's list.
 static Obj* allocateObject(VM* vm, size_t size, ObjType type) {
-    gc(vm); // Trigger GC before allocation
+    gc(vm);  // Trigger GC before allocation
     Obj* object = (Obj*)reallocate(NULL, 0, size);
     if (object == NULL) {
         // In a real VM, this should trigger a GC cycle before failing.
@@ -30,13 +31,13 @@ static Obj* allocateObject(VM* vm, size_t size, ObjType type) {
 // --- Function ---
 
 ObjFunction* newFunction(VM* vm) {
-    ObjFunction* function = (ObjFunction*)allocateObject(vm, sizeof(ObjFunction), OBJ_FUNCTION);
+    ObjFunction* function =
+        (ObjFunction*)allocateObject(vm, sizeof(ObjFunction), OBJ_FUNCTION);
     function->arity = 0;
     function->name = NULL;
     initChunk(&function->chunk);
     return function;
 }
-
 
 // --- String ---
 
@@ -50,8 +51,10 @@ static uint32_t hashString(const char* key, int length) {
 }
 
 // Helper for allocating the ObjString itself
-static ObjString* allocateString(VM* vm, char* chars, int length, uint32_t hash) {
-    ObjString* string = (ObjString*)allocateObject(vm, sizeof(ObjString), OBJ_STRING);
+static ObjString* allocateString(VM* vm, char* chars, int length,
+                                 uint32_t hash) {
+    ObjString* string =
+        (ObjString*)allocateObject(vm, sizeof(ObjString), OBJ_STRING);
     string->length = length;
     string->chars = chars;
     string->hash = hash;

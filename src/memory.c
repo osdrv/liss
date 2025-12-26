@@ -1,9 +1,10 @@
-#include <stdlib.h>
-
 #include "memory.h"
 
+#include <stdlib.h>
+
 void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
-    (void)oldSize; // We don't need the old size for realloc itself, but it's good for custom allocators or debugging.
+    (void)oldSize;  // We don't need the old size for realloc itself, but it's
+                    // good for custom allocators or debugging.
 
     if (newSize == 0) {
         free(pointer);

@@ -2,10 +2,6 @@
 #include "vm.h"
 #include "value.h"
 
-// Globals for the test runner
-int tests_run = 0;
-int result = 0;
-
 // A more meaningful test for the new VM
 static char* test_vm_stack() {
     VM* vm = newVM(16); // Create a VM with a small stack for testing
@@ -22,22 +18,8 @@ static char* test_vm_stack() {
     return NULL;
 }
 
-// Add all tests to be run here
-static void run_all_tests() {
+// The suite function, called by the main test runner.
+void vm_suite() {
+    printf("--- VM Suite ---\n");
     mu_run_test(test_vm_stack);
-}
-
-int main(int argc, char **argv) {
-    (void)argc; // Suppress unused warning
-    (void)argv; // Suppress unused warning
-
-    run_all_tests();
-
-    printf("\n");
-    if (result == 0) {
-        printf("ALL TESTS PASSED\n");
-    }
-    printf("Tests run: %d\n", tests_run);
-
-    return result;
 }

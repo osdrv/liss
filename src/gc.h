@@ -1,9 +1,9 @@
 #ifndef liss_gc_h
 #define liss_gc_h
 
-#include "vm.h"
-#include "value.h"
 #include "object.h"
+#include "value.h"
+#include "vm.h"
 
 void gc(VM* vm);
 void markObject(VM* vm, Obj* object);

@@ -1,9 +1,11 @@
 #include <stdio.h>
-#include "vm.h"
+
 #include "common.h"
+#include "vm.h"
 
 int main(int argc, const char* argv[]) {
-    (void)argc; (void)argv;
+    (void)argc;
+    (void)argv;
 
     VM* vm = newVM(STACK_MAX);
     if (vm == NULL) {

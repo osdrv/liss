@@ -2,9 +2,10 @@
 #define liss_chunk_h
 
 #include <stdint.h>
+
 #include "common.h"
-#include "value.h"
 #include "opcode.h"
+#include "value.h"
 
 // A dynamic array for storing constants.
 typedef struct {
@@ -17,11 +18,10 @@ typedef struct {
 typedef struct {
     int count;
     int capacity;
-    uint8_t* code;      // The portable bytecode emitted by the compiler.
+    uint8_t* code;  // The portable bytecode emitted by the compiler.
     ValueArray constants;
     // We can add a dynamic array for line numbers here later.
 } Chunk;
-
 
 void initValueArray(ValueArray* array);
 void writeValueArray(ValueArray* array, Value value);

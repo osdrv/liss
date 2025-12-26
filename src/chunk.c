@@ -1,7 +1,8 @@
+#include "chunk.h"
+
 #include <stdlib.h>
 
-#include "chunk.h"
-#include "memory.h" // We will create this new file for memory management helpers.
+#include "memory.h"  // We will create this new file for memory management helpers.
 
 // --- ValueArray ---
 
@@ -15,7 +16,8 @@ void writeValueArray(ValueArray* array, Value value) {
     if (array->capacity < array->count + 1) {
         int oldCapacity = array->capacity;
         array->capacity = GROW_CAPACITY(oldCapacity);
-        array->values = GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
+        array->values =
+            GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
     }
 
     array->values[array->count] = value;
@@ -46,7 +48,8 @@ void writeChunk(Chunk* chunk, uint8_t byte) {
     if (chunk->capacity < chunk->count + 1) {
         int oldCapacity = chunk->capacity;
         chunk->capacity = GROW_CAPACITY(oldCapacity);
-        chunk->code = GROW_ARRAY(uint8_t, chunk->code, oldCapacity, chunk->capacity);
+        chunk->code =
+            GROW_ARRAY(uint8_t, chunk->code, oldCapacity, chunk->capacity);
     }
 
     chunk->code[chunk->count] = byte;
