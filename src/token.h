@@ -43,7 +43,7 @@ typedef enum {
     TOKEN_STRING,
     TOKEN_TRUE,
     TOKEN_FALSE,
-    TOKEN_NIL,
+    TOKEN_NULL,
     TOKEN_COND,
     TOKEN_SWITCH,
     TOKEN_LET,

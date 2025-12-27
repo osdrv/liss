@@ -14,8 +14,8 @@ const char* printTokenType(TokenType type) {
             return "TOKEN_TRUE";
         case TOKEN_FALSE:
             return "TOKEN_FALSE";
-        case TOKEN_NIL:
-            return "TOKEN_NIL";
+        case TOKEN_NULL:
+            return "TOKEN_NULL";
         case TOKEN_COND:
             return "TOKEN_COND";
         case TOKEN_SWITCH:

@@ -22,9 +22,10 @@ static char* test_scanner_keywords(void) {
     Scanner scanner;
     initScanner(&scanner, source);
 
-    TokenType expected_types[] = {
-        TOKEN_FN,   TOKEN_LET,    TOKEN_TRUE,  TOKEN_FALSE, TOKEN_NIL, TOKEN_AS,
-        TOKEN_COND, TOKEN_SWITCH, TOKEN_RAISE, TOKEN_TRY,   TOKEN_EOF};
+    TokenType expected_types[] = {TOKEN_FN,    TOKEN_LET,    TOKEN_TRUE,
+                                  TOKEN_FALSE, TOKEN_NULL,   TOKEN_AS,
+                                  TOKEN_COND,  TOKEN_SWITCH, TOKEN_RAISE,
+                                  TOKEN_TRY,   TOKEN_EOF};
 
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {
@@ -58,7 +59,8 @@ static char* test_scanner_operators(void) {
 }
 
 static char* test_scanner_operator_keywords(void) {
-    const char* source = "and or not gt gte lt lte band bor bxor bnot bsl bsr";
+    const char* source =
+        "and or not gt gte lt lte band bor bxor bnot bsl bsr";
     Scanner scanner;
     initScanner(&scanner, source);
 
@@ -101,7 +103,8 @@ static char* test_scanner_string_literals(void) {
     Scanner scanner;
     initScanner(&scanner, source);
 
-    const char* expected_lexemes[] = {"\"hello\"", "\"world\"", "\"escaped \\\" quote\""};
+    const char* expected_lexemes[] = {"\"hello\"", "\"world\"",
+                                      "\"escaped \\\" quote\""};
 
     for (size_t i = 0;
          i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
