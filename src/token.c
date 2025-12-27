@@ -32,6 +32,34 @@ const char* printTokenType(TokenType type) {
             return "TOKEN_RAISE";
         case TOKEN_TRY:
             return "TOKEN_TRY";
+        case TOKEN_AND:
+            return "TOKEN_AND";
+        case TOKEN_OR:
+            return "TOKEN_OR";
+        case TOKEN_NOT:
+            return "TOKEN_NOT";
+        case TOKEN_GREATER:
+            return "TOKEN_GREATER";
+        case TOKEN_GREATER_EQUAL:
+            return "TOKEN_GREATER_EQUAL";
+        case TOKEN_LESS:
+            return "TOKEN_LESS";
+        case TOKEN_LESS_EQUAL:
+            return "TOKEN_LESS_EQUAL";
+        case TOKEN_BAND:
+            return "TOKEN_BAND";
+        case TOKEN_BOR:
+            return "TOKEN_BOR";
+        case TOKEN_BXOR:
+            return "TOKEN_BXOR";
+        case TOKEN_BNOT:
+            return "TOKEN_BNOT";
+        case TOKEN_LSHIFT:
+            return "TOKEN_LSHIFT";
+        case TOKEN_RSHIFT:
+            return "TOKEN_RSHIFT";
+        case TOKEN_EOF:
+            return "TOKEN_EOF";
         default:
             return "UNKNOWN_TOKEN";
     }

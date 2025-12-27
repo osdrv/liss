@@ -22,6 +22,11 @@ static bool isAtEnd(Scanner* scanner) { return *(scanner->current) == '\0'; }
 
 static char peek(Scanner* scanner) { return *(scanner->current); }
 
+static char peekNext(Scanner* scanner) {
+    if (isAtEnd(scanner)) return '\0';
+    return *(scanner->current + 1);
+}
+
 static char prev(Scanner* scanner) {
     if (scanner->current == scanner->start) {
         return '\0';  // No previous character
@@ -31,6 +36,12 @@ static char prev(Scanner* scanner) {
 
 static bool isDigit(Scanner* scanner) {
     return peek(scanner) >= '0' && peek(scanner) <= '9';
+}
+
+static bool isHexDigit(Scanner* scanner) {
+    char c = peek(scanner);
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+           (c >= 'A' && c <= 'F');
 }
 
 static bool isAlpha(Scanner* scanner) {
@@ -264,6 +275,42 @@ static Token identifier(Scanner* scanner) {
     return mkToken(scanner, identifierType(scanner));
 }
 
+static Token number(Scanner* scanner) {
+    while (isDigit(scanner)) advance(scanner);
+
+    switch (peek(scanner)) {
+        case '.':
+            advance(scanner);
+            goto fraction;
+        case 'e':
+        case 'E':
+            advance(scanner);
+            goto exponent;
+        case 'x':
+            advance(scanner);
+            while (isHexDigit(scanner)) advance(scanner);
+            goto result;
+        default:
+            goto result;
+    }
+
+fraction:
+    while (isDigit(scanner)) advance(scanner);
+    // do not jump and check for exponent if there is no digits after dot
+
+exponent:
+    if (peek(scanner) == 'e' || peek(scanner) == 'E') {
+        advance(scanner);
+        if (peek(scanner) == '+' || peek(scanner) == '-') {
+            advance(scanner);
+        }
+        while (isDigit(scanner)) advance(scanner);
+    }
+
+result:
+    return mkToken(scanner, TOKEN_NUMBER);
+}
+
 Token scanToken(Scanner* scanner) {
     eatWhiteSpace(scanner);
 
@@ -271,8 +318,10 @@ Token scanToken(Scanner* scanner) {
 
     if (isAtEnd(scanner)) return mkToken(scanner, TOKEN_EOF);
 
-    char c = advance(scanner);
     if (isAlpha(scanner)) return identifier(scanner);
+    if (isDigit(scanner)) return number(scanner);
+
+    char c = advance(scanner);
 
     switch (c) {
         case '(':
@@ -284,8 +333,16 @@ Token scanToken(Scanner* scanner) {
         case ']':
             return mkToken(scanner, TOKEN_RBRAKET);
         case '+':
+            if (peekNext(scanner) >= '0' && peekNext(scanner) <= '9') {
+                advance(scanner);
+                return number(scanner);
+            }
             return mkToken(scanner, TOKEN_PLUS);
         case '-':
+            if (peekNext(scanner) >= '0' && peekNext(scanner) <= '9') {
+                advance(scanner);
+                return number(scanner);
+            }
             return mkToken(scanner, TOKEN_MINUS);
         case '*':
             return mkToken(scanner, TOKEN_STAR);

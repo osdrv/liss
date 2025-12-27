@@ -1,5 +1,7 @@
 #include "scanner.h"
 
+#include <string.h>
+
 #include "minunit.h"
 #include "token.h"
 
@@ -55,11 +57,51 @@ static char* test_scanner_operators(void) {
     return NULL;
 }
 
-// The suite function, called by the main test runner.
+static char* test_scanner_operator_keywords(void) {
+    const char* source = "and or not gt gte lt lte band bor bxor bnot bsl bsr";
+    Scanner scanner;
+    initScanner(&scanner, source);
+
+    TokenType expected_types[] = {
+        TOKEN_AND,           TOKEN_OR,   TOKEN_NOT,        TOKEN_GREATER,
+        TOKEN_GREATER_EQUAL, TOKEN_LESS, TOKEN_LESS_EQUAL, TOKEN_BAND,
+        TOKEN_BOR,           TOKEN_BXOR, TOKEN_BNOT,       TOKEN_LSHIFT,
+        TOKEN_RSHIFT,        TOKEN_EOF};
+
+    for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
+         i++) {
+        Token token = scanToken(&scanner);
+        mu_assert("Unexpected token type", token.type == expected_types[i]);
+    }
+
+    return NULL;
+}
+
+static char* test_scanner_numbers(void) {
+    const char* source = "123 -456 +789 0.123 2.34e05 4.56E-02 0xFFFFFF";
+    Scanner scanner;
+    initScanner(&scanner, source);
+
+    const char* expected_lexemes[] = {
+        "123", "-456", "+789", "0.123", "2.34e05", "4.56E-02", "0xFFFFFF"
+    };
+
+    for (size_t i = 0; i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
+        Token token = scanToken(&scanner);
+        mu_assert("Expected TOKEN_NUMBER", token.type == TOKEN_NUMBER);
+        mu_assert("Unexpected lexeme",
+                  strncmp(token.start, expected_lexemes[i], token.length) == 0);
+    }
+
+    return NULL;
+}
+
 void scanner_suite(void) {
     printf("--- Scanner Suite ---\n");
     mu_run_test(test_scanner_whitespace);
     mu_run_test(test_scanner_operators);
     mu_run_test(test_scanner_keywords);
+    mu_run_test(test_scanner_operator_keywords);
+    mu_run_test(test_scanner_numbers);
     // TODO: add more tests below
 }

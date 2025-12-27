@@ -3,8 +3,7 @@
 #include "minunit.h"
 #include "value.h"
 
-// A more meaningful test for the new VM
-static char* test_vm_stack() {
+static char* test_vm_stack(void) {
     VM* vm = newVM(16);  // Create a VM with a small stack for testing
     mu_assert("Failed to create VM", vm != NULL);
 
@@ -20,7 +19,7 @@ static char* test_vm_stack() {
 }
 
 // The suite function, called by the main test runner.
-void vm_suite() {
+void vm_suite(void) {
     printf("--- VM Suite ---\n");
     mu_run_test(test_vm_stack);
 }
