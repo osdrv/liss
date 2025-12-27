@@ -41,7 +41,6 @@ typedef enum {
     TOKEN_IDENTIFIER,
     TOKEN_NUMBER,
     TOKEN_STRING,
-    TOKEN_ACCESSOR,
     TOKEN_TRUE,
     TOKEN_FALSE,
     TOKEN_NIL,
@@ -59,5 +58,7 @@ typedef struct {
     int length;
     int line;
 } Token;
+
+const char* printTokenType(TokenType type);
 
 #endif

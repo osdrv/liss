@@ -1,10 +1,11 @@
-#include "minunit.h"
 #include "vm.h"
+
+#include "minunit.h"
 #include "value.h"
 
 // A more meaningful test for the new VM
 static char* test_vm_stack() {
-    VM* vm = newVM(16); // Create a VM with a small stack for testing
+    VM* vm = newVM(16);  // Create a VM with a small stack for testing
     mu_assert("Failed to create VM", vm != NULL);
 
     // Test push and pop
