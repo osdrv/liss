@@ -77,18 +77,36 @@ static char* test_scanner_operator_keywords(void) {
     return NULL;
 }
 
-static char* test_scanner_numbers(void) {
+static char* test_scanner_number_literals(void) {
     const char* source = "123 -456 +789 0.123 2.34e05 4.56E-02 0xFFFFFF";
     Scanner scanner;
     initScanner(&scanner, source);
 
-    const char* expected_lexemes[] = {
-        "123", "-456", "+789", "0.123", "2.34e05", "4.56E-02", "0xFFFFFF"
-    };
+    const char* expected_lexemes[] = {"123",     "-456",     "+789",    "0.123",
+                                      "2.34e05", "4.56E-02", "0xFFFFFF"};
 
-    for (size_t i = 0; i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
+    for (size_t i = 0;
+         i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
         Token token = scanToken(&scanner);
         mu_assert("Expected TOKEN_NUMBER", token.type == TOKEN_NUMBER);
+        mu_assert("Unexpected lexeme",
+                  strncmp(token.start, expected_lexemes[i], token.length) == 0);
+    }
+
+    return NULL;
+}
+
+static char* test_scanner_string_literals(void) {
+    const char* source = "\"hello\" \"world\" \"escaped \\\" quote\"";
+    Scanner scanner;
+    initScanner(&scanner, source);
+
+    const char* expected_lexemes[] = {"\"hello\"", "\"world\"", "\"escaped \\\" quote\""};
+
+    for (size_t i = 0;
+         i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
+        Token token = scanToken(&scanner);
+        mu_assert("Expected TOKEN_STRING", token.type == TOKEN_STRING);
         mu_assert("Unexpected lexeme",
                   strncmp(token.start, expected_lexemes[i], token.length) == 0);
     }
@@ -102,6 +120,7 @@ void scanner_suite(void) {
     mu_run_test(test_scanner_operators);
     mu_run_test(test_scanner_keywords);
     mu_run_test(test_scanner_operator_keywords);
-    mu_run_test(test_scanner_numbers);
+    mu_run_test(test_scanner_number_literals);
+    mu_run_test(test_scanner_string_literals);
     // TODO: add more tests below
 }

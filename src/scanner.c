@@ -7,6 +7,9 @@
 
 #include "token.h"
 
+// The implementation is taken from Crafting Interpreters book by Bob Nystrom
+// https://craftinginterpreters.com/scanning-on-demand.html
+
 void initScanner(Scanner* scanner, const char* source) {
     scanner->start = source;
     scanner->current = source;
@@ -311,6 +314,40 @@ result:
     return mkToken(scanner, TOKEN_NUMBER);
 }
 
+// This routime reads string literals as is. It does not process escape
+// sequences.
+static Token string(Scanner* scanner) {
+    bool escape = false;
+    while (!isAtEnd(scanner)) {
+        char c = peek(scanner);
+        switch (c) {
+            case '"':
+                if (!escape) {
+                    advance(scanner);  // Consume the closing "
+                    goto done;
+                }
+                escape = false;
+                advance(scanner);
+                break;
+            case '\\':
+                escape = !escape;
+                advance(scanner);
+                break;
+            case '\n':
+                scanner->line++;
+                advance(scanner);
+                break;
+            default:
+                escape = false;
+                advance(scanner);
+                break;
+        }
+    }
+    return errToken(scanner, "Unterminated string.");
+done:
+    return mkToken(scanner, TOKEN_STRING);
+}
+
 Token scanToken(Scanner* scanner) {
     eatWhiteSpace(scanner);
 
@@ -402,6 +439,8 @@ Token scanToken(Scanner* scanner) {
             }
         case '~':
             return mkToken(scanner, TOKEN_BNOT);
+        case '"':
+            return string(scanner);
     }
 
     return errToken(scanner, "Unexpected character.");
