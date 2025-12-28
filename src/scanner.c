@@ -189,7 +189,7 @@ static Token string(Scanner* scanner) {
                 // End of string
                 buf[bptr] = '\0';
                 Token token = mkToken(scanner, TOKEN_STRING);
-                token.start = buf;          // Set the new processed string
+                token.start = buf;  // Set the new processed string
                 token.length = bptr;
                 return token;
             } else {

@@ -1,5 +1,6 @@
 #include "scanner.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "minunit.h"
@@ -22,10 +23,10 @@ static char* test_scanner_keywords(void) {
     Scanner scanner;
     initScanner(&scanner, source);
 
-    TokenType expected_types[] = {TOKEN_FN_KW,    TOKEN_LET_KW,    TOKEN_TRUE_KW,
-                                  TOKEN_FALSE_KW, TOKEN_NULL_KW,   TOKEN_AS_KW,
-                                  TOKEN_COND_KW,  TOKEN_SWITCH_KW, TOKEN_RAISE_KW,
-                                  TOKEN_TRY_KW,   TOKEN_EOF};
+    TokenType expected_types[] = {
+        TOKEN_FN_KW,    TOKEN_LET_KW, TOKEN_TRUE_KW, TOKEN_FALSE_KW,
+        TOKEN_NULL_KW,  TOKEN_AS_KW,  TOKEN_COND_KW, TOKEN_SWITCH_KW,
+        TOKEN_RAISE_KW, TOKEN_TRY_KW, TOKEN_EOF};
 
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {
@@ -41,13 +42,28 @@ static char* test_scanner_operators(void) {
     Scanner scanner;
     initScanner(&scanner, source);
 
-    TokenType expected_types[] = {
-        TOKEN_PLUS_OP,          TOKEN_MINUS_OP, TOKEN_STAR_OP,       TOKEN_SLASH_OP,
-        TOKEN_MODULO_OP,        TOKEN_NOT_OP,   TOKEN_NOT_EQUAL_OP,  TOKEN_EQUAL_OP,
-        TOKEN_EQUAL_OP,         TOKEN_LESS_OP,  TOKEN_LESS_EQUAL_OP, TOKEN_GREATER_OP,
-        TOKEN_GREATER_EQUAL_OP, TOKEN_AND_OP,   TOKEN_OR_OP,         TOKEN_BXOR_OP,
-        TOKEN_BNOT_OP,          TOKEN_BOR_OP,   TOKEN_BAND_OP,       TOKEN_LSHIFT_OP,
-        TOKEN_RSHIFT_OP,        TOKEN_EOF};
+    TokenType expected_types[] = {TOKEN_PLUS_OP,
+                                  TOKEN_MINUS_OP,
+                                  TOKEN_STAR_OP,
+                                  TOKEN_SLASH_OP,
+                                  TOKEN_MODULO_OP,
+                                  TOKEN_NOT_OP,
+                                  TOKEN_NOT_EQUAL_OP,
+                                  TOKEN_EQUAL_OP,
+                                  TOKEN_EQUAL_OP,
+                                  TOKEN_LESS_OP,
+                                  TOKEN_LESS_EQUAL_OP,
+                                  TOKEN_GREATER_OP,
+                                  TOKEN_GREATER_EQUAL_OP,
+                                  TOKEN_AND_OP,
+                                  TOKEN_OR_OP,
+                                  TOKEN_BXOR_OP,
+                                  TOKEN_BNOT_OP,
+                                  TOKEN_BOR_OP,
+                                  TOKEN_BAND_OP,
+                                  TOKEN_LSHIFT_OP,
+                                  TOKEN_RSHIFT_OP,
+                                  TOKEN_EOF};
 
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {
@@ -63,11 +79,13 @@ static char* test_scanner_operator_keywords(void) {
     Scanner scanner;
     initScanner(&scanner, source);
 
-    TokenType expected_types[] = {
-        TOKEN_AND_KW,           TOKEN_OR_KW,   TOKEN_NOT_KW,        TOKEN_GREATER_KW,
-        TOKEN_GREATER_EQUAL_KW, TOKEN_LESS_KW, TOKEN_LESS_EQUAL_KW, TOKEN_BAND_KW,
-        TOKEN_BOR_KW,           TOKEN_BXOR_KW, TOKEN_BNOT_KW,       TOKEN_LSHIFT_KW,
-        TOKEN_RSHIFT_KW,        TOKEN_EOF};
+    TokenType expected_types[] = {TOKEN_AND_KW,           TOKEN_OR_KW,
+                                  TOKEN_NOT_KW,           TOKEN_GREATER_KW,
+                                  TOKEN_GREATER_EQUAL_KW, TOKEN_LESS_KW,
+                                  TOKEN_LESS_EQUAL_KW,    TOKEN_BAND_KW,
+                                  TOKEN_BOR_KW,           TOKEN_BXOR_KW,
+                                  TOKEN_BNOT_KW,          TOKEN_LSHIFT_KW,
+                                  TOKEN_RSHIFT_KW,        TOKEN_EOF};
 
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {
@@ -98,12 +116,12 @@ static char* test_scanner_number_literals(void) {
 }
 
 static char* test_scanner_string_literals(void) {
-    const char* source = "\"hello\" \"world\" \"escaped \\\" quote\" \"hello\\nworld\"";
+    const char* source =
+        "\"hello\" \"world\" \"escaped \\\" quote\" \"hello\\nworld\"";
     Scanner scanner;
     initScanner(&scanner, source);
 
-    const char* expected_lexemes[] = {"hello", "world",
-                                      "escaped \" quote",
+    const char* expected_lexemes[] = {"hello", "world", "escaped \" quote",
                                       "hello\nworld"};
 
     for (size_t i = 0;
@@ -111,7 +129,8 @@ static char* test_scanner_string_literals(void) {
         Token token = scanToken(&scanner);
         mu_assert("Expected TOKEN_STRING", token.type == TOKEN_STRING);
         mu_assert("Unexpected lexeme",
-                  strncmp(token.start, expected_lexemes[i], token.length) == 0);
+                  strcmp(token.start, expected_lexemes[i]) == 0);
+        free((void*)token.start);
     }
 
     return NULL;
