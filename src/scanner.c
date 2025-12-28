@@ -241,71 +241,71 @@ Token scanToken(Scanner* scanner) {
                 advance(scanner);
                 return number(scanner);
             }
-            return mkToken(scanner, TOKEN_PLUS);
+            return mkToken(scanner, TOKEN_PLUS_OP);
         case '-':
             if (peekNext(scanner) >= '0' && peekNext(scanner) <= '9') {
                 advance(scanner);
                 return number(scanner);
             }
-            return mkToken(scanner, TOKEN_MINUS);
+            return mkToken(scanner, TOKEN_MINUS_OP);
         case '*':
-            return mkToken(scanner, TOKEN_STAR);
+            return mkToken(scanner, TOKEN_STAR_OP);
         case '/':
-            return mkToken(scanner, TOKEN_SLASH);
+            return mkToken(scanner, TOKEN_SLASH_OP);
         case '%':
-            return mkToken(scanner, TOKEN_MODULO);
+            return mkToken(scanner, TOKEN_MODULO_OP);
         case '!':
             if (peek(scanner) == '=') {
                 advance(scanner);
-                return mkToken(scanner, TOKEN_NOT_EQUAL);
+                return mkToken(scanner, TOKEN_NOT_EQUAL_OP);
             } else {
-                return mkToken(scanner, TOKEN_NOT);
+                return mkToken(scanner, TOKEN_NOT_OP);
             }
         case '=':
             if (peek(scanner) == '=') {
                 advance(scanner);
-                return mkToken(scanner, TOKEN_EQUAL);
+                return mkToken(scanner, TOKEN_EQUAL_OP);
             } else {
-                return mkToken(scanner, TOKEN_EQUAL);
+                return mkToken(scanner, TOKEN_EQUAL_OP);
             }
         case '<':
             if (peek(scanner) == '=') {
                 advance(scanner);
-                return mkToken(scanner, TOKEN_LESS_EQUAL);
+                return mkToken(scanner, TOKEN_LESS_EQUAL_OP);
             } else if (peek(scanner) == '<') {
                 advance(scanner);
-                return mkToken(scanner, TOKEN_LSHIFT);
+                return mkToken(scanner, TOKEN_LSHIFT_OP);
             } else {
-                return mkToken(scanner, TOKEN_LESS);
+                return mkToken(scanner, TOKEN_LESS_OP);
             }
         case '>':
             if (peek(scanner) == '=') {
                 advance(scanner);
-                return mkToken(scanner, TOKEN_GREATER_EQUAL);
+                return mkToken(scanner, TOKEN_GREATER_EQUAL_OP);
             } else if (peek(scanner) == '>') {
                 advance(scanner);
-                return mkToken(scanner, TOKEN_RSHIFT);
+                return mkToken(scanner, TOKEN_RSHIFT_OP);
             } else {
-                return mkToken(scanner, TOKEN_GREATER);
+                return mkToken(scanner, TOKEN_GREATER_OP);
             }
         case '&':
             if (peek(scanner) == '&') {
                 advance(scanner);
-                return mkToken(scanner, TOKEN_AND);
+                return mkToken(scanner, TOKEN_BAND_OP);
             } else {
-                return mkToken(scanner, TOKEN_BAND);
+                return mkToken(scanner, TOKEN_AND_OP);
             }
         case '^':
-            return mkToken(scanner, TOKEN_BXOR);
+            return mkToken(scanner, TOKEN_BXOR_OP);
         case '|':
             if (peek(scanner) == '|') {
                 advance(scanner);
-                return mkToken(scanner, TOKEN_OR);
+                return mkToken(scanner, TOKEN_BOR_OP);
             } else {
-                return mkToken(scanner, TOKEN_BOR);
+                return mkToken(scanner, TOKEN_OR_OP);
             }
         case '~':
-            return mkToken(scanner, TOKEN_BNOT);
+            return mkToken(scanner, TOKEN_BNOT_OP);
         case '"':
             return string(scanner);
     }

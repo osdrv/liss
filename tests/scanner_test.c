@@ -22,10 +22,10 @@ static char* test_scanner_keywords(void) {
     Scanner scanner;
     initScanner(&scanner, source);
 
-    TokenType expected_types[] = {TOKEN_FN,    TOKEN_LET,    TOKEN_TRUE,
-                                  TOKEN_FALSE, TOKEN_NULL,   TOKEN_AS,
-                                  TOKEN_COND,  TOKEN_SWITCH, TOKEN_RAISE,
-                                  TOKEN_TRY,   TOKEN_EOF};
+    TokenType expected_types[] = {TOKEN_FN_KW,    TOKEN_LET_KW,    TOKEN_TRUE_KW,
+                                  TOKEN_FALSE_KW, TOKEN_NULL_KW,   TOKEN_AS_KW,
+                                  TOKEN_COND_KW,  TOKEN_SWITCH_KW, TOKEN_RAISE_KW,
+                                  TOKEN_TRY_KW,   TOKEN_EOF};
 
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {
@@ -37,17 +37,17 @@ static char* test_scanner_keywords(void) {
 }
 
 static char* test_scanner_operators(void) {
-    const char* source = "+ - * / % ! != = == < <= > >= && || ^ ~ | & << >>";
+    const char* source = "+ - * / % ! != = == < <= > >= & | ^ ~ || && << >>";
     Scanner scanner;
     initScanner(&scanner, source);
 
     TokenType expected_types[] = {
-        TOKEN_PLUS,          TOKEN_MINUS, TOKEN_STAR,       TOKEN_SLASH,
-        TOKEN_MODULO,        TOKEN_NOT,   TOKEN_NOT_EQUAL,  TOKEN_EQUAL,
-        TOKEN_EQUAL,         TOKEN_LESS,  TOKEN_LESS_EQUAL, TOKEN_GREATER,
-        TOKEN_GREATER_EQUAL, TOKEN_AND,   TOKEN_OR,         TOKEN_BXOR,
-        TOKEN_BNOT,          TOKEN_BOR,   TOKEN_BAND,       TOKEN_LSHIFT,
-        TOKEN_RSHIFT,        TOKEN_EOF};
+        TOKEN_PLUS_OP,          TOKEN_MINUS_OP, TOKEN_STAR_OP,       TOKEN_SLASH_OP,
+        TOKEN_MODULO_OP,        TOKEN_NOT_OP,   TOKEN_NOT_EQUAL_OP,  TOKEN_EQUAL_OP,
+        TOKEN_EQUAL_OP,         TOKEN_LESS_OP,  TOKEN_LESS_EQUAL_OP, TOKEN_GREATER_OP,
+        TOKEN_GREATER_EQUAL_OP, TOKEN_AND_OP,   TOKEN_OR_OP,         TOKEN_BXOR_OP,
+        TOKEN_BNOT_OP,          TOKEN_BOR_OP,   TOKEN_BAND_OP,       TOKEN_LSHIFT_OP,
+        TOKEN_RSHIFT_OP,        TOKEN_EOF};
 
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {
@@ -59,16 +59,15 @@ static char* test_scanner_operators(void) {
 }
 
 static char* test_scanner_operator_keywords(void) {
-    const char* source =
-        "and or not gt gte lt lte band bor bxor bnot bsl bsr";
+    const char* source = "and or not gt gte lt lte band bor bxor bnot bsl bsr";
     Scanner scanner;
     initScanner(&scanner, source);
 
     TokenType expected_types[] = {
-        TOKEN_AND,           TOKEN_OR,   TOKEN_NOT,        TOKEN_GREATER,
-        TOKEN_GREATER_EQUAL, TOKEN_LESS, TOKEN_LESS_EQUAL, TOKEN_BAND,
-        TOKEN_BOR,           TOKEN_BXOR, TOKEN_BNOT,       TOKEN_LSHIFT,
-        TOKEN_RSHIFT,        TOKEN_EOF};
+        TOKEN_AND_KW,           TOKEN_OR_KW,   TOKEN_NOT_KW,        TOKEN_GREATER_KW,
+        TOKEN_GREATER_EQUAL_KW, TOKEN_LESS_KW, TOKEN_LESS_EQUAL_KW, TOKEN_BAND_KW,
+        TOKEN_BOR_KW,           TOKEN_BXOR_KW, TOKEN_BNOT_KW,       TOKEN_LSHIFT_KW,
+        TOKEN_RSHIFT_KW,        TOKEN_EOF};
 
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {
