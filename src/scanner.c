@@ -7,6 +7,8 @@
 
 #include "token.h"
 
+#define STRING_LITERAL_INIT_BUF_SIZE 16
+
 // The implementation is inspired by Crafting Interpreters book by Bob Nystrom
 // https://craftinginterpreters.com/scanning-on-demand.html
 
@@ -28,13 +30,6 @@ static char peek(Scanner* scanner) { return *(scanner->current); }
 static char peekNext(Scanner* scanner) {
     if (isAtEnd(scanner)) return '\0';
     return *(scanner->current + 1);
-}
-
-static char prev(Scanner* scanner) {
-    if (scanner->current == scanner->start) {
-        return '\0';  // No previous character
-    }
-    return *(scanner->current - 1);
 }
 
 static bool isDigit(Scanner* scanner) {
@@ -60,25 +55,6 @@ static bool isAnyChar(Scanner* scanner, const char* options) {
         }
     }
     return false;
-}
-
-void eatWhitespace(Scanner* scanner) {
-    while (!isAtEnd(scanner)) {
-        char c = peek(scanner);
-        switch (c) {
-            case ' ':
-            case '\r':
-            case '\t':
-                advance(scanner);
-                break;
-            case '\n':
-                scanner->line++;
-                advance(scanner);
-                break;
-            default:
-                return;
-        }
-    }
 }
 
 static Token mkToken(Scanner* scanner, TokenType type) {
@@ -148,27 +124,18 @@ static Token identifier(Scanner* scanner) {
 static Token number(Scanner* scanner) {
     while (isDigit(scanner)) advance(scanner);
 
-    switch (peek(scanner)) {
-        case '.':
-            advance(scanner);
-            goto fraction;
-        case 'e':
-        case 'E':
-            advance(scanner);
-            goto exponent;
-        case 'x':
-            advance(scanner);
-            while (isHexDigit(scanner)) advance(scanner);
-            goto result;
-        default:
-            goto result;
+    // Hex numbers start with 0x or 0X and contain hex digits only (no exponent)
+    if (peek(scanner) == 'x' || peek(scanner) == 'X') {
+        advance(scanner);
+        while (isHexDigit(scanner)) advance(scanner);
+        return mkToken(scanner, TOKEN_NUMBER);
     }
 
-fraction:
-    while (isDigit(scanner)) advance(scanner);
-    // do not jump and check for exponent if there is no digits after dot
+    if (peek(scanner) == '.') {
+        advance(scanner);
+        while (isDigit(scanner)) advance(scanner);
+    }
 
-exponent:
     if (peek(scanner) == 'e' || peek(scanner) == 'E') {
         advance(scanner);
         if (peek(scanner) == '+' || peek(scanner) == '-') {
@@ -177,42 +144,62 @@ exponent:
         while (isDigit(scanner)) advance(scanner);
     }
 
-result:
     return mkToken(scanner, TOKEN_NUMBER);
 }
 
-// This routime reads string literals as is. It does not process escape
-// sequences.
 static Token string(Scanner* scanner) {
+    size_t bptr = 0;
+    size_t bufsize = STRING_LITERAL_INIT_BUF_SIZE;
+    char* buf = malloc(bufsize);
     bool escape = false;
+
     while (!isAtEnd(scanner)) {
-        char c = peek(scanner);
-        switch (c) {
-            case '"':
-                if (!escape) {
-                    advance(scanner);  // Consume the closing "
-                    goto done;
-                }
-                escape = false;
-                advance(scanner);
-                break;
-            case '\\':
-                escape = !escape;
-                advance(scanner);
-                break;
-            case '\n':
-                scanner->line++;
-                advance(scanner);
-                break;
-            default:
-                escape = false;
-                advance(scanner);
-                break;
+        char c = advance(scanner);
+        if (bptr + 1 >= bufsize) {
+            bufsize *= 2;
+            buf = realloc(buf, bufsize);
+        }
+
+        if (escape) {
+            switch (c) {
+                case 'n':
+                    buf[bptr++] = '\n';
+                    break;
+                case 't':
+                    buf[bptr++] = '\t';
+                    break;
+                case 'r':
+                    buf[bptr++] = '\r';
+                    break;
+                case '"':
+                    buf[bptr++] = '"';
+                    break;
+                case '\\':
+                    buf[bptr++] = '\\';
+                    break;
+                default:
+                    buf[bptr++] = c;  // Unknown escape, just add the char
+                    break;
+            }
+            escape = false;
+        } else {
+            if (c == '\\') {
+                escape = true;
+            } else if (c == '"') {
+                // End of string
+                buf[bptr] = '\0';
+                Token token = mkToken(scanner, TOKEN_STRING);
+                token.start = buf;          // Set the new processed string
+                token.length = bptr;
+                return token;
+            } else {
+                buf[bptr++] = c;
+            }
         }
     }
+
+    free(buf);
     return errToken(scanner, "Unterminated string.");
-done:
-    return mkToken(scanner, TOKEN_STRING);
 }
 
 Token scanToken(Scanner* scanner) {

@@ -98,12 +98,13 @@ static char* test_scanner_number_literals(void) {
 }
 
 static char* test_scanner_string_literals(void) {
-    const char* source = "\"hello\" \"world\" \"escaped \\\" quote\"";
+    const char* source = "\"hello\" \"world\" \"escaped \\\" quote\" \"hello\\nworld\"";
     Scanner scanner;
     initScanner(&scanner, source);
 
-    const char* expected_lexemes[] = {"\"hello\"", "\"world\"",
-                                      "\"escaped \\\" quote\""};
+    const char* expected_lexemes[] = {"hello", "world",
+                                      "escaped \" quote",
+                                      "hello\nworld"};
 
     for (size_t i = 0;
          i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
