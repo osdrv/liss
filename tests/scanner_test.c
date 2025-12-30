@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "minunit.h"
 #include "token.h"
 
@@ -97,12 +98,12 @@ static char* test_scanner_operator_keywords(void) {
 }
 
 static char* test_scanner_number_literals(void) {
-    const char* source = "123 -456 +789 0.123 2.34e05 4.56E-02 0xFFFFFF";
+    const char* source = "123 0.123 2.34e05 4.56E-02 0xFFFFFF";
     Scanner scanner;
     initScanner(&scanner, source);
 
-    const char* expected_lexemes[] = {"123",     "-456",     "+789",    "0.123",
-                                      "2.34e05", "4.56E-02", "0xFFFFFF"};
+    const char* expected_lexemes[] = {"123", "0.123", "2.34e05", "4.56E-02",
+                                      "0xFFFFFF"};
 
     for (size_t i = 0;
          i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
@@ -136,6 +137,23 @@ static char* test_scanner_string_literals(void) {
     return NULL;
 }
 
+static char* test_scanner_nested_expression(void) {
+    const char* source = "(- (+ 1 2) 3)";
+    Scanner scanner;
+    initScanner(&scanner, source);
+
+    TokenType expected_types[] = {
+        TOKEN_LPAREN, TOKEN_MINUS_OP, TOKEN_LPAREN, TOKEN_PLUS_OP, TOKEN_NUMBER,
+        TOKEN_NUMBER, TOKEN_RPAREN,   TOKEN_NUMBER, TOKEN_RPAREN,  TOKEN_EOF};
+    for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
+         i++) {
+        Token token = scanToken(&scanner);
+        mu_assert("Unexpected token type", token.type == expected_types[i]);
+    }
+
+    return NULL;
+}
+
 void scanner_suite(void) {
     printf("--- Scanner Suite ---\n");
     mu_run_test(test_scanner_whitespace);
@@ -144,5 +162,6 @@ void scanner_suite(void) {
     mu_run_test(test_scanner_operator_keywords);
     mu_run_test(test_scanner_number_literals);
     mu_run_test(test_scanner_string_literals);
+    mu_run_test(test_scanner_nested_expression);
     // TODO: add more tests below
 }

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "common.h"
+#include "opcode.h"
 #include "scanner.h"
 #include "token.h"
 
@@ -19,6 +20,8 @@ typedef struct {
     Parser* parser;
     ObjFunction* function;
 } Compiler;
+
+static void parseExpression(Compiler* compiler);
 
 static void advance(Compiler* compiler) {
     Parser* parser = compiler->parser;
@@ -73,11 +76,48 @@ static void parseNumber(Compiler* compiler) {
     emitConstant(compiler, NUMBER_VAL(value));
 }
 
+static void parseGrouping(Compiler* compiler) {
+    advance(compiler);
+    TokenType op = compiler->parser->previous.type;
+    parseExpression(compiler);
+    while (compiler->parser->current.type != TOKEN_RPAREN) {
+        parseExpression(compiler);
+        switch (op) {
+            case TOKEN_PLUS_OP:
+            case TOKEN_PLUS_KW:
+                emitByte(compiler, OP_ADD);
+                break;
+            case TOKEN_MINUS_OP:
+            case TOKEN_MINUS_KW:
+                emitByte(compiler, OP_SUBTRACT);
+                break;
+            case TOKEN_STAR_OP:
+            case TOKEN_STAR_KW:
+                emitByte(compiler, OP_MULTIPLY);
+                break;
+            case TOKEN_SLASH_OP:
+            case TOKEN_SLASH_KW:
+                emitByte(compiler, OP_DIVIDE);
+                break;
+            default:
+                compiler->parser->hadError = true;
+                DEBUG_LOG("[line %d] Error: Unknown operator in grouping.\n",
+                          compiler->parser->current.line);
+                return;
+        }
+    }
+    consume(compiler, TOKEN_RPAREN, "Expect ')' after expression");
+}
+
 static void parseExpression(Compiler* compiler) {
     switch (compiler->parser->current.type) {
         case TOKEN_NUMBER:
             advance(compiler);
             parseNumber(compiler);
+            break;
+        case TOKEN_LPAREN:
+            advance(compiler);
+            parseGrouping(compiler);
             break;
         default:
             compiler->parser->hadError = true;
