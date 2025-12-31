@@ -90,9 +90,80 @@ static CompilerTestCase compile_tests[] = {
             (Value[]){NUMBER_VAL(10.0), NUMBER_VAL(5.0), NUMBER_VAL(3.0)},
         .expected_constant_count = 3,
     },
+    {
+        .name = "compile boolean literal true",
+        .src = "true",
+        .expected_instructions = (uint8_t[]){OP_TRUE, OP_RETURN},
+        .expected_instruction_count = 2,
+        .expected_constants = NULL,
+        .expected_constant_count = 0,
+    },
+    {
+        .name = "compile boolean literal false",
+        .src = "false",
+        .expected_instructions = (uint8_t[]){OP_FALSE, OP_RETURN},
+        .expected_instruction_count = 2,
+        .expected_constants = NULL,
+        .expected_constant_count = 0,
+    },
+    {
+        .name = "compile null literal",
+        .src = "null",
+        .expected_instructions = (uint8_t[]){OP_NULL, OP_RETURN},
+        .expected_instruction_count = 2,
+        .expected_constants = NULL,
+        .expected_constant_count = 0,
+    },
+    {
+        .name = "compile not operation",
+        .src = "(! true)",
+        .expected_instructions = (uint8_t[]){OP_TRUE, OP_NOT, OP_RETURN},
+        .expected_instruction_count = 3,
+        .expected_constants = NULL,
+        .expected_constant_count = 0,
+    },
+    {
+        .name = "compile AND expression with 2 operands",
+        .src = "(and true false)",
+        .expected_instructions = (uint8_t[]){OP_TRUE, OP_JUMP_IF_FALSE, 0, 2,
+                                             OP_POP, OP_FALSE, OP_RETURN},
+        .expected_instruction_count = 7,
+        .expected_constants = NULL,
+        .expected_constant_count = 0,
+    },
+    {
+        .name = "compile AND expression with more operands",
+        .src = "(and true true false)",
+        .expected_instructions =
+            (uint8_t[]){OP_TRUE, OP_JUMP_IF_FALSE, 0, 7, OP_POP, OP_TRUE,
+                        OP_JUMP_IF_FALSE, 0, 2, OP_POP, OP_FALSE, OP_RETURN},
+        .expected_instruction_count = 12,
+        .expected_constants = NULL,
+        .expected_constant_count = 0,
+    },
+    {
+        .name = "compile AND with all true",
+        .src = "(and true true true)",
+        .expected_instructions =
+            (uint8_t[]){OP_TRUE, OP_JUMP_IF_FALSE, 0, 7, OP_POP, OP_TRUE,
+                        OP_JUMP_IF_FALSE, 0, 2, OP_POP, OP_TRUE, OP_RETURN},
+        .expected_instruction_count = 12,
+        .expected_constants = NULL,
+        .expected_constant_count = 0,
+    },
+    {
+        .name = "compile AND with all false",
+        .src = "(and false false false)",
+        .expected_instructions =
+            (uint8_t[]){OP_FALSE, OP_JUMP_IF_FALSE, 0, 7, OP_POP, OP_FALSE,
+                        OP_JUMP_IF_FALSE, 0, 2, OP_POP, OP_FALSE, OP_RETURN},
+        .expected_instruction_count = 12,
+        .expected_constants = NULL,
+        .expected_constant_count = 0,
+    },
 };
 
-static const char* test_compile(void) {
+static char* test_compile(void) {
     for (size_t i = 0; i < sizeof(compile_tests) / sizeof(compile_tests[0]);
          i++) {
         CompilerTestCase* test = &compile_tests[i];
@@ -103,6 +174,10 @@ static const char* test_compile(void) {
 
         Chunk* chunk = &function->chunk;
 
+        if (chunk->count != (int)test->expected_instruction_count) {
+            DEBUG_LOG("Unexpected instruction count");
+            printChunk(chunk);
+        }
         mu_assert("Instruction count should match expected count.",
                   chunk->count == (int)test->expected_instruction_count);
         mu_assert(

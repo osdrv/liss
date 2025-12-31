@@ -27,11 +27,6 @@ static bool isAtEnd(Scanner* scanner) { return *(scanner->current) == '\0'; }
 
 static char peek(Scanner* scanner) { return *(scanner->current); }
 
-static char peekNext(Scanner* scanner) {
-    if (isAtEnd(scanner)) return '\0';
-    return *(scanner->current + 1);
-}
-
 static bool isDigit(Scanner* scanner) {
     return peek(scanner) >= '0' && peek(scanner) <= '9';
 }

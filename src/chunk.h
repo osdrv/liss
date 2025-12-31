@@ -36,4 +36,6 @@ void writeChunk(Chunk* chunk, uint8_t byte);
 // Adds a constant to the chunk's constant pool and returns its index.
 int addConstant(Chunk* chunk, Value value);
 
+void printChunk(const Chunk* chunk);
+
 #endif

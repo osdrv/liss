@@ -25,20 +25,58 @@ static char* test_vm_stack(void) {
     return NULL;
 }
 
-static VMTestCase interpret_tests[] = {{.name = "literal number",
-                                        .src = "123",
-                                        .expected_result = INTERPRET_OK,
-                                        .expected_value = NUMBER_VAL(123.0)},
-                                       {.name = "simple addition",
-                                        .src = "(+ 1 2)",
-                                        .expected_result = INTERPRET_OK,
-                                        .expected_value = NUMBER_VAL(3.0)},
-                                       {
-                                           .name = "nested expression",
-                                           .src = "(- (+ 10 5) 3)",
-                                           .expected_result = INTERPRET_OK,
-                                           .expected_value = NUMBER_VAL(12.0),
-                                       }};
+static VMTestCase interpret_tests[] = {
+    {.name = "literal number",
+     .src = "123",
+     .expected_result = INTERPRET_OK,
+     .expected_value = NUMBER_VAL(123.0)},
+    {.name = "simple addition",
+     .src = "(+ 1 2)",
+     .expected_result = INTERPRET_OK,
+     .expected_value = NUMBER_VAL(3.0)},
+    {
+        .name = "nested expression",
+        .src = "(- (+ 10 5) 3)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = NUMBER_VAL(12.0),
+    },
+    {
+        .name = "not true",
+        .src = "(! true)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(false),
+    },
+    {
+        .name = "not false",
+        .src = "(! false)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "not null",
+        .src = "(! null)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "not literal",
+        .src = "(! 123)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(false),
+    },
+    {
+        .name = "AND expression with 2 arguments",
+        .src = "(and true false)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(false),
+    },
+    {
+        .name = "AND expression with all true",
+        .src = "(and true true true)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+};
 
 static char* test_vm_interpret(void) {
     for (size_t i = 0; i < sizeof(interpret_tests) / sizeof(interpret_tests[0]);
@@ -52,12 +90,18 @@ static char* test_vm_interpret(void) {
                   result == test->expected_result);
 
         if (result == INTERPRET_OK) {
-            Value v = vm->last_value;
+            Value v = vm->last_popped_value;
             mu_assert("Result type mismatch",
                       v.type == test->expected_value.type);
             if (IS_NUMBER(v)) {
-                mu_assert("Result value mismatch",
+                if (AS_NUMBER(v) != AS_NUMBER(test->expected_value)) {
+                    DEBUG_LOG("here");
+                }
+                mu_assert("Numeric result value mismatch",
                           AS_NUMBER(v) == AS_NUMBER(test->expected_value));
+            } else if (IS_BOOL(v)) {
+                mu_assert("Boolean result value mismatch",
+                          AS_BOOL(v) == AS_BOOL(test->expected_value));
             } else {
                 mu_assert("Unhandled result type in test", false);
             }

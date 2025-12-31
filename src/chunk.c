@@ -61,3 +61,67 @@ int addConstant(Chunk* chunk, Value value) {
     // Return the index where the constant was appended.
     return chunk->constants.count - 1;
 }
+
+void printChunk(const Chunk* chunk) {
+    for (int i = 0; i < chunk->count; i++) {
+        printf("%04d ", i);
+        uint8_t opcode = chunk->code[i];
+        switch (opcode) {
+            case OP_CONSTANT: {
+                uint8_t const_index = chunk->code[i + 1];
+                printf("OP_CONSTANT %d '", const_index);
+                printValue(chunk->constants.values[const_index]);
+                printf("'\n");
+                i++;  // Skip the operand byte
+                break;
+            }
+            case OP_RETURN:
+                printf("OP_RETURN\n");
+                break;
+            case OP_POP:
+                printf("OP_POP\n");
+                break;
+            case OP_JUMP: {
+                uint16_t offset =
+                    (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
+                printf("OP_JUMP %d\n", offset);
+                i += 2;  // Skip the operand bytes
+                break;
+            }
+            case OP_JUMP_IF_FALSE: {
+                uint16_t offset =
+                    (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
+                printf("OP_JUMP_IF_FALSE %d\n", offset);
+                i += 2;  // Skip the operand bytes
+                break;
+            }
+            case OP_ADD:
+                printf("OP_ADD\n");
+                break;
+            case OP_SUBTRACT:
+                printf("OP_SUBTRACT\n");
+                break;
+            case OP_MULTIPLY:
+                printf("OP_MULTIPLY\n");
+                break;
+            case OP_DIVIDE:
+                printf("OP_DIVIDE\n");
+                break;
+            case OP_TRUE:
+                printf("OP_TRUE\n");
+                break;
+            case OP_FALSE:
+                printf("OP_FALSE\n");
+                break;
+            case OP_NULL:
+                printf("OP_NULL\n");
+                break;
+            case OP_NOT:
+                printf("OP_NOT\n");
+                break;
+            default:
+                printf("Unknown opcode %d\n", opcode);
+                break;
+        }
+    }
+}

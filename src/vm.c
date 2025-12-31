@@ -75,6 +75,12 @@ Value pop(VM* vm) {
     return *vm->stack_top;
 }
 
+Value peek(VM* vm) { return *(vm->stack_top - 1); }
+
+static bool isFalsey(Value value) {
+    return (IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value)));
+}
+
 // --- Value Printing ---
 
 void printValue(Value value) {
@@ -113,12 +119,19 @@ static InterpretResult run(VM* vm) {
         push(vm, NUMBER_VAL(AS_NUMBER(a) op AS_NUMBER(b))); \
     } while (false)
 
+#define READ_BYTE() (*ip++)
+#define READ_SHORT() (uint16_t)((*ip++ << 8) | (*ip++))
+
 #if defined(__GNUC__) || defined(__clang__)
     // --- Direct Threading Setup ---
     // The dispatch table: an array of opcode implementation addresses.
-    static void* dispatch_table[] = {&&OP_RETURN_IMPL,   &&OP_CONSTANT_IMPL,
-                                     &&OP_ADD_IMPL,      &&OP_SUBTRACT_IMPL,
-                                     &&OP_MULTIPLY_IMPL, &&OP_DIVIDE_IMPL};
+    static void* dispatch_table[] = {
+        &&OP_RETURN_IMPL,   &&OP_CONSTANT_IMPL,      &&OP_POP_IMPL,
+        &&OP_JUMP_IMPL,     &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
+        &&OP_SUBTRACT_IMPL, &&OP_MULTIPLY_IMPL,      &&OP_DIVIDE_IMPL,
+        &&OP_TRUE_IMPL,     &&OP_FALSE_IMPL,         &&OP_NULL_IMPL,
+        &&OP_NOT_IMPL,
+    };
 
     // The instruction pointer for direct threading is a pointer to a pointer.
     void** ip = NULL;
@@ -146,6 +159,13 @@ static InterpretResult run(VM* vm) {
                     (void*)&vm->chunk->constants.values[const_index];
                 break;
             }
+            case OP_JUMP:
+            case OP_JUMP_IF_FALSE: {
+                uint16_t offset = (uint16_t)(bytecode[0] << 8) | bytecode[1];
+                bytecode += 2;
+                loaded_code[loaded_idx++] = (void*)(uintptr_t)offset;
+                break;
+            }
             case OP_RETURN:
                 break;  // No operands
         }
@@ -162,7 +182,7 @@ static InterpretResult run(VM* vm) {
     // --- Opcode Implementations ---
 
 OP_RETURN_IMPL: {
-    vm->last_value = pop(vm);
+    vm->last_popped_value = pop(vm);
     free(loaded_code);  // Clean up the loaded code
     return INTERPRET_OK;
 }
@@ -174,20 +194,62 @@ OP_CONSTANT_IMPL: {
     DISPATCH();
 }
 
+OP_POP_IMPL: {
+    pop(vm);
+    DISPATCH();
+}
+
+OP_JUMP_IMPL: {
+    uint16_t offset = (uint16_t)(uintptr_t)(*ip++);
+    ip += offset;
+    DISPATCH();
+}
+
+OP_JUMP_IF_FALSE_IMPL: {
+    uint16_t offset = (uint16_t)(uintptr_t)(*ip++);
+    if (isFalsey(peek(vm))) {
+        ip += offset;
+    }
+    DISPATCH();
+}
+
 OP_ADD_IMPL: {
     BINARY_OP(+);
     DISPATCH();
 }
+
 OP_SUBTRACT_IMPL: {
     BINARY_OP(-);
     DISPATCH();
 }
+
 OP_MULTIPLY_IMPL: {
     BINARY_OP(*);
     DISPATCH();
 }
+
 OP_DIVIDE_IMPL: {
     BINARY_OP(/);
+    DISPATCH();
+}
+
+OP_TRUE_IMPL: {
+    push(vm, BOOL_VAL(true));
+    DISPATCH();
+}
+
+OP_FALSE_IMPL: {
+    push(vm, BOOL_VAL(false));
+    DISPATCH();
+}
+OP_NULL_IMPL: {
+    push(vm, NIL_VAL);
+    DISPATCH();
+}
+
+OP_NOT_IMPL: {
+    Value value = pop(vm);
+    push(vm, BOOL_VAL(isFalsey(value)));
     DISPATCH();
 }
 

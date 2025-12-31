@@ -21,7 +21,7 @@ typedef struct VM {
 
     Obj* objects;  // Linked list of all heap-allocated objects for GC
 
-    Value last_value;  // Store the last popped value
+    Value last_popped_value;  // Store the last popped value
 
     Value stack[];  // Flexible Array Member for the stack
 } VM;
