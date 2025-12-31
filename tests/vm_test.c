@@ -25,24 +25,25 @@ static char* test_vm_stack(void) {
     return NULL;
 }
 
-static char* test_vm_interpret(void) {
-    static VMTestCase tests[] = {{.name = "literal number",
-                                  .src = "123",
-                                  .expected_result = INTERPRET_OK,
-                                  .expected_value = NUMBER_VAL(123.0)},
-                                 {.name = "simple addition",
-                                  .src = "(+ 1 2)",
-                                  .expected_result = INTERPRET_OK,
-                                  .expected_value = NUMBER_VAL(3.0)},
-                                 {
-                                     .name = "nested expression",
-                                     .src = "(- (+ 10 5) 3)",
-                                     .expected_result = INTERPRET_OK,
-                                     .expected_value = NUMBER_VAL(12.0),
-                                 }};
+static VMTestCase interpret_tests[] = {{.name = "literal number",
+                                        .src = "123",
+                                        .expected_result = INTERPRET_OK,
+                                        .expected_value = NUMBER_VAL(123.0)},
+                                       {.name = "simple addition",
+                                        .src = "(+ 1 2)",
+                                        .expected_result = INTERPRET_OK,
+                                        .expected_value = NUMBER_VAL(3.0)},
+                                       {
+                                           .name = "nested expression",
+                                           .src = "(- (+ 10 5) 3)",
+                                           .expected_result = INTERPRET_OK,
+                                           .expected_value = NUMBER_VAL(12.0),
+                                       }};
 
-    for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
-        VMTestCase* test = &tests[i];
+static char* test_vm_interpret(void) {
+    for (size_t i = 0; i < sizeof(interpret_tests) / sizeof(interpret_tests[0]);
+         i++) {
+        VMTestCase* test = &interpret_tests[i];
         VM* vm = newVM(256);
         mu_assert("Failed to create VM", vm != NULL);
 
