@@ -141,6 +141,30 @@ static void parseAnd(Compiler* compiler) {
     // return;
 }
 
+static void parseOr(Compiler* compiler) {
+    int jump_list[100];
+    int jump_count = 0;
+
+    parseExpression(compiler);
+    if (compiler->parser->hadError) return;
+
+    while (compiler->parser->current.type != TOKEN_RPAREN) {
+        // If the previous expression is false, jump to the next operand
+        int jump = emitJump(compiler, OP_JUMP_IF_FALSE);
+        int exit_jump = emitJump(compiler, OP_JUMP);
+        jump_list[jump_count++] = exit_jump;
+        patchJump(compiler, jump);
+        emitByte(compiler, OP_POP);
+        parseExpression(compiler);
+        if (compiler->parser->hadError) return;
+    }
+
+    for (int i = 0; i < jump_count; i++) {
+        patchJump(compiler, jump_list[i]);
+    }
+    consume(compiler, TOKEN_RPAREN, "Expect ')' after 'or' expression");
+}
+
 static void parseGrouping(Compiler* compiler) {
     advance(compiler);
     TokenType op = compiler->parser->previous.type;
@@ -148,6 +172,9 @@ static void parseGrouping(Compiler* compiler) {
     // Operands with short-circuit behavior
     if (op == TOKEN_AND_KW) {
         parseAnd(compiler);
+        return;
+    } else if (op == TOKEN_OR_KW) {
+        parseOr(compiler);
         return;
     }
 

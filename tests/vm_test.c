@@ -76,6 +76,18 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = BOOL_VAL(true),
     },
+    {
+        .name = "OR expression with all false",
+        .src = "(or false false false)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(false),
+    },
+    {
+        .name = "OR expression with mixed operands",
+        .src = "(or false false true false)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
 };
 
 static char* test_vm_interpret(void) {

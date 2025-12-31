@@ -161,6 +161,26 @@ static CompilerTestCase compile_tests[] = {
         .expected_constants = NULL,
         .expected_constant_count = 0,
     },
+    {
+        .name = "compile OR expression with 2 operands",
+        .src = "(or false true)",
+        .expected_instructions = (uint8_t[]){OP_FALSE, OP_JUMP_IF_FALSE, 0, 3,
+                                             OP_JUMP, 0, 2, OP_POP, OP_TRUE, OP_RETURN},
+        .expected_instruction_count = 10,
+        .expected_constants = NULL,
+        .expected_constant_count = 0,
+    },
+    {
+        .name = "compile OR expression with more operands",
+        .src = "(or false false true)",
+        .expected_instructions =
+            (uint8_t[]){OP_FALSE, OP_JUMP_IF_FALSE, 0, 3, OP_JUMP, 0, 10,
+                        OP_POP, OP_FALSE, OP_JUMP_IF_FALSE, 0, 3, OP_JUMP, 0, 2,
+                        OP_POP, OP_TRUE, OP_RETURN},
+        .expected_instruction_count = 18,
+        .expected_constants = NULL,
+        .expected_constant_count = 0,
+    },
 };
 
 static char* test_compile(void) {
