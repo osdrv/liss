@@ -9,9 +9,9 @@ int result = 0;
 // --- Test Suite Declarations ---
 // The main test runner will call these functions to execute tests from each
 // suite.
-void vm_suite();
-void scanner_suite();
-void compiler_suite();
+void vm_suite(void);
+void scanner_suite(void);
+void compiler_suite(void);
 
 int main(int argc, char** argv) {
     (void)argc;

@@ -60,7 +60,7 @@ static char* test_compile_number(void) {
 static char* test_compile_sum(void) {
     VM* vm = newVM(256);
 
-    const char* source = "(- (+ 1 2 3) 4)";
+    const char* source = "(- (+ 10 20 30) 40)";
     ObjFunction* function = compile(vm, source);
 
     mu_assert("Compiler should not fail on a simple sum.", function != NULL);
@@ -74,8 +74,9 @@ static char* test_compile_sum(void) {
             (uint8_t[]){OP_CONSTANT, 0, OP_CONSTANT, 1, OP_ADD, OP_CONSTANT, 2,
                         OP_ADD, OP_CONSTANT, 3, OP_SUBTRACT, OP_RETURN},
             12) == NULL);
-    mu_assert("Should match constants",
-              assert_num_constants(chunk, (double[]){1, 2, 3, 4}, 4) == NULL);
+    mu_assert(
+        "Should match constants",
+        assert_num_constants(chunk, (double[]){10, 20, 30, 40}, 4) == NULL);
 
     return NULL;
 }

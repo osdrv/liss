@@ -6,6 +6,7 @@
 
 #include "chunk.h"
 #include "common.h"
+#include "compiler.h"
 #include "gc.h"
 #include "memory.h"
 #include "object.h"
@@ -43,38 +44,14 @@ void destroyVM(VM* vm) {
 
 // --- Public API ---
 
-// This is a placeholder for a real compiler
-// For now, it just creates a simple chunk to test the VM.
-// TODO: Replace with actual compiler call.
-static bool compile(VM* vm, const char* source, Chunk* chunk) {
-    (void)source;  // Ignore source for now
-    writeChunk(chunk, OP_CONSTANT);
-    Value constantValue = NUMBER_VAL(1.23);
-    // Push constant to stack to prevent GC in a real system
-    push(vm, constantValue);
-    int constant = addConstant(chunk, constantValue);
-    pop(vm);
-    writeChunk(chunk, (uint8_t)constant);
-
-    writeChunk(chunk, OP_RETURN);
-    return true;
-}
-
 InterpretResult interpret(VM* vm, const char* source) {
-    Chunk chunk;
-    initChunk(&chunk);
-
-    if (!compile(vm, source, &chunk)) {
-        freeChunk(&chunk);
+    ObjFunction* function = compile(vm, source);
+    if (function == NULL) {
         return INTERPRET_COMPILE_ERROR;
     }
-
-    vm->chunk = &chunk;
+    vm->chunk = &function->chunk;
 
     InterpretResult result = run(vm);
-
-    freeChunk(&chunk);
-    vm->chunk = NULL;
     return result;
 }
 
@@ -109,7 +86,7 @@ void printValue(Value value) {
             printf("nil");
             break;
         case VAL_NUMBER:
-            printf("%g", AS_NUMBER(value));
+            printf("Number: %g", AS_NUMBER(value));
             break;
         case VAL_OBJ:
             switch (OBJ_TYPE(value)) {
@@ -129,10 +106,19 @@ void printValue(Value value) {
 // --- VM Execution (Direct Threading) ---
 
 static InterpretResult run(VM* vm) {
+#define BINARY_OP(op)                                       \
+    do {                                                    \
+        Value b = pop(vm);                                  \
+        Value a = pop(vm);                                  \
+        push(vm, NUMBER_VAL(AS_NUMBER(a) op AS_NUMBER(b))); \
+    } while (false)
+
 #if defined(__GNUC__) || defined(__clang__)
     // --- Direct Threading Setup ---
     // The dispatch table: an array of opcode implementation addresses.
-    static void* dispatch_table[] = {&&OP_RETURN_IMPL, &&OP_CONSTANT_IMPL};
+    static void* dispatch_table[] = {&&OP_RETURN_IMPL,   &&OP_CONSTANT_IMPL,
+                                     &&OP_ADD_IMPL,      &&OP_SUBTRACT_IMPL,
+                                     &&OP_MULTIPLY_IMPL, &&OP_DIVIDE_IMPL};
 
     // The instruction pointer for direct threading is a pointer to a pointer.
     void** ip = NULL;
@@ -176,16 +162,32 @@ static InterpretResult run(VM* vm) {
     // --- Opcode Implementations ---
 
 OP_RETURN_IMPL: {
-    printValue(pop(vm));
-    printf("\n");
+    vm->last_value = pop(vm);
     free(loaded_code);  // Clean up the loaded code
     return INTERPRET_OK;
 }
 
 OP_CONSTANT_IMPL: {
     // The operand is the next pointer in the instruction stream.
-    Value* constant = (Value*)*ip++;
-    push(vm, *constant);
+    Value* const_ix = (Value*)*ip++;
+    push(vm, *const_ix);
+    DISPATCH();
+}
+
+OP_ADD_IMPL: {
+    BINARY_OP(+);
+    DISPATCH();
+}
+OP_SUBTRACT_IMPL: {
+    BINARY_OP(-);
+    DISPATCH();
+}
+OP_MULTIPLY_IMPL: {
+    BINARY_OP(*);
+    DISPATCH();
+}
+OP_DIVIDE_IMPL: {
+    BINARY_OP(/);
     DISPATCH();
 }
 

@@ -14,7 +14,7 @@ int main(int argc, const char* argv[]) {
     }
 
     DEBUG_LOG("--- Running VM ---");
-    interpret(vm, "1 + 2");
+    interpret(vm, "(- (+ 10 5) 3)");
     DEBUG_LOG("--- VM Finished ---");
 
     destroyVM(vm);

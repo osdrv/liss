@@ -5,7 +5,7 @@ CC = clang
 # To enable, run: make DEBUG=1
 DEBUG_FLAGS =
 ifeq ($(DEBUG),1)
-	DEBUG_FLAGS = -DLISS_DEBUG_BUILD -g
+	DEBUG_FLAGS = -DLISS_DEBUG_BUILD -g -O0
 endif
 
 CFLAGS = -std=c17 -Wall -Wextra -Wpedantic $(DEBUG_FLAGS)
@@ -40,8 +40,16 @@ all: $(TARGET)
 run: $(TARGET)
 	@./$(TARGET)
 
+run-debug: $(TARGET)
+	@echo "Starting debugger. Run 'make clean' and build with 'make DEBUG=1 run-debug' for debug symbols."
+	@lldb ./$(TARGET)
+
 test: $(TEST_RUNNER)
 	@./$(TEST_RUNNER)
+
+test-debug: $(TEST_RUNNER)
+	@echo "Starting debugger. Run 'make clean' and build with 'make DEBUG=1 test-debug' for debug symbols."
+	@lldb ./$(TEST_RUNNER)
 
 # Main executable target
 $(TARGET): $(OBJS) | $(BINDIR)
