@@ -143,7 +143,8 @@ static char* test_vm_interpret(void) {
                 mu_assert("Boolean result value mismatch",
                           AS_BOOL(v) == AS_BOOL(test->expected_value));
             } else if (IS_NIL(v)) {
-                mu_assert("Unexpected null result", test->expected_value.type == VAL_NIL);
+                mu_assert("Unexpected null result",
+                          test->expected_value.type == VAL_NIL);
             } else {
                 mu_assert("Unhandled result type in test", false);
             }
