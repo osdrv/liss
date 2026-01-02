@@ -88,6 +88,30 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = BOOL_VAL(true),
     },
+    {
+        .name = "cond expression with else branch",
+        .src = "(cond false 123 456)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = NUMBER_VAL(456.0),
+    },
+    {
+        .name = "cond expression with then branch taken",
+        .src = "(cond true 123 456)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = NUMBER_VAL(123.0),
+    },
+    {
+        .name = "cond expression with no else branch resolving to else",
+        .src = "(cond false 123)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = NIL_VAL,
+    },
+    {
+        .name = "cond expression with no else branch resolving to then",
+        .src = "(cond true 123)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = NUMBER_VAL(123.0),
+    },
 };
 
 static char* test_vm_interpret(void) {
@@ -103,6 +127,10 @@ static char* test_vm_interpret(void) {
 
         if (result == INTERPRET_OK) {
             Value v = vm->last_popped_value;
+            if (v.type != test->expected_value.type) {
+                DEBUG_LOG("Expected type: %d, got type: %d",
+                          test->expected_value.type, v.type);
+            }
             mu_assert("Result type mismatch",
                       v.type == test->expected_value.type);
             if (IS_NUMBER(v)) {
@@ -114,6 +142,8 @@ static char* test_vm_interpret(void) {
             } else if (IS_BOOL(v)) {
                 mu_assert("Boolean result value mismatch",
                           AS_BOOL(v) == AS_BOOL(test->expected_value));
+            } else if (IS_NIL(v)) {
+                mu_assert("Unexpected null result", test->expected_value.type == VAL_NIL);
             } else {
                 mu_assert("Unhandled result type in test", false);
             }

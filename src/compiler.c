@@ -107,7 +107,6 @@ static void parseAnd(Compiler* compiler) {
     while (compiler->parser->current.type != TOKEN_RPAREN) {
         int jump = emitJump(compiler, OP_JUMP_IF_FALSE);
         jump_list[jump_count++] = jump;
-        emitByte(compiler, OP_POP);
         parseExpression(compiler);
         if (compiler->parser->hadError) return;
     }
@@ -142,6 +141,13 @@ static void parseAnd(Compiler* compiler) {
 }
 
 static void parseOr(Compiler* compiler) {
+    if (compiler->parser->current.type == TOKEN_RPAREN) {
+        compiler->parser->hadError = true;
+        DEBUG_LOG(
+            "[line %d] Error: 'or' expression requires at least one operand.\n",
+            compiler->parser->current.line);
+        return;
+    }
     int jump_list[100];
     int jump_count = 0;
 
@@ -150,10 +156,10 @@ static void parseOr(Compiler* compiler) {
 
     while (compiler->parser->current.type != TOKEN_RPAREN) {
         // If the previous expression is false, jump to the next operand
-        int jump = emitJump(compiler, OP_JUMP_IF_FALSE);
-        int exit_jump = emitJump(compiler, OP_JUMP);
-        jump_list[jump_count++] = exit_jump;
-        patchJump(compiler, jump);
+        int else_jump = emitJump(compiler, OP_JUMP_IF_FALSE);
+        int end_jump = emitJump(compiler, OP_JUMP);
+        jump_list[jump_count++] = end_jump;
+        patchJump(compiler, else_jump);
         emitByte(compiler, OP_POP);
         parseExpression(compiler);
         if (compiler->parser->hadError) return;
@@ -165,17 +171,49 @@ static void parseOr(Compiler* compiler) {
     consume(compiler, TOKEN_RPAREN, "Expect ')' after 'or' expression");
 }
 
+static void parseCond(Compiler* compiler) {
+    // Parse condition
+    parseExpression(compiler);
+    if (compiler->parser->hadError) return;
+    int else_jump = emitJump(compiler, OP_JUMP_IF_FALSE);
+    emitByte(compiler, OP_POP);
+
+    // Parse then branch
+    parseExpression(compiler);
+    if (compiler->parser->hadError) return;
+    int end_jump = emitJump(compiler, OP_JUMP);
+    patchJump(compiler, else_jump);
+    emitByte(compiler, OP_POP);
+
+    // Parse else branch
+    if (compiler->parser->current.type != TOKEN_RPAREN) {
+        parseExpression(compiler);
+        if (compiler->parser->hadError) return;
+    } else {
+        // If there's no else branch, we emit a null value
+        emitByte(compiler, OP_NULL);
+    }
+    patchJump(compiler, end_jump);
+    consume(compiler, TOKEN_RPAREN, "Expect ')' after 'cond' expression");
+}
+
 static void parseGrouping(Compiler* compiler) {
     advance(compiler);
     TokenType op = compiler->parser->previous.type;
 
     // Operands with short-circuit behavior
-    if (op == TOKEN_AND_KW) {
-        parseAnd(compiler);
-        return;
-    } else if (op == TOKEN_OR_KW) {
-        parseOr(compiler);
-        return;
+    switch (op) {
+        case TOKEN_AND_KW:
+            parseAnd(compiler);
+            return;
+        case TOKEN_OR_KW:
+            parseOr(compiler);
+            return;
+        case TOKEN_COND_KW:
+            parseCond(compiler);
+            return;
+        default:
+            break;
     }
 
     parseExpression(compiler);
