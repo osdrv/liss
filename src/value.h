@@ -40,6 +40,10 @@ typedef struct {
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
 #define OBJ_VAL(object) ((Value){VAL_OBJ, {.obj = (Obj*)object}})
 
+bool valuesEqual(Value a, Value b);
+
 void printValue(Value value);
+
+bool isFalsey(Value value);
 
 #endif

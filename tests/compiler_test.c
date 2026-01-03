@@ -34,23 +34,7 @@ static char* assert_instructions(Chunk* chunk, uint8_t expected[],
 }
 
 static char* assert_values_equal(Value* a, Value* b) {
-    mu_assert("Value types do not match.", a->type == b->type);
-    switch (a->type) {
-        case VAL_NUMBER:
-            mu_assert("Number values do not match.",
-                      AS_NUMBER(*a) == AS_NUMBER(*b));
-            break;
-        case VAL_BOOL:
-            mu_assert("Boolean values do not match.",
-                      AS_BOOL(*a) == AS_BOOL(*b));
-            break;
-        case VAL_NIL:
-            // Nil values are always equal.
-            break;
-        case VAL_OBJ:
-            mu_assert("Object values do not match.", AS_OBJ(*a) == AS_OBJ(*b));
-            break;
-    }
+    mu_assert("Values are not equal", valuesEqual(*a, *b));
     return NULL;
 }
 
@@ -217,6 +201,60 @@ static CompilerTestCase compile_tests[] = {
                         0, OP_JUMP, 0, 3, OP_POP, OP_CONSTANT, 1, OP_RETURN},
         .expected_instruction_count = 14,
         .expected_constants = (Value[]){NUMBER_VAL(123.0), NUMBER_VAL(456.0)},
+        .expected_constant_count = 2,
+    },
+    {
+        .name = "compile compare operation: = operator",
+        .src = "(= 1 1)",
+        .expected_instructions =
+            (uint8_t[]){OP_CONSTANT, 0, OP_CONSTANT, 1, OP_EQUAL, OP_RETURN},
+        .expected_instruction_count = 6,
+        .expected_constants = (Value[]){NUMBER_VAL(1.0), NUMBER_VAL(1.0)},
+        .expected_constant_count = 2,
+    },
+    {
+        .name = "compile compare operation: != operator",
+        .src = "(!= 1 2)",
+        .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, OP_CONSTANT, 1,
+                                             OP_EQUAL, OP_NOT, OP_RETURN},
+        .expected_instruction_count = 7,
+        .expected_constants = (Value[]){NUMBER_VAL(1.0), NUMBER_VAL(2.0)},
+        .expected_constant_count = 2,
+    },
+    {
+        .name = "compile compare operation: > operator",
+        .src = "(> 2 1)",
+        .expected_instructions =
+            (uint8_t[]){OP_CONSTANT, 0, OP_CONSTANT, 1, OP_GREATER, OP_RETURN},
+        .expected_instruction_count = 6,
+        .expected_constants = (Value[]){NUMBER_VAL(2.0), NUMBER_VAL(1.0)},
+        .expected_constant_count = 2,
+    },
+    {
+        .name = "compile compare operation: < operator",
+        .src = "(< 1 2)",
+        .expected_instructions =
+            (uint8_t[]){OP_CONSTANT, 0, OP_CONSTANT, 1, OP_LESS, OP_RETURN},
+        .expected_instruction_count = 6,
+        .expected_constants = (Value[]){NUMBER_VAL(1.0), NUMBER_VAL(2.0)},
+        .expected_constant_count = 2,
+    },
+    {
+        .name = "compile compare operation: <= operator",
+        .src = "(<= 1 2)",
+        .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, OP_CONSTANT, 1,
+                                             OP_GREATER, OP_NOT, OP_RETURN},
+        .expected_instruction_count = 7,
+        .expected_constants = (Value[]){NUMBER_VAL(1.0), NUMBER_VAL(2.0)},
+        .expected_constant_count = 2,
+    },
+    {
+        .name = "compile compare operation: >= operator",
+        .src = "(>= 2 1)",
+        .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, OP_CONSTANT, 1,
+                                             OP_LESS, OP_NOT, OP_RETURN},
+        .expected_instruction_count = 7,
+        .expected_constants = (Value[]){NUMBER_VAL(2.0), NUMBER_VAL(1.0)},
         .expected_constant_count = 2,
     },
 };

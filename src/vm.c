@@ -77,38 +77,6 @@ Value pop(VM* vm) {
 
 Value peek(VM* vm) { return *(vm->stack_top - 1); }
 
-static bool isFalsey(Value value) {
-    return (IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value)));
-}
-
-// --- Value Printing ---
-
-void printValue(Value value) {
-    switch (value.type) {
-        case VAL_BOOL:
-            printf(AS_BOOL(value) ? "true" : "false");
-            break;
-        case VAL_NIL:
-            printf("nil");
-            break;
-        case VAL_NUMBER:
-            printf("Number: %g", AS_NUMBER(value));
-            break;
-        case VAL_OBJ:
-            switch (OBJ_TYPE(value)) {
-                case OBJ_STRING:
-                    printf("\"%s\"", AS_CSTRING(value));
-                    break;
-                case OBJ_FUNCTION:
-                    printf("<fn %s>", AS_FUNCTION(value)->name
-                                          ? AS_FUNCTION(value)->name->chars
-                                          : "script");
-                    break;
-            }
-            break;
-    }
-}
-
 // --- VM Execution (Direct Threading) ---
 
 static InterpretResult run(VM* vm) {
@@ -117,6 +85,17 @@ static InterpretResult run(VM* vm) {
         Value b = pop(vm);                                  \
         Value a = pop(vm);                                  \
         push(vm, NUMBER_VAL(AS_NUMBER(a) op AS_NUMBER(b))); \
+    } while (false)
+
+#define COMPARISON_OP(op)                                         \
+    do {                                                          \
+        Value b = pop(vm);                                        \
+        Value a = pop(vm);                                        \
+        if (a.type != b.type) {                                   \
+            fprintf(stderr, "Comparison type mismatch error.\n"); \
+            return INTERPRET_RUNTIME_ERROR;                       \
+        }                                                         \
+        push(vm, BOOL_VAL(AS_NUMBER(a) op AS_NUMBER(b)));         \
     } while (false)
 
 #define READ_BYTE() (*ip++)
@@ -130,7 +109,8 @@ static InterpretResult run(VM* vm) {
         &&OP_JUMP_IMPL,     &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
         &&OP_SUBTRACT_IMPL, &&OP_MULTIPLY_IMPL,      &&OP_DIVIDE_IMPL,
         &&OP_TRUE_IMPL,     &&OP_FALSE_IMPL,         &&OP_NULL_IMPL,
-        &&OP_NOT_IMPL,
+        &&OP_NOT_IMPL,      &&OP_EQUAL_IMPL,         &&OP_GREATER_IMPL,
+        &&OP_LESS_IMPL,
     };
 
     // The instruction pointer for direct threading is a pointer to a pointer.
@@ -250,6 +230,23 @@ OP_NULL_IMPL: {
 OP_NOT_IMPL: {
     Value value = pop(vm);
     push(vm, BOOL_VAL(isFalsey(value)));
+    DISPATCH();
+}
+
+OP_EQUAL_IMPL: {
+    Value b = pop(vm);
+    Value a = pop(vm);
+    push(vm, BOOL_VAL(valuesEqual(a, b)));
+    DISPATCH();
+}
+
+OP_GREATER_IMPL: {
+    COMPARISON_OP(>);
+    DISPATCH();
+}
+
+OP_LESS_IMPL: {
+    COMPARISON_OP(<);
     DISPATCH();
 }
 

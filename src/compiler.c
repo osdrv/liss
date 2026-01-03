@@ -252,6 +252,33 @@ static void parseGrouping(Compiler* compiler) {
             case TOKEN_NOT_KW:
                 emitByte(compiler, OP_NOT);
                 break;
+            case TOKEN_EQUAL_OP:
+            case TOKEN_EQUAL_KW:
+                emitByte(compiler, OP_EQUAL);
+                break;
+            case TOKEN_NOT_EQUAL_OP:
+            case TOKEN_NOT_EQUAL_KW:
+                emitByte(compiler, OP_EQUAL);
+                emitByte(compiler, OP_NOT);
+                break;
+            case TOKEN_GREATER_OP:
+            case TOKEN_GREATER_KW:
+                emitByte(compiler, OP_GREATER);
+                break;
+            case TOKEN_GREATER_EQUAL_OP:
+            case TOKEN_GREATER_EQUAL_KW:
+                emitByte(compiler, OP_LESS);
+                emitByte(compiler, OP_NOT);
+                break;
+            case TOKEN_LESS_OP:
+            case TOKEN_LESS_KW:
+                emitByte(compiler, OP_LESS);
+                break;
+            case TOKEN_LESS_EQUAL_OP:
+            case TOKEN_LESS_EQUAL_KW:
+                emitByte(compiler, OP_GREATER);
+                emitByte(compiler, OP_NOT);
+                break;
             default:
                 compiler->parser->hadError = true;
                 DEBUG_LOG("[line %d] Error: Unknown operator in grouping.\n",

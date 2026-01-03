@@ -26,14 +26,18 @@ static char* test_vm_stack(void) {
 }
 
 static VMTestCase interpret_tests[] = {
-    {.name = "literal number",
-     .src = "123",
-     .expected_result = INTERPRET_OK,
-     .expected_value = NUMBER_VAL(123.0)},
-    {.name = "simple addition",
-     .src = "(+ 1 2)",
-     .expected_result = INTERPRET_OK,
-     .expected_value = NUMBER_VAL(3.0)},
+    {
+        .name = "literal number",
+        .src = "123",
+        .expected_result = INTERPRET_OK,
+        .expected_value = NUMBER_VAL(123.0),
+    },
+    {
+        .name = "simple addition",
+        .src = "(+ 1 2)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = NUMBER_VAL(3.0),
+    },
     {
         .name = "nested expression",
         .src = "(- (+ 10 5) 3)",
@@ -111,6 +115,111 @@ static VMTestCase interpret_tests[] = {
         .src = "(cond true 123)",
         .expected_result = INTERPRET_OK,
         .expected_value = NUMBER_VAL(123.0),
+    },
+    {
+        .name = "equality true",
+        .src = "(= 5 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "equality false",
+        .src = "(= 5 10)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(false),
+    },
+    {
+        .name = "inequality with identical types",
+        .src = "(!= 5 10)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "inequality with identical values",
+        .src = "(!= 5 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(false),
+    },
+    {
+        .name = "inequality with different types",
+        .src = "(!= 5 true)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "greater than true",
+        .src = "(> 10 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "greater than false",
+        .src = "(> 5 10)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(false),
+    },
+    {
+        .name = "type mismatch in comparison",
+        .src = "(> 5 null)",
+        .expected_result = INTERPRET_RUNTIME_ERROR,
+    },
+    {
+        .name = "greater or equal true",
+        .src = "(>= 10 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "greater or equal equal",
+        .src = "(>= 5 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "greater or equal false",
+        .src = "(>= 5 10)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(false),
+    },
+    {
+        .name = "type mismatch in comparison",
+        .src = "(>= true 5)",
+        .expected_result = INTERPRET_RUNTIME_ERROR,
+    },
+    {
+        .name = "less than true",
+        .src = "(< 5 10)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "less than false",
+        .src = "(< 10 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(false),
+    },
+    {
+        .name = "less or equal true",
+        .src = "(<= 5 10)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "less or equal equal",
+        .src = "(<= 5 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "less or equal false",
+        .src = "(<= 10 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(false),
+    },
+    {
+        .name = "type mismatch in comparison",
+        .src = "(<= null 5)",
+        .expected_result = INTERPRET_RUNTIME_ERROR,
     },
 };
 

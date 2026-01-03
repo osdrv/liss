@@ -5,10 +5,10 @@ CC = clang
 # To enable, run: make DEBUG=1
 DEBUG_FLAGS =
 ifeq ($(DEBUG),1)
-	DEBUG_FLAGS = -DLISS_DEBUG_BUILD -g -O0
+	DEBUG_FLAGS = -DLISS_DEBUG_BUILD -g
 endif
 
-CFLAGS = -std=c17 -Wall -Wextra -Wpedantic $(DEBUG_FLAGS)
+CFLAGS = -std=c23 -Wall -Wextra -Wpedantic $(DEBUG_FLAGS)
 LDFLAGS =
 
 # Project structure

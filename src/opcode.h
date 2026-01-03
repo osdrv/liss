@@ -18,7 +18,13 @@ typedef enum {
     OP_NULL,
 
     OP_NOT,
+    OP_EQUAL,
+    OP_GREATER,
+    OP_LESS,
 
+    OP_DEFINE_GLOBAL,
+    OP_GET_GLOBAL,
+    OP_SET_GLOBAL,
 } OpCode;
 
 #endif

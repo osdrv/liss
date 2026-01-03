@@ -9,9 +9,10 @@ int result = 0;
 // --- Test Suite Declarations ---
 // The main test runner will call these functions to execute tests from each
 // suite.
-void vm_suite(void);
+void table_suite(void);
 void scanner_suite(void);
 void compiler_suite(void);
+void vm_suite(void);
 
 int main(int argc, char** argv) {
     (void)argc;
@@ -20,9 +21,10 @@ int main(int argc, char** argv) {
     printf("--- Running Test Suites ---\n");
 
     // Call all the test suites
-    vm_suite();
+    table_suite();
     scanner_suite();
     compiler_suite();
+    vm_suite();
 
     printf("\n---------------------------\n");
     if (result == 0) {
