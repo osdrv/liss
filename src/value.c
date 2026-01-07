@@ -1,6 +1,7 @@
 #include "value.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #include "object.h"
 
@@ -15,6 +16,21 @@ bool valuesEqual(Value a, Value b) {
         case VAL_NUMBER:
             return AS_NUMBER(a) == AS_NUMBER(b);
         case VAL_OBJ:
+            if (OBJ_TYPE(a) != OBJ_TYPE(b)) {
+                return false;  // Different object types can't be equal.
+            }
+            switch
+                OBJ_TYPE(a) {
+                    case OBJ_STRING:
+                        ObjString* strA = AS_STRING(a);
+                        ObjString* strB = AS_STRING(b);
+                        if (strA->length != strB->length) return false;
+                        return memcmp(strA->chars, strB->chars, strA->length) ==
+                               0;
+                    default:
+                        return false;
+                }
+            // TODO: Deep comparison for certain object types (e.g., strings).
             return AS_OBJ(a) == AS_OBJ(b);  // Compare object pointers.
     }
 

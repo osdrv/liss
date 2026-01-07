@@ -64,6 +64,9 @@ static inline bool isObjType(Value value, ObjType type) {
 #define AS_STRING(value) ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((ObjString*)AS_OBJ(value))->chars)
 
+// Helper function to compute the hash of a string.
+uint32_t hashString(const char* key, int length);
+
 // --- Function Prototypes ---
 
 ObjFunction* newFunction(VM* vm);

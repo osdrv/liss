@@ -6,6 +6,7 @@
 
 #include "gc.h"
 #include "memory.h"
+#include "table.h"
 #include "value.h"
 #include "vm.h"  // For the VM->objects linked list
 
@@ -20,6 +21,7 @@ static Obj* allocateObject(VM* vm, size_t size, ObjType type) {
         exit(1);
     }
     object->type = type;
+    object->isMarked = false;
 
     // Add to the VM's object list for GC tracking
     object->next = vm->objects;
@@ -41,7 +43,7 @@ ObjFunction* newFunction(VM* vm) {
 
 // --- String ---
 
-static uint32_t hashString(const char* key, int length) {
+uint32_t hashString(const char* key, int length) {
     uint32_t hash = 2166136261u;
     for (int i = 0; i < length; i++) {
         hash ^= (uint8_t)key[i];
@@ -68,14 +70,19 @@ ObjString* takeString(VM* vm, char* chars, int length) {
 
 ObjString* copyString(VM* vm, const char* chars, int length) {
     uint32_t hash = hashString(chars, length);
-
-    char* heapChars = reallocate(NULL, 0, length + 1);
-    if (heapChars == NULL) {
-        fprintf(stderr, "Memory allocation failed.\n");
-        exit(1);
+    ObjString* interned = tableFindString(&vm->strings, chars, length, hash);
+    if (interned != NULL) {
+        return interned;
     }
-    memcpy(heapChars, chars, length);
-    heapChars[length] = '\0';
 
-    return allocateString(vm, heapChars, length, hash);
+    char* heap_chars = reallocate(NULL, 0, length + 1);
+    memcpy(heap_chars, chars, length);
+    heap_chars[length] = '\0';
+
+    ObjString* string = allocateString(vm, heap_chars, length, hash);
+    push(vm, OBJ_VAL(string));  // Temporarily push to protect from GC
+    tableInsert(&vm->strings, OBJ_VAL(string), OBJ_VAL(string));
+    pop(vm);  // Pop after insertion
+
+    return string;
 }

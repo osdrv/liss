@@ -1,7 +1,10 @@
 #ifndef liss_table_h
 #define liss_table_h
 
+#include <stddef.h>
+
 #include "common.h"
+#include "object.h"
 #include "value.h"
 
 typedef struct TableEntry {
@@ -20,8 +23,10 @@ typedef struct {
 void initTable(Table* table);
 void freeTable(Table* table);
 
-void tableInsert(Table* table, Value* key, Value* value);
-void tableRemove(Table* table, Value* key);
-Value* tableGet(Table* table, Value* key);
+void tableInsert(Table* table, Value key, Value value);
+void tableRemove(Table* table, Value key);
+Value* tableGet(Table* table, Value key);
+ObjString* tableFindString(Table* table, const char* chars, int length,
+                           uint32_t hash);
 
 #endif

@@ -11,6 +11,7 @@
 #include "memory.h"
 #include "object.h"
 #include "opcode.h"
+#include "table.h"
 #include "value.h"
 
 // --- Forward Declarations ---
@@ -26,12 +27,15 @@ VM* newVM(size_t stack_capacity) {
     vm->objects = NULL;
     // The 'chunk' will be set by the compiler/loader before running.
     vm->chunk = NULL;
+    initTable(&vm->strings);
+    initTable(&vm->globals);
     DEBUG_LOG("Initialized new VM with stack capacity %zu.", stack_capacity);
     return vm;
 }
 
 void destroyVM(VM* vm) {
-    DEBUG_LOG("Destroying VM.");
+    freeTable(&vm->strings);
+    freeTable(&vm->globals);
     Obj* object = vm->objects;
     while (object != NULL) {
         Obj* next = object->next;
@@ -110,7 +114,7 @@ static InterpretResult run(VM* vm) {
         &&OP_SUBTRACT_IMPL, &&OP_MULTIPLY_IMPL,      &&OP_DIVIDE_IMPL,
         &&OP_TRUE_IMPL,     &&OP_FALSE_IMPL,         &&OP_NULL_IMPL,
         &&OP_NOT_IMPL,      &&OP_EQUAL_IMPL,         &&OP_GREATER_IMPL,
-        &&OP_LESS_IMPL,
+        &&OP_LESS_IMPL,     &&OP_SET_GLOBAL_IMPL,    &&OP_GET_GLOBAL_IMPL,
     };
 
     // The instruction pointer for direct threading is a pointer to a pointer.
@@ -133,7 +137,10 @@ static InterpretResult run(VM* vm) {
         loaded_code[loaded_idx++] = dispatch_table[opcode];
         switch (opcode) {
             case OP_CONSTANT: {
-                uint8_t const_index = *bytecode++;
+                uint8_t const_index_hi = *bytecode++;
+                uint8_t const_index_lo = *bytecode++;
+                uint16_t const_index =
+                    (uint16_t)(const_index_hi << 8) | const_index_lo;
                 // In direct threading, operands follow the instruction pointer.
                 loaded_code[loaded_idx++] =
                     (void*)&vm->chunk->constants.values[const_index];
@@ -144,6 +151,15 @@ static InterpretResult run(VM* vm) {
                 uint16_t offset = (uint16_t)(bytecode[0] << 8) | bytecode[1];
                 bytecode += 2;
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)offset;
+                break;
+            }
+            case OP_SET_GLOBAL:
+            case OP_GET_GLOBAL: {
+                uint8_t const_index_hi = *bytecode++;
+                uint8_t const_index_lo = *bytecode++;
+                uint16_t const_index =
+                    (uint16_t)(const_index_hi << 8) | const_index_lo;
+                loaded_code[loaded_idx++] = (void*)(uintptr_t)const_index;
                 break;
             }
             case OP_RETURN:
@@ -247,6 +263,26 @@ OP_GREATER_IMPL: {
 
 OP_LESS_IMPL: {
     COMPARISON_OP(<);
+    DISPATCH();
+}
+
+OP_SET_GLOBAL_IMPL: {
+    uint16_t const_ix = (uint16_t)(uintptr_t)(*ip++);
+    Value name = vm->chunk->constants.values[const_ix];
+    tableInsert(&vm->globals, name, peek(vm));
+    DISPATCH();
+}
+
+OP_GET_GLOBAL_IMPL: {
+    uint16_t const_ix = (uint16_t)(uintptr_t)(*ip++);
+    Value name = vm->chunk->constants.values[const_ix];
+    Value* value = tableGet(&vm->globals, name);
+    if (value == NULL) {
+        fprintf(stderr, "Undefined variable '%.*s'.\n", AS_STRING(name)->length,
+                AS_STRING(name)->chars);
+        return INTERPRET_RUNTIME_ERROR;
+    }
+    push(vm, *value);
     DISPATCH();
 }
 

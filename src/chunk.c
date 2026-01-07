@@ -1,8 +1,11 @@
 #include "chunk.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "memory.h"  // We will create this new file for memory management helpers.
+#include "opcode.h"
+#include "value.h"
 
 // --- ValueArray ---
 
@@ -118,6 +121,24 @@ void printChunk(const Chunk* chunk) {
                 break;
             case OP_NOT:
                 printf("OP_NOT\n");
+                break;
+            case OP_SET_GLOBAL:
+                uint16_t index =
+                    (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
+                printf("OP_SET_GLOBAL %d\n", index);
+                i += 2;  // Skip the operand bytes
+                break;
+            case OP_GET_GLOBAL:
+                printf("OP_GET_GLOBAL\n");
+                break;
+            case OP_EQUAL:
+                printf("OP_EQUAL\n");
+                break;
+            case OP_GREATER:
+                printf("OP_GREATER\n");
+                break;
+            case OP_LESS:
+                printf("OP_LESS\n");
                 break;
             default:
                 printf("Unknown opcode %d\n", opcode);

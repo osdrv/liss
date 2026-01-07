@@ -22,9 +22,8 @@ typedef enum {
     OP_GREATER,
     OP_LESS,
 
-    OP_DEFINE_GLOBAL,
-    OP_GET_GLOBAL,
     OP_SET_GLOBAL,
+    OP_GET_GLOBAL,
 } OpCode;
 
 #endif

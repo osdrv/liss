@@ -3,23 +3,11 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include "chunk.h"
 #include "common.h"
+#include "object.h"
 #include "opcode.h"
-#include "scanner.h"
 #include "token.h"
-
-typedef struct {
-    Scanner scanner;
-    Token current;
-    Token previous;
-    bool hadError;
-    bool panicMode;
-} Parser;
-
-typedef struct {
-    Parser* parser;
-    ObjFunction* function;
-} Compiler;
 
 static void parseExpression(Compiler* compiler);
 
@@ -37,16 +25,19 @@ static void advance(Compiler* compiler) {
     }
 }
 
-static void consume(Compiler* compiler, TokenType type, const char* message) {
+static Token consume(Compiler* compiler, TokenType type, const char* message) {
     Parser* parser = compiler->parser;
-    if (parser->current.type == type) {
+    Token token = parser->current;
+    if (token.type == type) {
         advance(compiler);
-        return;
+        return token;
     }
 
     parser->hadError = true;
     DEBUG_LOG("[line %d] Error: %s\n", parser->current.line, message);
     (void)message;  // Suppress unused parameter warning
+
+    return token;
 }
 
 static Chunk* currentChunk(Compiler* compiler) {
@@ -65,7 +56,14 @@ static void emitBytes(Compiler* compiler, uint8_t byte1, uint8_t byte2) {
 static void emitConstant(Compiler* compiler, Value value) {
     Chunk* chunk = currentChunk(compiler);
     int constant = addConstant(chunk, value);
-    emitBytes(compiler, OP_CONSTANT, (uint8_t)constant);
+    if (constant > UINT16_MAX) {
+        compiler->parser->hadError = true;
+        DEBUG_LOG("[line %d] Error: Too many constants in one chunk.\n",
+                  compiler->parser->current.line);
+        return;
+    }
+    emitByte(compiler, OP_CONSTANT);
+    emitBytes(compiler, (uint8_t)(constant >> 8), (uint8_t)(constant & 0xff));
 }
 
 static void emitReturn(Compiler* compiler) { emitByte(compiler, OP_RETURN); }
@@ -115,29 +113,6 @@ static void parseAnd(Compiler* compiler) {
         patchJump(compiler, jump_list[i]);
     }
     consume(compiler, TOKEN_RPAREN, "Expect ')' after 'and' expression");
-
-    // Keeping this one for future optimization reference
-    // parseExpression(compiler);
-    // if (compiler->parser->hadError) return;
-    // // Even though 0 is a valid jump offset, it would be taken by the first
-    // // operand anyway.
-    // int jump_chain = 0;
-    // while (compiler->parser->current.type != TOKEN_RPAREN) {
-    //     int jump = emitJump(compiler, OP_JUMP_IF_FALSE, jump_chain);
-    //     jump_chain = jump;
-    //     emitByte(compiler, OP_POP);
-    //     parseExpression(compiler);
-    //     if (compiler->parser->hadError) return;
-    // }
-    // while (jump_chain > 0) {
-    //     int prev_jump = (int)(currentChunk(compiler)->code[jump_chain] << 8)
-    //     |
-    //                     currentChunk(compiler)->code[jump_chain + 1];
-    //     patchJump(compiler, jump_chain);
-    //     jump_chain = prev_jump;
-    // }
-    // consume(compiler, TOKEN_RPAREN, "Expect ')' after 'and' expression");
-    // return;
 }
 
 static void parseOr(Compiler* compiler) {
@@ -169,6 +144,26 @@ static void parseOr(Compiler* compiler) {
         patchJump(compiler, jump_list[i]);
     }
     consume(compiler, TOKEN_RPAREN, "Expect ')' after 'or' expression");
+}
+
+static int parseVariable(Compiler* compiler) {
+    Token identifier =
+        consume(compiler, TOKEN_IDENTIFIER, "Expect identifier after 'let'.");
+    if (compiler->parser->hadError) return -1;
+    ObjString* var_name =
+        copyString(compiler->vm, identifier.start, identifier.length);
+    return addConstant(&compiler->function->chunk, OBJ_VAL(var_name));
+}
+
+static void parseLet(Compiler* compiler) {
+    int var_index = parseVariable(compiler);
+    if (compiler->parser->hadError) return;
+    parseExpression(compiler);
+    if (compiler->parser->hadError) return;
+    emitByte(compiler, OP_SET_GLOBAL);
+    emitBytes(compiler, (uint8_t)(var_index >> 8), (uint8_t)(var_index & 0xff));
+    consume(compiler, TOKEN_RPAREN, "Expect ')' after 'let' expression");
+    if (compiler->parser->hadError) return;
 }
 
 static void parseCond(Compiler* compiler) {
@@ -211,6 +206,9 @@ static void parseGrouping(Compiler* compiler) {
             return;
         case TOKEN_COND_KW:
             parseCond(compiler);
+            return;
+        case TOKEN_LET_KW:
+            parseLet(compiler);
             return;
         default:
             break;
@@ -322,10 +320,12 @@ static void parseExpression(Compiler* compiler) {
 ObjFunction* compile(VM* vm, const char* source) {
     Parser parser;
     Compiler compiler;
+    compiler.vm = vm;
 
     initScanner(&parser.scanner, source);
     compiler.parser = &parser;
     compiler.function = newFunction(vm);
+    push(vm, OBJ_VAL(compiler.function));
 
     advance(&compiler);
 
@@ -335,5 +335,6 @@ ObjFunction* compile(VM* vm, const char* source) {
 
     endCompiler(&compiler);
 
+    pop(vm);
     return compiler.parser->hadError ? NULL : compiler.function;
 }

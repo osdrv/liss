@@ -4,6 +4,7 @@
 #include "chunk.h"  // Include for Chunk definition
 #include "common.h"
 #include "object.h"
+#include "table.h"
 #include "value.h"
 
 #define STACK_MAX 256
@@ -20,6 +21,8 @@ typedef struct VM {
     Value* stack_top;
 
     Obj* objects;  // Linked list of all heap-allocated objects for GC
+    Table strings;
+    Table globals;
 
     Value last_popped_value;  // Store the last popped value
 
