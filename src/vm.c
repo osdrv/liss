@@ -14,6 +14,8 @@
 #include "table.h"
 #include "value.h"
 
+#define MAX_JUMP_PATCHES 256
+
 // --- Forward Declarations ---
 static InterpretResult run(VM* vm);
 
@@ -130,42 +132,117 @@ static InterpretResult run(VM* vm) {
         return INTERPRET_RUNTIME_ERROR;
     }
 
+    int* byte_to_slot_map = malloc(sizeof(int) * vm->chunk->count);
+    if (!byte_to_slot_map) {
+        fprintf(stderr, "Memory error allocating byte-to-slot map.\n");
+        free(loaded_code);
+        return INTERPRET_RUNTIME_ERROR;
+    }
+    for (int i = 0; i < vm->chunk->count; i++) {
+        byte_to_slot_map[i] = -1;
+    }
+
+    // TODO: reconsider the size of these arrays
+    int jumps_to_patch[MAX_JUMP_PATCHES];
+    int jump_count = 0;
+
     uint8_t* bytecode = vm->chunk->code;
     int loaded_idx = 0;
+    // while (bytecode < vm->chunk->code + vm->chunk->count) {
+    //     uint8_t opcode = *bytecode++;
+    //     loaded_code[loaded_idx++] = dispatch_table[opcode];
+    //     switch (opcode) {
+    //         case OP_CONSTANT: {
+    //             uint16_t const_index = (uint16_t)(bytecode[0] << 8) |
+    //             bytecode[1]; bytecode += 2; loaded_code[loaded_idx++] =
+    //                 (void*)&vm->chunk->constants.values[const_index];
+    //             break;
+    //         }
+    //         case OP_JUMP:
+    //         case OP_JUMP_IF_FALSE: {
+    //             uint16_t offset = (uint16_t)(bytecode[0] << 8) | bytecode[1];
+    //             bytecode += 2;
+    //             loaded_code[loaded_idx++] = (void*)(uintptr_t)offset;
+    //             break;
+    //         }
+    //         case OP_SET_GLOBAL:
+    //         case OP_GET_GLOBAL: {
+    //             uint16_t const_index = (uint16_t)(bytecode[0] << 8) |
+    //             bytecode[1]; loaded_code[loaded_idx++] =
+    //             (void*)(uintptr_t)const_index; break;
+    //         }
+    //         case OP_RETURN:
+    //             break;  // No operands
+    //     }
+    // }
+    DEBUG_LOG("Loader first pass: Translating bytecode to threaded code.");
     while (bytecode < vm->chunk->code + vm->chunk->count) {
+        int byte_offset = bytecode - vm->chunk->code;
+        byte_to_slot_map[byte_offset] = loaded_idx;
+
         uint8_t opcode = *bytecode++;
         loaded_code[loaded_idx++] = dispatch_table[opcode];
+
         switch (opcode) {
             case OP_CONSTANT: {
-                uint8_t const_index_hi = *bytecode++;
-                uint8_t const_index_lo = *bytecode++;
                 uint16_t const_index =
-                    (uint16_t)(const_index_hi << 8) | const_index_lo;
-                // In direct threading, operands follow the instruction pointer.
+                    (uint16_t)(bytecode[0] << 8) | bytecode[1];
+                bytecode += 2;
                 loaded_code[loaded_idx++] =
                     (void*)&vm->chunk->constants.values[const_index];
                 break;
             }
             case OP_JUMP:
             case OP_JUMP_IF_FALSE: {
-                uint16_t offset = (uint16_t)(bytecode[0] << 8) | bytecode[1];
+                // Read the relative offset from the original bytecode
+                uint16_t relative_byte_offset =
+                    (uint16_t)(bytecode[0] << 8) | bytecode[1];
+                // The offset is relative to the byte after the jump operands
+                int target_byte_addr =
+                    (bytecode - vm->chunk->code) + 2 + relative_byte_offset;
+
+                loaded_code[loaded_idx] = (void*)(uintptr_t)target_byte_addr;
+                if (jump_count >= MAX_JUMP_PATCHES) {
+                    fprintf(stderr, "Too many jumps to patch.\n");
+                    free(byte_to_slot_map);
+                    free(loaded_code);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                jumps_to_patch[jump_count++] = loaded_idx;
                 bytecode += 2;
-                loaded_code[loaded_idx++] = (void*)(uintptr_t)offset;
+                loaded_idx++;
                 break;
             }
-            case OP_SET_GLOBAL:
-            case OP_GET_GLOBAL: {
-                uint8_t const_index_hi = *bytecode++;
-                uint8_t const_index_lo = *bytecode++;
+            case OP_GET_GLOBAL:
+            case OP_SET_GLOBAL: {
                 uint16_t const_index =
-                    (uint16_t)(const_index_hi << 8) | const_index_lo;
+                    (uint16_t)(bytecode[0] << 8) | bytecode[1];
+                bytecode += 2;
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)const_index;
                 break;
             }
-            case OP_RETURN:
+            default:
                 break;  // No operands
         }
     }
+
+    DEBUG_LOG("Loader second pass: Patching jump offsets.");
+    for (int i = 0; i < jump_count; i++) {
+        int operand_slot_ix = jumps_to_patch[i];
+        int target_byte_addr = (int)(uintptr_t)loaded_code[operand_slot_ix];
+        int target_slot_ix = byte_to_slot_map[target_byte_addr];
+        if (target_slot_ix == -1) {
+            fprintf(stderr, "Invalid jump target during patching.\n");
+            free(byte_to_slot_map);
+            free(loaded_code);
+            return INTERPRET_RUNTIME_ERROR;
+        }
+
+        int relative_slot_offset = target_slot_ix - (operand_slot_ix + 1);
+        loaded_code[operand_slot_ix] = (void*)(uintptr_t)relative_slot_offset;
+    }
+
+    free(byte_to_slot_map);
 
     ip = loaded_code;
 
