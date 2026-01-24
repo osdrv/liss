@@ -14,8 +14,6 @@
 #include "table.h"
 #include "value.h"
 
-#define MAX_JUMP_PATCHES 256
-
 // --- Forward Declarations ---
 static InterpretResult run(VM* vm);
 
@@ -86,6 +84,8 @@ Value peek(VM* vm) { return *(vm->stack_top - 1); }
 // --- VM Execution (Direct Threading) ---
 
 static InterpretResult run(VM* vm) {
+    InterpretResult result = INTERPRET_OK;
+
 #define BINARY_OP(op)                                       \
     do {                                                    \
         Value b = pop(vm);                                  \
@@ -99,7 +99,8 @@ static InterpretResult run(VM* vm) {
         Value a = pop(vm);                                        \
         if (a.type != b.type) {                                   \
             fprintf(stderr, "Comparison type mismatch error.\n"); \
-            return INTERPRET_RUNTIME_ERROR;                       \
+            result = INTERPRET_RUNTIME_ERROR;                     \
+            goto cleanup;                                         \
         }                                                         \
         push(vm, BOOL_VAL(AS_NUMBER(a) op AS_NUMBER(b)));         \
     } while (false)
@@ -123,58 +124,31 @@ static InterpretResult run(VM* vm) {
     void** ip = NULL;
 
     // "Loader" stage: Convert byte-based chunk to pointer-based code.
-    // This is a simplified loader. A real one would be more robust.
-    // The size is an over-estimation, but safe for this demo.
     size_t loaded_code_size = sizeof(void*) * vm->chunk->count;
     void** loaded_code = (void**)malloc(loaded_code_size);
     if (!loaded_code) {
         fprintf(stderr, "Memory error loading threaded code.\n");
-        return INTERPRET_RUNTIME_ERROR;
+        result = INTERPRET_RUNTIME_ERROR;
+        goto cleanup;
     }
 
     int* byte_to_slot_map = malloc(sizeof(int) * vm->chunk->count);
     if (!byte_to_slot_map) {
         fprintf(stderr, "Memory error allocating byte-to-slot map.\n");
-        free(loaded_code);
-        return INTERPRET_RUNTIME_ERROR;
+        result = INTERPRET_RUNTIME_ERROR;
+        goto cleanup;
     }
     for (int i = 0; i < vm->chunk->count; i++) {
         byte_to_slot_map[i] = -1;
     }
 
-    // TODO: reconsider the size of these arrays
-    int jumps_to_patch[MAX_JUMP_PATCHES];
+    int* jumps_to_patch = NULL;
     int jump_count = 0;
+    int jumps_capacity = 0;
 
     uint8_t* bytecode = vm->chunk->code;
     int loaded_idx = 0;
-    // while (bytecode < vm->chunk->code + vm->chunk->count) {
-    //     uint8_t opcode = *bytecode++;
-    //     loaded_code[loaded_idx++] = dispatch_table[opcode];
-    //     switch (opcode) {
-    //         case OP_CONSTANT: {
-    //             uint16_t const_index = (uint16_t)(bytecode[0] << 8) |
-    //             bytecode[1]; bytecode += 2; loaded_code[loaded_idx++] =
-    //                 (void*)&vm->chunk->constants.values[const_index];
-    //             break;
-    //         }
-    //         case OP_JUMP:
-    //         case OP_JUMP_IF_FALSE: {
-    //             uint16_t offset = (uint16_t)(bytecode[0] << 8) | bytecode[1];
-    //             bytecode += 2;
-    //             loaded_code[loaded_idx++] = (void*)(uintptr_t)offset;
-    //             break;
-    //         }
-    //         case OP_SET_GLOBAL:
-    //         case OP_GET_GLOBAL: {
-    //             uint16_t const_index = (uint16_t)(bytecode[0] << 8) |
-    //             bytecode[1]; loaded_code[loaded_idx++] =
-    //             (void*)(uintptr_t)const_index; break;
-    //         }
-    //         case OP_RETURN:
-    //             break;  // No operands
-    //     }
-    // }
+
     DEBUG_LOG("Loader first pass: Translating bytecode to threaded code.");
     while (bytecode < vm->chunk->code + vm->chunk->count) {
         int byte_offset = bytecode - vm->chunk->code;
@@ -202,11 +176,19 @@ static InterpretResult run(VM* vm) {
                     (bytecode - vm->chunk->code) + 2 + relative_byte_offset;
 
                 loaded_code[loaded_idx] = (void*)(uintptr_t)target_byte_addr;
-                if (jump_count >= MAX_JUMP_PATCHES) {
-                    fprintf(stderr, "Too many jumps to patch.\n");
-                    free(byte_to_slot_map);
-                    free(loaded_code);
-                    return INTERPRET_RUNTIME_ERROR;
+                if (jumps_capacity < jump_count + 1) {
+                    int old_capacity = jumps_capacity;
+                    jumps_capacity =
+                        jumps_capacity < 8 ? 8 : jumps_capacity * 2;
+                    jumps_to_patch = (int*)reallocate(
+                        jumps_to_patch, sizeof(int) * old_capacity,
+                        sizeof(int) * jumps_capacity);
+                    if (jumps_to_patch == NULL) {
+                        fprintf(stderr,
+                                "Memory error allocating jumps to patch.\n");
+                        result = INTERPRET_RUNTIME_ERROR;
+                        goto cleanup;
+                    }
                 }
                 jumps_to_patch[jump_count++] = loaded_idx;
                 bytecode += 2;
@@ -233,16 +215,13 @@ static InterpretResult run(VM* vm) {
         int target_slot_ix = byte_to_slot_map[target_byte_addr];
         if (target_slot_ix == -1) {
             fprintf(stderr, "Invalid jump target during patching.\n");
-            free(byte_to_slot_map);
-            free(loaded_code);
-            return INTERPRET_RUNTIME_ERROR;
+            result = INTERPRET_RUNTIME_ERROR;
+            goto cleanup;
         }
 
         int relative_slot_offset = target_slot_ix - (operand_slot_ix + 1);
         loaded_code[operand_slot_ix] = (void*)(uintptr_t)relative_slot_offset;
     }
-
-    free(byte_to_slot_map);
 
     ip = loaded_code;
 
@@ -256,8 +235,8 @@ static InterpretResult run(VM* vm) {
 
 OP_RETURN_IMPL: {
     vm->last_popped_value = pop(vm);
-    free(loaded_code);  // Clean up the loaded code
-    return INTERPRET_OK;
+    result = INTERPRET_OK;
+    goto cleanup;
 }
 
 OP_CONSTANT_IMPL: {
@@ -357,11 +336,22 @@ OP_GET_GLOBAL_IMPL: {
     if (value == NULL) {
         fprintf(stderr, "Undefined variable '%.*s'.\n", AS_STRING(name)->length,
                 AS_STRING(name)->chars);
-        return INTERPRET_RUNTIME_ERROR;
+        result = INTERPRET_RUNTIME_ERROR;
+        goto cleanup;
     }
     push(vm, *value);
     DISPATCH();
 }
+
+cleanup:
+    if (loaded_code != NULL) {
+        free(loaded_code);
+    }
+    if (byte_to_slot_map != NULL) {
+        free(byte_to_slot_map);
+    }
+    reallocate(jumps_to_patch, sizeof(int) * jumps_capacity, 0);
+    return result;
 
 #else
 // Fallback for compilers that don't support computed gotos (e.g., MSVC)
