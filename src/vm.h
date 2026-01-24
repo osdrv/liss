@@ -19,6 +19,7 @@ typedef struct VM {
     Chunk* chunk;  // The chunk of code this VM is executing
     size_t stack_capacity;
     Value* stack_top;
+    InterpretResult last_result;  // Store the last interpret result
 
     Obj* objects;  // Linked list of all heap-allocated objects for GC
     Table strings;

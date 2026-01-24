@@ -27,6 +27,7 @@ VM* newVM(size_t stack_capacity) {
     vm->objects = NULL;
     // The 'chunk' will be set by the compiler/loader before running.
     vm->chunk = NULL;
+    vm->last_result = INTERPRET_OK;
     initTable(&vm->strings);
     initTable(&vm->globals);
     DEBUG_LOG("Initialized new VM with stack capacity %zu.", stack_capacity);
@@ -34,6 +35,7 @@ VM* newVM(size_t stack_capacity) {
 }
 
 void destroyVM(VM* vm) {
+    if (vm == NULL) return;
     freeTable(&vm->strings);
     freeTable(&vm->globals);
     Obj* object = vm->objects;
@@ -64,7 +66,8 @@ InterpretResult interpret(VM* vm, const char* source) {
 void push(VM* vm, Value value) {
     if ((size_t)(vm->stack_top - vm->stack) >= vm->stack_capacity) {
         fprintf(stderr, "Stack overflow.\n");
-        exit(1);
+        vm->last_result = INTERPRET_RUNTIME_ERROR;
+        return;
     }
     *vm->stack_top = value;
     vm->stack_top++;
@@ -73,7 +76,8 @@ void push(VM* vm, Value value) {
 Value pop(VM* vm) {
     if (vm->stack_top == vm->stack) {
         fprintf(stderr, "Stack underflow.\n");
-        exit(1);
+        vm->last_result = INTERPRET_RUNTIME_ERROR;
+        return NIL_VAL;
     }
     vm->stack_top--;
     return *vm->stack_top;
@@ -207,6 +211,13 @@ static InterpretResult run(VM* vm) {
                 break;  // No operands
         }
     }
+    loaded_code = reallocate(loaded_code, sizeof(void*) * vm->chunk->count,
+                             sizeof(void*) * loaded_idx);
+    if (loaded_code == NULL) {
+        fprintf(stderr, "Memory error resizing loaded code.\n");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto cleanup;
+    }
 
     DEBUG_LOG("Loader second pass: Patching jump offsets.");
     for (int i = 0; i < jump_count; i++) {
@@ -225,7 +236,14 @@ static InterpretResult run(VM* vm) {
 
     ip = loaded_code;
 
-#define DISPATCH() goto** ip++
+#define DISPATCH()                             \
+    do {                                       \
+        if (vm->last_result != INTERPRET_OK) { \
+            result = vm->last_result;          \
+            goto cleanup;                      \
+        }                                      \
+        goto*(*(ip++));                        \
+    } while (0)
 
     // --- Start Execution ---
     DEBUG_LOG("Starting direct-threaded execution.");
@@ -235,7 +253,7 @@ static InterpretResult run(VM* vm) {
 
 OP_RETURN_IMPL: {
     vm->last_popped_value = pop(vm);
-    result = INTERPRET_OK;
+    result = vm->last_result;
     goto cleanup;
 }
 
