@@ -221,6 +221,30 @@ static VMTestCase interpret_tests[] = {
         .src = "(<= null 5)",
         .expected_result = INTERPRET_RUNTIME_ERROR,
     },
+    {
+        .name = "basic let expression",
+        .src = "(let x 10)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = NUMBER_VAL(10.0),
+    },
+    {
+        .name = "let expression with arithmetic",
+        .src = "(let y (+ 5 5))",
+        .expected_result = INTERPRET_OK,
+        .expected_value = NUMBER_VAL(10.0),
+    },
+    {
+        .name = "let expression with boolean",
+        .src = "(let flag true)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = BOOL_VAL(true),
+    },
+    {
+        .name = "let expression with get global",
+        .src = "(let a 42) (let b (+ a 1))",
+        .expected_result = INTERPRET_OK,
+        .expected_value = NUMBER_VAL(43.0),
+    },
 };
 
 static char* test_vm_interpret(void) {

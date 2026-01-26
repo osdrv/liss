@@ -11,6 +11,11 @@
 
 static void parseExpression(Compiler* compiler);
 
+static void initParser(Parser* parser) {
+    parser->hadError = false;
+    parser->panicMode = false;
+}
+
 static void advance(Compiler* compiler) {
     Parser* parser = compiler->parser;
     parser->previous = parser->current;
@@ -287,6 +292,23 @@ static void parseGrouping(Compiler* compiler) {
     consume(compiler, TOKEN_RPAREN, "Expect ')' after expression");
 }
 
+static void namedVariable(Compiler* compiler, Token name) {
+    ObjString* var_name = copyString(compiler->vm, name.start, name.length);
+    int const_index =
+        addConstant(&compiler->function->chunk, OBJ_VAL(var_name));
+
+    if (const_index > UINT16_MAX) {
+        compiler->parser->hadError = true;
+        DEBUG_LOG("[line %d] Error: Too many constants in one chunk.\n",
+                  compiler->parser->current.line);
+        return;
+    }
+
+    emitByte(compiler, OP_GET_GLOBAL);
+    emitBytes(compiler, (uint8_t)(const_index >> 8),
+              (uint8_t)(const_index & 0xff));
+}
+
 static void parseExpression(Compiler* compiler) {
     switch (compiler->parser->current.type) {
         case TOKEN_NUMBER:
@@ -309,6 +331,10 @@ static void parseExpression(Compiler* compiler) {
             advance(compiler);
             parseGrouping(compiler);
             break;
+        case TOKEN_IDENTIFIER:
+            namedVariable(compiler, compiler->parser->current);
+            advance(compiler);
+            break;
         default:
             compiler->parser->hadError = true;
             DEBUG_LOG("[line %d] Error: Expected expression.\n",
@@ -322,6 +348,7 @@ ObjFunction* compile(VM* vm, const char* source) {
     Compiler compiler;
     compiler.vm = vm;
 
+    initParser(&parser);
     initScanner(&parser.scanner, source);
     compiler.parser = &parser;
     compiler.function = newFunction(vm);
@@ -329,9 +356,14 @@ ObjFunction* compile(VM* vm, const char* source) {
 
     advance(&compiler);
 
-    parseExpression(&compiler);
+    do {
+        parseExpression(&compiler);
+        if (compiler.parser->hadError) break;
+    } while (compiler.parser->current.type != TOKEN_EOF);
 
-    consume(&compiler, TOKEN_EOF, "Expect the end of expression.");
+    if (!compiler.parser->hadError) {
+        consume(&compiler, TOKEN_EOF, "Expect the end of expression.");
+    }
 
     endCompiler(&compiler);
 

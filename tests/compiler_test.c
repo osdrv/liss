@@ -11,13 +11,26 @@
 #include "value.h"
 #include "vm.h"
 
+typedef enum {
+    EXPECT_NUMBER,
+    EXPECT_OBJ_STRING,
+} ExpectedConstantType;
+
+typedef struct {
+    ExpectedConstantType type;
+    union {
+        double number;
+        const char* obj_string;
+    } as;
+} ExpectedConstant;
+
 typedef struct {
     const char* name;
     const char* src;
     uint8_t* expected_instructions;
     size_t expected_instruction_count;
-    Value* expected_constants;
-    size_t expected_constant_count;
+    ExpectedConstant* expected_constants;
+    size_t expected_constant_size;
 } CompilerTestCase;
 
 static char* assert_instructions(Chunk* chunk, uint8_t expected[],
@@ -42,17 +55,43 @@ static char* assert_values_equal(Value* a, Value* b) {
     return NULL;
 }
 
-static char* assert_constants(Chunk* chunk, Value expected[],
+static char* assert_number(Value value, double expected) {
+    mu_assert("Value is not a number.", IS_NUMBER(value));
+    mu_assert("Number value does not match expected.",
+              AS_NUMBER(value) == expected);
+    return NULL;
+}
+
+static char* assert_string(Value value, const char* expected) {
+    mu_assert("Value is not an object.", IS_OBJ(value));
+    mu_assert("Object is not a string.", OBJ_TYPE(value) == OBJ_STRING);
+    ObjString* str = AS_STRING(value);
+    mu_assert("String length does not match expected.",
+              str->length == (int)strlen(expected));
+    mu_assert("String contents do not match expected.",
+              memcmp(str->chars, expected, str->length) == 0);
+    return NULL;
+}
+
+static char* assert_constants(Chunk* chunk, ExpectedConstant expected[],
                               size_t expected_count) {
     mu_assert("Chunk constant count does not match expected count.",
               chunk->constants.count == (int)expected_count);
     for (size_t i = 0; i < expected_count; i++) {
-        Value val = chunk->constants.values[i];
-        if (assert_values_equal(&val, &expected[i]) != NULL) {
-            DEBUG_LOG("At constant %zu: expected different value.", i);
+        Value actual = chunk->constants.values[i];
+        ExpectedConstant exp = expected[i];
+        switch (exp.type) {
+            case EXPECT_NUMBER:
+                mu_assert("Constant verification failed for number.",
+                          assert_number(actual, exp.as.number) == NULL);
+                break;
+            case EXPECT_OBJ_STRING:
+                mu_assert("Constant verification failed for string.",
+                          assert_string(actual, exp.as.obj_string) == NULL);
+                break;
+            default:
+                mu_assert("Unknown expected constant type.", false);
         }
-        mu_assert("Values must be equal.",
-                  assert_values_equal(&val, &expected[i]) == NULL);
     }
 
     return NULL;
@@ -65,8 +104,11 @@ static char* test_compile(void) {
             .src = "123",
             .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_RETURN},
             .expected_instruction_count = 4,
-            .expected_constants = (Value[]){NUMBER_VAL(123.0)},
-            .expected_constant_count = 1,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 123.0},
+                },
+            .expected_constant_size = 1,
         },
         {
             .name = "compile simple addition",
@@ -74,8 +116,12 @@ static char* test_compile(void) {
             .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_CONSTANT,
                                                  0, 1, OP_ADD, OP_RETURN},
             .expected_instruction_count = 8,
-            .expected_constants = (Value[]){NUMBER_VAL(1.0), NUMBER_VAL(2.0)},
-            .expected_constant_count = 2,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_NUMBER, .as.number = 2.0},
+                },
+            .expected_constant_size = 2,
         },
         {
             .name = "compile nested expression",
@@ -85,8 +131,12 @@ static char* test_compile(void) {
                             OP_CONSTANT, 0, 2, OP_SUBTRACT, OP_RETURN},
             .expected_instruction_count = 12,
             .expected_constants =
-                (Value[]){NUMBER_VAL(10.0), NUMBER_VAL(5.0), NUMBER_VAL(3.0)},
-            .expected_constant_count = 3,
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 10.0},
+                    {EXPECT_NUMBER, .as.number = 5.0},
+                    {EXPECT_NUMBER, .as.number = 3.0},
+                },
+            .expected_constant_size = 3,
         },
         {
             .name = "compile boolean literal true",
@@ -94,7 +144,7 @@ static char* test_compile(void) {
             .expected_instructions = (uint8_t[]){OP_TRUE, OP_RETURN},
             .expected_instruction_count = 2,
             .expected_constants = NULL,
-            .expected_constant_count = 0,
+            .expected_constant_size = 0,
         },
         {
             .name = "compile boolean literal false",
@@ -102,7 +152,7 @@ static char* test_compile(void) {
             .expected_instructions = (uint8_t[]){OP_FALSE, OP_RETURN},
             .expected_instruction_count = 2,
             .expected_constants = NULL,
-            .expected_constant_count = 0,
+            .expected_constant_size = 0,
         },
         {
             .name = "compile null literal",
@@ -110,7 +160,7 @@ static char* test_compile(void) {
             .expected_instructions = (uint8_t[]){OP_NULL, OP_RETURN},
             .expected_instruction_count = 2,
             .expected_constants = NULL,
-            .expected_constant_count = 0,
+            .expected_constant_size = 0,
         },
         {
             .name = "compile not operation",
@@ -118,7 +168,7 @@ static char* test_compile(void) {
             .expected_instructions = (uint8_t[]){OP_TRUE, OP_NOT, OP_RETURN},
             .expected_instruction_count = 3,
             .expected_constants = NULL,
-            .expected_constant_count = 0,
+            .expected_constant_size = 0,
         },
         {
             .name = "compile AND expression with 2 operands",
@@ -127,7 +177,7 @@ static char* test_compile(void) {
                                                  1, OP_FALSE, OP_RETURN},
             .expected_instruction_count = 6,
             .expected_constants = NULL,
-            .expected_constant_count = 0,
+            .expected_constant_size = 0,
         },
         {
             .name = "compile AND expression with more operands",
@@ -137,7 +187,7 @@ static char* test_compile(void) {
                             OP_JUMP_IF_FALSE, 0, 1, OP_FALSE, OP_RETURN},
             .expected_instruction_count = 10,
             .expected_constants = NULL,
-            .expected_constant_count = 0,
+            .expected_constant_size = 0,
         },
         {
             .name = "compile AND with all true",
@@ -147,7 +197,7 @@ static char* test_compile(void) {
                             OP_JUMP_IF_FALSE, 0, 1, OP_TRUE, OP_RETURN},
             .expected_instruction_count = 10,
             .expected_constants = NULL,
-            .expected_constant_count = 0,
+            .expected_constant_size = 0,
         },
         {
             .name = "compile AND with all false",
@@ -157,7 +207,7 @@ static char* test_compile(void) {
                             OP_JUMP_IF_FALSE, 0, 1, OP_FALSE, OP_RETURN},
             .expected_instruction_count = 10,
             .expected_constants = NULL,
-            .expected_constant_count = 0,
+            .expected_constant_size = 0,
         },
         {
             .name = "compile OR expression with 2 operands",
@@ -167,7 +217,7 @@ static char* test_compile(void) {
                             OP_POP, OP_TRUE, OP_RETURN},
             .expected_instruction_count = 10,
             .expected_constants = NULL,
-            .expected_constant_count = 0,
+            .expected_constant_size = 0,
         },
         {
             .name = "compile OR expression with more operands",
@@ -180,7 +230,7 @@ static char* test_compile(void) {
                     OP_FALSE, OP_RETURN},
             .expected_instruction_count = 26,
             .expected_constants = NULL,
-            .expected_constant_count = 0,
+            .expected_constant_size = 0,
         },
         {
             .name = "compile cond expression with no else branch",
@@ -190,8 +240,11 @@ static char* test_compile(void) {
                             OP_CONSTANT, 0, 0, OP_JUMP, 0, 2, OP_POP, OP_NULL,
                             OP_RETURN},
             .expected_instruction_count = 14,
-            .expected_constants = (Value[]){NUMBER_VAL(123.0)},
-            .expected_constant_count = 1,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 123.0},
+                },
+            .expected_constant_size = 1,
         },
         {
             .name =
@@ -202,8 +255,11 @@ static char* test_compile(void) {
                             OP_CONSTANT, 0, 0, OP_JUMP, 0, 2, OP_POP, OP_NULL,
                             OP_RETURN},
             .expected_instruction_count = 14,
-            .expected_constants = (Value[]){NUMBER_VAL(123.0)},
-            .expected_constant_count = 1,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 123.0},
+                },
+            .expected_constant_size = 1,
         },
         {
             .name = "compile cond expression with else branch",
@@ -214,8 +270,11 @@ static char* test_compile(void) {
                             OP_CONSTANT, 0, 1, OP_RETURN},
             .expected_instruction_count = 16,
             .expected_constants =
-                (Value[]){NUMBER_VAL(123.0), NUMBER_VAL(456.0)},
-            .expected_constant_count = 2,
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 123.0},
+                    {EXPECT_NUMBER, .as.number = 456.0},
+                },
+            .expected_constant_size = 2,
         },
         {
             .name = "compile compare operation: = operator",
@@ -223,8 +282,12 @@ static char* test_compile(void) {
             .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_CONSTANT,
                                                  0, 1, OP_EQUAL, OP_RETURN},
             .expected_instruction_count = 8,
-            .expected_constants = (Value[]){NUMBER_VAL(1.0), NUMBER_VAL(1.0)},
-            .expected_constant_count = 2,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                },
+            .expected_constant_size = 2,
         },
         {
             .name = "compile compare operation: != operator",
@@ -233,8 +296,12 @@ static char* test_compile(void) {
                 (uint8_t[]){OP_CONSTANT, 0, 0, OP_CONSTANT, 0, 1, OP_EQUAL,
                             OP_NOT, OP_RETURN},
             .expected_instruction_count = 9,
-            .expected_constants = (Value[]){NUMBER_VAL(1.0), NUMBER_VAL(2.0)},
-            .expected_constant_count = 2,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_NUMBER, .as.number = 2.0},
+                },
+            .expected_constant_size = 2,
         },
         {
             .name = "compile compare operation: > operator",
@@ -242,8 +309,12 @@ static char* test_compile(void) {
             .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_CONSTANT,
                                                  0, 1, OP_GREATER, OP_RETURN},
             .expected_instruction_count = 8,
-            .expected_constants = (Value[]){NUMBER_VAL(2.0), NUMBER_VAL(1.0)},
-            .expected_constant_count = 2,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 2.0},
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                },
+            .expected_constant_size = 2,
         },
         {
             .name = "compile compare operation: < operator",
@@ -251,8 +322,12 @@ static char* test_compile(void) {
             .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_CONSTANT,
                                                  0, 1, OP_LESS, OP_RETURN},
             .expected_instruction_count = 8,
-            .expected_constants = (Value[]){NUMBER_VAL(1.0), NUMBER_VAL(2.0)},
-            .expected_constant_count = 2,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_NUMBER, .as.number = 2.0},
+                },
+            .expected_constant_size = 2,
         },
         {
             .name = "compile compare operation: <= operator",
@@ -261,8 +336,12 @@ static char* test_compile(void) {
                 (uint8_t[]){OP_CONSTANT, 0, 0, OP_CONSTANT, 0, 1, OP_GREATER,
                             OP_NOT, OP_RETURN},
             .expected_instruction_count = 9,
-            .expected_constants = (Value[]){NUMBER_VAL(1.0), NUMBER_VAL(2.0)},
-            .expected_constant_count = 2,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_NUMBER, .as.number = 2.0},
+                },
+            .expected_constant_size = 2,
         },
         {
             .name = "compile compare operation: >= operator",
@@ -271,8 +350,12 @@ static char* test_compile(void) {
                 (uint8_t[]){OP_CONSTANT, 0, 0, OP_CONSTANT, 0, 1, OP_LESS,
                             OP_NOT, OP_RETURN},
             .expected_instruction_count = 9,
-            .expected_constants = (Value[]){NUMBER_VAL(2.0), NUMBER_VAL(1.0)},
-            .expected_constant_count = 2,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 2.0},
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                },
+            .expected_constant_size = 2,
         },
         {
             .name = "compile let expression",
@@ -280,6 +363,27 @@ static char* test_compile(void) {
             .expected_instructions =
                 (uint8_t[]){OP_CONSTANT, 0, 1, OP_SET_GLOBAL, 0, 0, OP_RETURN},
             .expected_instruction_count = 7,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_STRING, .as.obj_string = "x"},
+                    {EXPECT_NUMBER, .as.number = 42.0},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "compile let expression with get global",
+            .src = "(let b (+ a 1))",
+            .expected_instructions =
+                (uint8_t[]){OP_GET_GLOBAL, 0, 1, OP_CONSTANT, 0, 2, OP_ADD,
+                            OP_SET_GLOBAL, 0, 0, OP_RETURN},
+            .expected_instruction_count = 11,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_STRING, .as.obj_string = "b"},
+                    {EXPECT_OBJ_STRING, .as.obj_string = "a"},
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                },
+            .expected_constant_size = 3,
         },
     };
 
@@ -305,25 +409,12 @@ static char* test_compile(void) {
             assert_instructions(chunk, test->expected_instructions,
                                 test->expected_instruction_count) == NULL);
 
-        if (strcmp(test->name, "compile let expression") == 0) {
-            mu_assert("Constant count should be 2.",
-                      chunk->constants.count == 2);
-            Value first_const = chunk->constants.values[0];
-            mu_assert("First constant should be a string.",
-                      IS_OBJ(first_const) && IS_STRING(first_const));
-            ObjString* str = AS_STRING(first_const);
-            mu_assert("String should be 'x'", strcmp(str->chars, "x") == 0);
-            Value second_const = chunk->constants.values[1];
-            mu_assert("Second constant should be a number.",
-                      IS_NUMBER(second_const));
-            mu_assert("Number should be 42.0", AS_NUMBER(second_const) == 42.0);
-        } else {
-            mu_assert(
-                "%s: Constant count should match expected count.",
-                chunk->constants.count == (int)test->expected_constant_count);
+        mu_assert("%s: Constant count should match expected size.",
+                  chunk->constants.count == (int)test->expected_constant_size);
+        if (test->expected_constant_size > 0) {
             mu_assert("%s: Constants should match expected constants.",
                       assert_constants(chunk, test->expected_constants,
-                                       test->expected_constant_count) == NULL);
+                                       test->expected_constant_size) == NULL);
         }
 
         destroyVM(vm);

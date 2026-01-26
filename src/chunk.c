@@ -71,11 +71,12 @@ void printChunk(const Chunk* chunk) {
         uint8_t opcode = chunk->code[i];
         switch (opcode) {
             case OP_CONSTANT: {
-                uint8_t const_index = chunk->code[i + 1];
+                uint16_t const_index =
+                    (uint16_t)(chunk->code[i + 1]) << 8 | chunk->code[i + 2];
                 printf("OP_CONSTANT %d '", const_index);
                 printValue(chunk->constants.values[const_index]);
                 printf("'\n");
-                i++;  // Skip the operand byte
+                i += 2;  // Skip the operand byte
                 break;
             }
             case OP_RETURN:
@@ -123,13 +124,16 @@ void printChunk(const Chunk* chunk) {
                 printf("OP_NOT\n");
                 break;
             case OP_SET_GLOBAL:
-                uint16_t index =
+                uint16_t set_index =
                     (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
-                printf("OP_SET_GLOBAL %d\n", index);
+                printf("OP_SET_GLOBAL %d\n", set_index);
                 i += 2;  // Skip the operand bytes
                 break;
             case OP_GET_GLOBAL:
-                printf("OP_GET_GLOBAL\n");
+                uint16_t get_index =
+                    (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
+                printf("OP_GET_GLOBAL %d\n", get_index);
+                i += 2;  // Skip the operand bytes
                 break;
             case OP_EQUAL:
                 printf("OP_EQUAL\n");
