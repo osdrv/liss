@@ -111,6 +111,17 @@ static char* test_compile(void) {
             .expected_constant_size = 1,
         },
         {
+            .name = "compile simple string",
+            .src = "\"hello\"",
+            .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_RETURN},
+            .expected_instruction_count = 4,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_STRING, .as.obj_string = "hello"},
+                },
+            .expected_constant_size = 1,
+        },
+        {
             .name = "compile simple addition",
             .src = "(+ 1 2)",
             .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_CONSTANT,
@@ -247,8 +258,8 @@ static char* test_compile(void) {
             .expected_constant_size = 1,
         },
         {
-            .name =
-                "compile cond expression with no else resolving to else branch",
+            .name = "compile cond expression with no else resolving to else "
+                    "branch",
             .src = "(cond false 123)",
             .expected_instructions =
                 (uint8_t[]){OP_FALSE, OP_JUMP_IF_FALSE, 0, 7, OP_POP,

@@ -100,6 +100,12 @@ static void parseNumber(Compiler* compiler) {
     emitConstant(compiler, NUMBER_VAL(value));
 }
 
+static void parseString(Compiler* compiler) {
+    Token* token = &compiler->parser->previous;
+    ObjString* string = copyString(compiler->vm, token->start, token->length);
+    emitConstant(compiler, OBJ_VAL(string));
+}
+
 static void parseAnd(Compiler* compiler) {
     int jump_list[100];
     int jump_count = 0;
@@ -314,6 +320,10 @@ static void parseExpression(Compiler* compiler) {
         case TOKEN_NUMBER:
             advance(compiler);
             parseNumber(compiler);
+            break;
+        case TOKEN_STRING:
+            advance(compiler);
+            parseString(compiler);
             break;
         case TOKEN_TRUE_KW:
             advance(compiler);
