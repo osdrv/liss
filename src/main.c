@@ -3,8 +3,8 @@
 #include <string.h>
 
 #include "common.h"
-#include "vm.h"
 #include "repl.h"
+#include "vm.h"
 
 static void runFile(const char* path) {
     FILE* file = fopen(path, "rb");

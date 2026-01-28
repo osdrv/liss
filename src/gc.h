@@ -7,6 +7,7 @@
 
 void gc(VM* vm);
 void markObject(VM* vm, Obj* object);
+void markTable(VM* vm, Table* table);
 void markRoots(VM* vm);
 void markValue(VM* vm, Value value);
 void sweep(VM* vm);

@@ -1,16 +1,19 @@
+#include "repl.h"
+
 #include <stdio.h>
 #include <string.h>
 
-#include "repl.h"
 #include "common.h"
-#include "vm.h"
 #include "value.h"
+#include "vm.h"
 
 void runRepl() {
     // TODO: make the stack size configurable
     VM* vm = newVM(256);
 
     char line[1024];
+
+    printf("LISS REPL. Type Ctrl+D (EOF) to exit.\n");
 
     for (;;) {
         printf("> ");

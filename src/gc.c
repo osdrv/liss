@@ -18,6 +18,8 @@ void markRoots(VM* vm) {
     for (Value* value = vm->stack; value < vm->stack_top; value++) {
         markValue(vm, *value);
     }
+    markTable(vm, &vm->globals);
+    markTable(vm, &vm->strings);
 }
 
 void markValue(VM* vm, Value value) {
@@ -44,6 +46,17 @@ void markObject(VM* vm, Obj* object) {
         case OBJ_STRING:
             // Strings have no references to other objects.
             break;
+    }
+}
+
+void markTable(VM* vm, Table* table) {
+    for (size_t i = 0; i < table->bucket_count; i++) {
+        TableEntry* entry = table->buckets[i];
+        while (entry != NULL) {
+            markValue(vm, entry->key);
+            markValue(vm, entry->value);
+            entry = entry->next;
+        }
     }
 }
 
