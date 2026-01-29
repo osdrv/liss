@@ -311,6 +311,29 @@ static VMTestCase interpret_tests[] = {
         .src = "(+ \"Value: \" 42)",
         .expected_result = INTERPRET_RUNTIME_ERROR,
     },
+    {
+        .name = "string duplication",
+        .src = "(* \"ha\" 3)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_STRING, .as.string = "hahaha"},
+    },
+    {
+        .name = "string duplication with zero",
+        .src = "(* \"test\" 0)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_STRING, .as.string = ""},
+    },
+    // TODO: failing because we parse negative numbers as unary minus operation
+    //{
+    //    .name = "string duplication with negative number error",
+    //    .src = "(* \"oops\" -2)",
+    //    .expected_result = INTERPRET_RUNTIME_ERROR,
+    //},
+    {
+        .name = "string duplication with non-number error",
+        .src = "(* \"nope\" true)",
+        .expected_result = INTERPRET_RUNTIME_ERROR,
+    },
 };
 
 static char* test_vm_interpret(void) {

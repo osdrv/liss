@@ -1,5 +1,6 @@
 #include "vm.h"
 
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,6 +124,65 @@ static bool concatStrings(VM* vm, Value a, Value b) {
     pop(vm);
 
     push(vm, OBJ_VAL(result));
+    return true;
+}
+
+static bool multiplyNumbers(VM* vm, Value a, Value b) {
+    pop(vm);
+    pop(vm);
+    push(vm, NUMBER_VAL(AS_NUMBER(a) * AS_NUMBER(b)));
+    return true;
+}
+
+static bool duplicateString(VM* vm, Value a, Value b) {
+    if (!IS_STRING(a) || !IS_NUMBER(b)) {
+        fprintf(stderr,
+                "Type error: Expected string and number for duplication.\n");
+        return false;
+    }
+
+    ObjString* str = AS_STRING(a);
+    double count_double = AS_NUMBER(b);
+
+    if (count_double < 0 || trunc(count_double) != count_double) {
+        fprintf(
+            stderr,
+            "Value error: Duplication count must be a non-negative integer.\n");
+        return false;
+    }
+
+    int count = (int)count_double;
+
+    if (count == 0) {
+        pop(vm);
+        pop(vm);
+        push(vm, OBJ_VAL(copyString(vm, "", 0)));
+        return true;
+    }
+
+    if (count == 1) {
+        pop(vm);
+        return true;  // No duplication needed
+    }
+
+    int len = str->length * count;
+    char* chars = (char*)malloc(len + 1);
+    if (chars == NULL) {
+        fprintf(stderr, "Memory allocation failed for string duplication.\n");
+        return false;
+    }
+
+    char* pos = chars;
+    for (int i = 0; i < count; i++) {
+        memcpy(pos, str->chars, str->length);
+        pos += str->length;
+    }
+    chars[len] = '\0';
+    ObjString* res = takeString(vm, chars, len);
+
+    pop(vm);
+    pop(vm);
+    push(vm, OBJ_VAL(res));
     return true;
 }
 
@@ -375,7 +435,26 @@ OP_SUBTRACT_IMPL: {
 }
 
 OP_MULTIPLY_IMPL: {
-    BINARY_OP(*);
+    Value b = peek(vm, 0);
+    Value a = peek(vm, 1);
+
+    if (IS_NUMBER(a) && IS_NUMBER(b)) {
+        if (!multiplyNumbers(vm, a, b)) {
+            result = INTERPRET_RUNTIME_ERROR;
+            goto cleanup;
+        }
+    } else if (IS_STRING(a) && IS_NUMBER(b)) {
+        if (!duplicateString(vm, a, b)) {
+            result = INTERPRET_RUNTIME_ERROR;
+            goto cleanup;
+        }
+    } else {
+        fprintf(stderr,
+                "Runtime error: Operands must be two numbers or a string and "
+                "a number for multiplication.\n");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto cleanup;
+    }
     DISPATCH();
 }
 
