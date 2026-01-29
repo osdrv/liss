@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "chunk.h"
 #include "common.h"
@@ -83,7 +84,43 @@ Value pop(VM* vm) {
     return *vm->stack_top;
 }
 
-Value peek(VM* vm) { return *(vm->stack_top - 1); }
+Value peek(VM* vm, int distance) {
+    return vm->stack_top[-1 - distance];
+    // return *(vm->stack_top - 1);
+}
+
+typedef bool (*BinaryOpFn)(VM* vm, Value a, Value b);
+
+static bool addNumbers(VM* vm, Value a, Value b) {
+    pop(vm);
+    pop(vm);
+    push(vm, NUMBER_VAL(AS_NUMBER(a) + AS_NUMBER(b)));
+    return true;
+}
+
+static bool concatStrings(VM* vm, Value a, Value b) {
+    ObjString* left = AS_STRING(a);
+    ObjString* right = AS_STRING(b);
+
+    int length = left->length + right->length;
+    char* chars = (char*)malloc(length + 1);
+    if (chars == NULL) {
+        fprintf(stderr, "Memory allocation failed for string concatenation.\n");
+        return false;
+    }
+    memcpy(chars, left->chars, left->length);
+    memcpy(chars + left->length, right->chars, right->length);
+    chars[length] = '\0';
+
+    ObjString* result = copyString(vm, chars, length);
+    free(chars);
+
+    pop(vm);
+    pop(vm);
+
+    push(vm, OBJ_VAL(result));
+    return true;
+}
 
 // --- VM Execution (Direct Threading) ---
 
@@ -277,14 +314,32 @@ OP_JUMP_IMPL: {
 
 OP_JUMP_IF_FALSE_IMPL: {
     uint16_t offset = (uint16_t)(uintptr_t)(*ip++);
-    if (isFalsey(peek(vm))) {
+    if (isFalsey(peek(vm, 0))) {
         ip += offset;
     }
     DISPATCH();
 }
 
 OP_ADD_IMPL: {
-    BINARY_OP(+);
+    Value b = peek(vm, 0);
+    Value a = peek(vm, 1);
+    if (IS_NUMBER(a) && IS_NUMBER(b)) {
+        if (!addNumbers(vm, a, b)) {
+            result = INTERPRET_RUNTIME_ERROR;
+            goto cleanup;
+        }
+    } else if (IS_STRING(a) && IS_STRING(b)) {
+        if (!concatStrings(vm, a, b)) {
+            result = INTERPRET_RUNTIME_ERROR;
+            goto cleanup;
+        }
+    } else {
+        fprintf(stderr,
+                "Runtime error: Operands must be two numbers or two strings "
+                "for addition.\n");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto cleanup;
+    }
     DISPATCH();
 }
 
@@ -343,7 +398,7 @@ OP_LESS_IMPL: {
 OP_SET_GLOBAL_IMPL: {
     uint16_t const_ix = (uint16_t)(uintptr_t)(*ip++);
     Value name = vm->chunk->constants.values[const_ix];
-    tableInsert(&vm->globals, name, peek(vm));
+    tableInsert(&vm->globals, name, peek(vm, 0));
     DISPATCH();
 }
 
