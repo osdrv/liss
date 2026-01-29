@@ -56,6 +56,10 @@ InterpretResult interpret(VM* vm, const char* source) {
     if (function == NULL) {
         return INTERPRET_COMPILE_ERROR;
     }
+
+    // Keep the function object alive by pushing it onto the stack
+    push(vm, OBJ_VAL(function));
+
     vm->chunk = &function->chunk;
 
     InterpretResult result = run(vm);
@@ -121,6 +125,28 @@ static bool concatStrings(VM* vm, Value a, Value b) {
     push(vm, OBJ_VAL(result));
     return true;
 }
+
+// TODO: uncomment if needed or remove
+// static void printStack(VM* vm) {
+//     printf("VM stack:\n");
+//     for (Value* slot = vm->stack; slot < vm->stack_top; slot++) {
+//         printf("  [ ");
+//         printValue(*slot);
+//         printf(" ]\n");
+//     }
+//     printf("\n");
+// }
+
+// TODO: uncomment if needed or remove
+// static void printConsts(VM* vm) {
+//     printf("Constants:\n");
+//     for (int i = 0; i < vm->chunk->constants.count; i++) {
+//         printf("  [%d] ", i);
+//         printValue(vm->chunk->constants.values[i]);
+//         printf("\n");
+//     }
+//     printf("\n");
+// }
 
 // --- VM Execution (Direct Threading) ---
 

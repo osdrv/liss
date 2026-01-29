@@ -81,6 +81,7 @@ ObjString* copyString(VM* vm, const char* chars, int length) {
 
     ObjString* string = allocateString(vm, heap_chars, length, hash);
     push(vm, OBJ_VAL(string));  // Temporarily push to protect from GC
+    DEBUG_LOG("Interning string: %s", string->chars);
     tableInsert(&vm->strings, OBJ_VAL(string), OBJ_VAL(string));
     pop(vm);  // Pop after insertion
 
