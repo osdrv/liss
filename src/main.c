@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,6 +6,12 @@
 #include "common.h"
 #include "repl.h"
 #include "vm.h"
+
+void intHandler(int dummy) {
+    (void)dummy;  // Suppress unused parameter warning
+    printf("Exiting now...\n");
+    exit(0);
+}
 
 static void runFile(const char* path) {
     FILE* file = fopen(path, "rb");
@@ -47,6 +54,7 @@ static void runFile(const char* path) {
 }
 
 int main(int argc, const char* argv[]) {
+    signal(SIGINT, intHandler);
     if (argc == 1) {
         // No file provided, run REPL
         runRepl();

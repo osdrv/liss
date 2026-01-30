@@ -396,6 +396,20 @@ static char* test_compile(void) {
                 },
             .expected_constant_size = 3,
         },
+        {
+            .name = "unary minus",
+            .src = "(* -1 -2)",
+            .expected_instructions =
+                (uint8_t[]){OP_CONSTANT, 0, 0, OP_NEGATE, OP_CONSTANT, 0, 1,
+                            OP_NEGATE, OP_MULTIPLY, OP_RETURN},
+            .expected_instruction_count = 10,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_NUMBER, .as.number = 2.0},
+                },
+            .expected_constant_size = 2,
+        },
     };
 
     for (size_t i = 0; i < sizeof(compile_tests) / sizeof(compile_tests[0]);

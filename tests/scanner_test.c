@@ -154,6 +154,25 @@ static char* test_scanner_nested_expression(void) {
     return NULL;
 }
 
+static char* test_scanner_unary_minus(void) {
+    const char* source = "(-1 -2.5 -0xA)";
+    Scanner scanner;
+    initScanner(&scanner, source);
+
+    TokenType expected_types[] = {
+        TOKEN_LPAREN,   TOKEN_MINUS_OP, TOKEN_NUMBER,
+        TOKEN_MINUS_OP, TOKEN_NUMBER,   TOKEN_MINUS_OP,
+        TOKEN_NUMBER,   TOKEN_RPAREN,   TOKEN_EOF,
+    };
+    for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
+         i++) {
+        Token token = scanToken(&scanner);
+        mu_assert("Unexpected token type", token.type == expected_types[i]);
+    }
+
+    return NULL;
+}
+
 void scanner_suite(void) {
     printf("--- Scanner Suite ---\n");
     mu_run_test(test_scanner_whitespace);
@@ -163,5 +182,6 @@ void scanner_suite(void) {
     mu_run_test(test_scanner_number_literals);
     mu_run_test(test_scanner_string_literals);
     mu_run_test(test_scanner_nested_expression);
+    mu_run_test(test_scanner_unary_minus);
     // TODO: add more tests below
 }

@@ -239,12 +239,13 @@ static InterpretResult run(VM* vm) {
     // --- Direct Threading Setup ---
     // The dispatch table: an array of opcode implementation addresses.
     static void* dispatch_table[] = {
-        &&OP_RETURN_IMPL,   &&OP_CONSTANT_IMPL,      &&OP_POP_IMPL,
-        &&OP_JUMP_IMPL,     &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
-        &&OP_SUBTRACT_IMPL, &&OP_MULTIPLY_IMPL,      &&OP_DIVIDE_IMPL,
-        &&OP_TRUE_IMPL,     &&OP_FALSE_IMPL,         &&OP_NULL_IMPL,
-        &&OP_NOT_IMPL,      &&OP_EQUAL_IMPL,         &&OP_GREATER_IMPL,
-        &&OP_LESS_IMPL,     &&OP_SET_GLOBAL_IMPL,    &&OP_GET_GLOBAL_IMPL,
+        &&OP_RETURN_IMPL,     &&OP_CONSTANT_IMPL,      &&OP_POP_IMPL,
+        &&OP_JUMP_IMPL,       &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
+        &&OP_SUBTRACT_IMPL,   &&OP_MULTIPLY_IMPL,      &&OP_DIVIDE_IMPL,
+        &&OP_NEGATE_IMPL,     &&OP_TRUE_IMPL,          &&OP_FALSE_IMPL,
+        &&OP_NULL_IMPL,       &&OP_NOT_IMPL,           &&OP_EQUAL_IMPL,
+        &&OP_GREATER_IMPL,    &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
+        &&OP_GET_GLOBAL_IMPL,
     };
 
     // The instruction pointer for direct threading is a pointer to a pointer.
@@ -460,6 +461,18 @@ OP_MULTIPLY_IMPL: {
 
 OP_DIVIDE_IMPL: {
     BINARY_OP(/);
+    DISPATCH();
+}
+
+OP_NEGATE_IMPL: {
+    Value value = pop(vm);
+    if (!IS_NUMBER(value)) {
+        fprintf(stderr,
+                "Runtime error: Operand must be a number for negation.\n");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto cleanup;
+    }
+    push(vm, NUMBER_VAL(-AS_NUMBER(value)));
     DISPATCH();
 }
 

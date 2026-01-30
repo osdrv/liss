@@ -240,6 +240,7 @@ static void parseGrouping(Compiler* compiler) {
 
     while (compiler->parser->current.type != TOKEN_RPAREN) {
         parseExpression(compiler);
+        if (compiler->parser->hadError) return;
         switch (op) {
             case TOKEN_PLUS_OP:
             case TOKEN_PLUS_KW:
@@ -344,6 +345,12 @@ static void parseExpression(Compiler* compiler) {
         case TOKEN_IDENTIFIER:
             namedVariable(compiler, compiler->parser->current);
             advance(compiler);
+            break;
+        case TOKEN_MINUS_OP:
+            // Unary minus
+            advance(compiler);
+            parseExpression(compiler);
+            emitByte(compiler, OP_NEGATE);
             break;
         default:
             compiler->parser->hadError = true;

@@ -21,6 +21,8 @@ const char* opcodeToString(OpCode opcode) {
             return "OP_MULTIPLY";
         case OP_DIVIDE:
             return "OP_DIVIDE";
+        case OP_NEGATE:
+            return "OP_NEGATE";
         case OP_TRUE:
             return "OP_TRUE";
         case OP_FALSE:

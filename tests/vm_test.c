@@ -324,11 +324,11 @@ static VMTestCase interpret_tests[] = {
         .expected_value = {EXPECT_STRING, .as.string = ""},
     },
     // TODO: failing because we parse negative numbers as unary minus operation
-    //{
-    //    .name = "string duplication with negative number error",
-    //    .src = "(* \"oops\" -2)",
-    //    .expected_result = INTERPRET_RUNTIME_ERROR,
-    //},
+    {
+        .name = "string duplication with negative number error",
+        .src = "(* \"oops\" -2)",
+        .expected_result = INTERPRET_RUNTIME_ERROR,
+    },
     {
         .name = "string duplication with non-number error",
         .src = "(* \"nope\" true)",
