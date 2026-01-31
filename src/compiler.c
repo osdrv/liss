@@ -93,7 +93,20 @@ static void patchJump(Compiler* compiler, int offset) {
     currentChunk(compiler)->code[offset + 1] = jump & 0xff;
 }
 
-static void endCompiler(Compiler* compiler) { emitReturn(compiler); }
+static void initCompiler(Compiler* compiler, Compiler* enclosing) {
+    compiler->enclosing = enclosing;
+    if (enclosing != NULL) {
+        compiler->parser = enclosing->parser;
+        compiler->vm = enclosing->vm;
+    }
+    compiler->function = newFunction(enclosing ? enclosing->vm : compiler->vm);
+    push(enclosing ? enclosing->vm : compiler->vm, OBJ_VAL(compiler->function));
+}
+
+static ObjFunction* endCompiler(Compiler* compiler) {
+    emitReturn(compiler);
+    return compiler->function;
+}
 
 static void parseNumber(Compiler* compiler) {
     double value = strtod(compiler->parser->previous.start, NULL);
@@ -203,6 +216,41 @@ static void parseCond(Compiler* compiler) {
     consume(compiler, TOKEN_RPAREN, "Expect ')' after 'cond' expression");
 }
 
+static void compileFunction(Compiler* compiler) {
+    Compiler fn_compiler;
+    initCompiler(&fn_compiler, compiler);
+
+    if (fn_compiler.parser->current.type == TOKEN_IDENTIFIER) {
+        Token fn_name = consume(&fn_compiler, TOKEN_IDENTIFIER,
+                                "Expect function name after 'fn'.");
+        fn_compiler.function->name =
+            copyString(fn_compiler.vm, fn_name.start, fn_name.length);
+    } else {
+        fn_compiler.function->name = copyString(fn_compiler.vm, "fn", 2);
+    }
+
+    consume(&fn_compiler, TOKEN_LBRAKET, "Expect '[' for function parameters.");
+    while (fn_compiler.parser->current.type != TOKEN_RBRAKET) {
+        Token param_name =
+            consume(&fn_compiler, TOKEN_IDENTIFIER, "Expect parameter name.");
+        if (fn_compiler.parser->hadError) return;
+        ObjString* param_str =
+            copyString(fn_compiler.vm, param_name.start, param_name.length);
+        // TODO: Do something with these parameters
+    }
+    consume(&fn_compiler, TOKEN_RBRAKET, "Expect ']' after parameters.");
+
+    while (fn_compiler.parser->current.type != TOKEN_RPAREN) {
+        parseExpression(&fn_compiler);
+        if (fn_compiler.parser->hadError) return;
+    }
+    consume(&fn_compiler, TOKEN_RPAREN, "Expect ')' after function body.");
+
+    ObjFunction* function = endCompiler(&fn_compiler);
+    pop(compiler->vm);
+    emitConstant(compiler, OBJ_VAL(function));
+}
+
 static void parseGrouping(Compiler* compiler) {
     advance(compiler);
     TokenType op = compiler->parser->previous.type;
@@ -220,6 +268,9 @@ static void parseGrouping(Compiler* compiler) {
             return;
         case TOKEN_LET_KW:
             parseLet(compiler);
+            return;
+        case TOKEN_FN_KW:
+            compileFunction(compiler);
             return;
         default:
             break;
@@ -362,14 +413,13 @@ static void parseExpression(Compiler* compiler) {
 
 ObjFunction* compile(VM* vm, const char* source) {
     Parser parser;
-    Compiler compiler;
-    compiler.vm = vm;
-
     initParser(&parser);
     initScanner(&parser.scanner, source);
+
+    Compiler compiler;
+    compiler.vm = vm;
     compiler.parser = &parser;
-    compiler.function = newFunction(vm);
-    push(vm, OBJ_VAL(compiler.function));
+    initCompiler(&compiler, NULL);
 
     advance(&compiler);
 
@@ -382,8 +432,9 @@ ObjFunction* compile(VM* vm, const char* source) {
         consume(&compiler, TOKEN_EOF, "Expect the end of expression.");
     }
 
-    endCompiler(&compiler);
+    ObjFunction* function = endCompiler(&compiler);
 
     pop(vm);
-    return compiler.parser->hadError ? NULL : compiler.function;
+
+    return parser.hadError ? NULL : function;
 }

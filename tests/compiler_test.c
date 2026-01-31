@@ -14,6 +14,7 @@
 typedef enum {
     EXPECT_NUMBER,
     EXPECT_OBJ_STRING,
+    EXPECT_OBJ_FUNCTION,
 } ExpectedConstantType;
 
 typedef struct {
@@ -21,6 +22,7 @@ typedef struct {
     union {
         double number;
         const char* obj_string;
+        const char* obj_function;
     } as;
 } ExpectedConstant;
 
@@ -73,6 +75,16 @@ static char* assert_string(Value value, const char* expected) {
     return NULL;
 }
 
+static char* assert_function(Value* value, const char* expected) {
+    mu_assert("Value is not an object.", IS_OBJ(*value));
+    mu_assert("Object is not a function.", OBJ_TYPE(*value) == OBJ_FUNCTION);
+    ObjFunction* function = AS_FUNCTION(*value);
+    mu_assert(
+        "Function name does not match expected.",
+        function->name != NULL && strcmp(function->name->chars, expected) == 0);
+    return NULL;
+}
+
 static char* assert_constants(Chunk* chunk, ExpectedConstant expected[],
                               size_t expected_count) {
     mu_assert("Chunk constant count does not match expected count.",
@@ -88,6 +100,11 @@ static char* assert_constants(Chunk* chunk, ExpectedConstant expected[],
             case EXPECT_OBJ_STRING:
                 mu_assert("Constant verification failed for string.",
                           assert_string(actual, exp.as.obj_string) == NULL);
+                break;
+            case EXPECT_OBJ_FUNCTION:
+                mu_assert(
+                    "Constant verification failed for function.",
+                    assert_function(&actual, exp.as.obj_function) == NULL);
                 break;
             default:
                 mu_assert("Unknown expected constant type.", false);
@@ -410,6 +427,39 @@ static char* test_compile(void) {
                 },
             .expected_constant_size = 2,
         },
+        {
+            .name = "empty function",
+            .src = "(fn [])",
+            .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_RETURN},
+            .expected_instruction_count = 4,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_FUNCTION, .as.obj_function = "fn"},
+                },
+            .expected_constant_size = 1,
+        },
+        {
+            .name = "named function no params",
+            .src = "(fn myFunc [])",
+            .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_RETURN},
+            .expected_instruction_count = 4,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_FUNCTION, .as.obj_function = "myFunc"},
+                },
+            .expected_constant_size = 1,
+        },
+        {
+            .name = "function with body",
+            .src = "(fn addOne [x] (+ x 1))",
+            .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_RETURN},
+            .expected_instruction_count = 4,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_FUNCTION, .as.obj_function = "addOne"},
+                },
+            .expected_constant_size = 1,
+        },
     };
 
     for (size_t i = 0; i < sizeof(compile_tests) / sizeof(compile_tests[0]);
@@ -437,9 +487,11 @@ static char* test_compile(void) {
         mu_assert("%s: Constant count should match expected size.",
                   chunk->constants.count == (int)test->expected_constant_size);
         if (test->expected_constant_size > 0) {
-            mu_assert("%s: Constants should match expected constants.",
-                      assert_constants(chunk, test->expected_constants,
-                                       test->expected_constant_size) == NULL);
+            const char* err = assert_constants(chunk, test->expected_constants,
+                                               test->expected_constant_size);
+            if (err != NULL) DEBUG_LOG("Constant assertion failed: %s", err);
+            mu_assert("Constants should match expected constants.",
+                      err == NULL);
         }
 
         destroyVM(vm);

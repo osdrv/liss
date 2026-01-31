@@ -8,6 +8,7 @@
 #include "value.h"
 
 #define STACK_MAX 256
+#define FRAMES_MAX 64
 
 typedef enum {
     INTERPRET_OK,
@@ -15,8 +16,18 @@ typedef enum {
     INTERPRET_RUNTIME_ERROR
 } InterpretResult;
 
+typedef struct {
+    ObjFunction* function;
+    uint8_t ip;
+    Value* slots;
+} CallFrame;
+
 typedef struct VM {
     Chunk* chunk;  // The chunk of code this VM is executing
+
+    CallFrame frames[FRAMES_MAX];
+    int frame_count;
+
     size_t stack_capacity;
     Value* stack_top;
     InterpretResult last_result;  // Store the last interpret result

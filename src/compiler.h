@@ -12,11 +12,14 @@ typedef struct {
     bool panicMode;
 } Parser;
 
-typedef struct {
+typedef struct Compiler Compiler;
+
+struct Compiler {
+    Compiler* enclosing;
     Parser* parser;
     ObjFunction* function;
     VM* vm;
-} Compiler;
+};
 
 ObjFunction* compile(VM* vm, const char* source);
 

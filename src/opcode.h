@@ -25,6 +25,8 @@ typedef enum {
 
     OP_SET_GLOBAL,
     OP_GET_GLOBAL,
+
+    OP_CALL,
 } OpCode;
 
 #endif
