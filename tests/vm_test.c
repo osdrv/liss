@@ -1,5 +1,6 @@
 #include "vm.h"
 
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -27,6 +28,7 @@ typedef struct {
     const char* src;
     InterpretResult expected_result;
     ExpectedValue expected_value;
+    bool is_failing;
 } VMTestCase;
 
 static char* test_vm_stack(void) {
@@ -340,8 +342,14 @@ static char* test_vm_interpret(void) {
     for (size_t i = 0; i < sizeof(interpret_tests) / sizeof(interpret_tests[0]);
          i++) {
         VMTestCase* test = &interpret_tests[i];
+        DEBUG_LOG("Running vm test: %s", test->name);
         VM* vm = newVM(256);
         mu_assert("Failed to create VM", vm != NULL);
+
+        if (test->is_failing) {
+            DEBUG_LOG("Set a breakpoint for a failing test");
+            __builtin_debugtrap();
+        }
 
         InterpretResult result = interpret(vm, test->src);
         mu_assert("Interpretation result mismatch",

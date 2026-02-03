@@ -230,12 +230,14 @@ static void compileFunction(Compiler* compiler) {
     }
 
     consume(&fn_compiler, TOKEN_LBRAKET, "Expect '[' for function parameters.");
+    int arity = 0;
     while (fn_compiler.parser->current.type != TOKEN_RBRAKET) {
         Token param_name =
             consume(&fn_compiler, TOKEN_IDENTIFIER, "Expect parameter name.");
         if (fn_compiler.parser->hadError) return;
         ObjString* param_str =
             copyString(fn_compiler.vm, param_name.start, param_name.length);
+        arity++;
         // TODO: Do something with these parameters
     }
     consume(&fn_compiler, TOKEN_RBRAKET, "Expect ']' after parameters.");
@@ -247,6 +249,7 @@ static void compileFunction(Compiler* compiler) {
     consume(&fn_compiler, TOKEN_RPAREN, "Expect ')' after function body.");
 
     ObjFunction* function = endCompiler(&fn_compiler);
+    function->arity = arity;
     pop(compiler->vm);
     emitConstant(compiler, OBJ_VAL(function));
 }

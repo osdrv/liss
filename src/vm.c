@@ -18,6 +18,7 @@
 
 // --- Forward Declarations ---
 static InterpretResult run(VM* vm);
+static void** loadThreadedCode(Chunk* chunk, void* dispatch_table[]);
 
 // --- VM Lifecycle ---
 
@@ -27,8 +28,6 @@ VM* newVM(size_t stack_capacity) {
     vm->stack_capacity = stack_capacity;
     vm->stack_top = vm->stack;
     vm->objects = NULL;
-    // The 'chunk' will be set by the compiler/loader before running.
-    vm->chunk = NULL;
     vm->last_result = INTERPRET_OK;
     initTable(&vm->strings);
     initTable(&vm->globals);
@@ -61,7 +60,13 @@ InterpretResult interpret(VM* vm, const char* source) {
     // Keep the function object alive by pushing it onto the stack
     push(vm, OBJ_VAL(function));
 
-    vm->chunk = &function->chunk;
+    vm->frame_count = 1;
+    CallFrame* frame = &vm->frames[0];
+    frame->function = function;
+    frame->slots = vm->stack;
+    frame->ip = NULL;
+    frame->code = NULL;
+    frame->slots = NULL;
 
     InterpretResult result = run(vm);
     return result;
@@ -89,10 +94,7 @@ Value pop(VM* vm) {
     return *vm->stack_top;
 }
 
-Value peek(VM* vm, int distance) {
-    return vm->stack_top[-1 - distance];
-    // return *(vm->stack_top - 1);
-}
+Value peek(VM* vm, int distance) { return vm->stack_top[-1 - distance]; }
 
 typedef bool (*BinaryOpFn)(VM* vm, Value a, Value b);
 
@@ -210,63 +212,24 @@ static bool duplicateString(VM* vm, Value a, Value b) {
 
 // --- VM Execution (Direct Threading) ---
 
-static InterpretResult run(VM* vm) {
+static void** loadThreadedCode(Chunk* chunk, void* dispatch_table[]) {
     InterpretResult result = INTERPRET_OK;
-
-#define BINARY_OP(op)                                       \
-    do {                                                    \
-        Value b = pop(vm);                                  \
-        Value a = pop(vm);                                  \
-        push(vm, NUMBER_VAL(AS_NUMBER(a) op AS_NUMBER(b))); \
-    } while (false)
-
-#define COMPARISON_OP(op)                                         \
-    do {                                                          \
-        Value b = pop(vm);                                        \
-        Value a = pop(vm);                                        \
-        if (a.type != b.type) {                                   \
-            fprintf(stderr, "Comparison type mismatch error.\n"); \
-            result = INTERPRET_RUNTIME_ERROR;                     \
-            goto cleanup;                                         \
-        }                                                         \
-        push(vm, BOOL_VAL(AS_NUMBER(a) op AS_NUMBER(b)));         \
-    } while (false)
-
-#define READ_BYTE() (*ip++)
-#define READ_SHORT() (uint16_t)((*ip++ << 8) | (*ip++))
-
-#if defined(__GNUC__) || defined(__clang__)
-    // --- Direct Threading Setup ---
-    // The dispatch table: an array of opcode implementation addresses.
-    static void* dispatch_table[] = {
-        &&OP_RETURN_IMPL,     &&OP_CONSTANT_IMPL,      &&OP_POP_IMPL,
-        &&OP_JUMP_IMPL,       &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
-        &&OP_SUBTRACT_IMPL,   &&OP_MULTIPLY_IMPL,      &&OP_DIVIDE_IMPL,
-        &&OP_NEGATE_IMPL,     &&OP_TRUE_IMPL,          &&OP_FALSE_IMPL,
-        &&OP_NULL_IMPL,       &&OP_NOT_IMPL,           &&OP_EQUAL_IMPL,
-        &&OP_GREATER_IMPL,    &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
-        &&OP_GET_GLOBAL_IMPL,
-    };
-
-    // The instruction pointer for direct threading is a pointer to a pointer.
-    void** ip = NULL;
-
     // "Loader" stage: Convert byte-based chunk to pointer-based code.
-    size_t loaded_code_size = sizeof(void*) * vm->chunk->count;
+    size_t loaded_code_size = sizeof(void*) * chunk->count;
     void** loaded_code = (void**)malloc(loaded_code_size);
     if (!loaded_code) {
         fprintf(stderr, "Memory error loading threaded code.\n");
         result = INTERPRET_RUNTIME_ERROR;
-        goto cleanup;
+        goto LOADER_CLEANUP;
     }
 
-    int* byte_to_slot_map = malloc(sizeof(int) * vm->chunk->count);
+    int* byte_to_slot_map = malloc(sizeof(int) * chunk->count);
     if (!byte_to_slot_map) {
         fprintf(stderr, "Memory error allocating byte-to-slot map.\n");
         result = INTERPRET_RUNTIME_ERROR;
-        goto cleanup;
+        goto LOADER_CLEANUP;
     }
-    for (int i = 0; i < vm->chunk->count; i++) {
+    for (int i = 0; i < chunk->count; i++) {
         byte_to_slot_map[i] = -1;
     }
 
@@ -274,12 +237,12 @@ static InterpretResult run(VM* vm) {
     int jump_count = 0;
     int jumps_capacity = 0;
 
-    uint8_t* bytecode = vm->chunk->code;
+    uint8_t* bytecode = chunk->code;
     int loaded_idx = 0;
 
     DEBUG_LOG("Loader first pass: Translating bytecode to threaded code.");
-    while (bytecode < vm->chunk->code + vm->chunk->count) {
-        int byte_offset = bytecode - vm->chunk->code;
+    while (bytecode < chunk->code + chunk->count) {
+        int byte_offset = bytecode - chunk->code;
         byte_to_slot_map[byte_offset] = loaded_idx;
 
         uint8_t opcode = *bytecode++;
@@ -291,7 +254,7 @@ static InterpretResult run(VM* vm) {
                     (uint16_t)(bytecode[0] << 8) | bytecode[1];
                 bytecode += 2;
                 loaded_code[loaded_idx++] =
-                    (void*)&vm->chunk->constants.values[const_index];
+                    (void*)&chunk->constants.values[const_index];
                 break;
             }
             case OP_JUMP:
@@ -301,7 +264,7 @@ static InterpretResult run(VM* vm) {
                     (uint16_t)(bytecode[0] << 8) | bytecode[1];
                 // The offset is relative to the byte after the jump operands
                 int target_byte_addr =
-                    (bytecode - vm->chunk->code) + 2 + relative_byte_offset;
+                    (bytecode - chunk->code) + 2 + relative_byte_offset;
 
                 loaded_code[loaded_idx] = (void*)(uintptr_t)target_byte_addr;
                 if (jumps_capacity < jump_count + 1) {
@@ -315,7 +278,7 @@ static InterpretResult run(VM* vm) {
                         fprintf(stderr,
                                 "Memory error allocating jumps to patch.\n");
                         result = INTERPRET_RUNTIME_ERROR;
-                        goto cleanup;
+                        goto LOADER_CLEANUP;
                     }
                 }
                 jumps_to_patch[jump_count++] = loaded_idx;
@@ -335,12 +298,12 @@ static InterpretResult run(VM* vm) {
                 break;  // No operands
         }
     }
-    loaded_code = reallocate(loaded_code, sizeof(void*) * vm->chunk->count,
+    loaded_code = reallocate(loaded_code, sizeof(void*) * chunk->count,
                              sizeof(void*) * loaded_idx);
     if (loaded_code == NULL) {
         fprintf(stderr, "Memory error resizing loaded code.\n");
         result = INTERPRET_RUNTIME_ERROR;
-        goto cleanup;
+        goto LOADER_CLEANUP;
     }
 
     DEBUG_LOG("Loader second pass: Patching jump offsets.");
@@ -351,39 +314,148 @@ static InterpretResult run(VM* vm) {
         if (target_slot_ix == -1) {
             fprintf(stderr, "Invalid jump target during patching.\n");
             result = INTERPRET_RUNTIME_ERROR;
-            goto cleanup;
+            goto LOADER_CLEANUP;
         }
 
         int relative_slot_offset = target_slot_ix - (operand_slot_ix + 1);
         loaded_code[operand_slot_ix] = (void*)(uintptr_t)relative_slot_offset;
     }
 
-    ip = loaded_code;
+LOADER_CLEANUP:
+    if (byte_to_slot_map != NULL) {
+        free(byte_to_slot_map);
+    }
+    reallocate(jumps_to_patch, sizeof(int) * jumps_capacity, 0);
+    if (result != INTERPRET_OK) {
+        reallocate(loaded_code, sizeof(void*) * loaded_idx, 0);
+        return NULL;
+    }
+    return loaded_code;
+}
+
+static InterpretResult run(VM* vm) {
+#define BINARY_OP(op)                                       \
+    do {                                                    \
+        Value b = pop(vm);                                  \
+        Value a = pop(vm);                                  \
+        push(vm, NUMBER_VAL(AS_NUMBER(a) op AS_NUMBER(b))); \
+    } while (false)
+
+#define COMPARISON_OP(op)                                         \
+    do {                                                          \
+        Value b = pop(vm);                                        \
+        Value a = pop(vm);                                        \
+        if (a.type != b.type) {                                   \
+            fprintf(stderr, "Comparison type mismatch error.\n"); \
+            result = INTERPRET_RUNTIME_ERROR;                     \
+            goto RETURN;                                          \
+        }                                                         \
+        push(vm, BOOL_VAL(AS_NUMBER(a) op AS_NUMBER(b)));         \
+    } while (false)
+
+#define READ_BYTE() (*ip++)
+#define READ_SHORT() (uint16_t)((*ip++ << 8) | (*ip++))
+
+    // The dispatch table: an array of opcode implementation addresses.
+    static void* dispatch_table[] = {
+        &&OP_RETURN_IMPL,     &&OP_CONSTANT_IMPL,      &&OP_POP_IMPL,
+        &&OP_JUMP_IMPL,       &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
+        &&OP_SUBTRACT_IMPL,   &&OP_MULTIPLY_IMPL,      &&OP_DIVIDE_IMPL,
+        &&OP_NEGATE_IMPL,     &&OP_TRUE_IMPL,          &&OP_FALSE_IMPL,
+        &&OP_NULL_IMPL,       &&OP_NOT_IMPL,           &&OP_EQUAL_IMPL,
+        &&OP_GREATER_IMPL,    &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
+        &&OP_GET_GLOBAL_IMPL,
+    };
+
+    InterpretResult result = INTERPRET_OK;
+    CallFrame* frame = &vm->frames[vm->frame_count - 1];
+    if (frame->ip == NULL) {
+        frame->code = loadThreadedCode(&frame->function->chunk, dispatch_table);
+        if (frame->code == NULL) {
+            result = INTERPRET_RUNTIME_ERROR;
+            goto RETURN;
+        }
+        frame->ip = frame->code;
+    }
+
+#if defined(__GNUC__) || defined(__clang__)
 
 #define DISPATCH()                             \
     do {                                       \
         if (vm->last_result != INTERPRET_OK) { \
             result = vm->last_result;          \
-            goto cleanup;                      \
+            goto RETURN;                       \
         }                                      \
-        goto*(*(ip++));                        \
+        goto*(*frame->ip++);                   \
     } while (0)
 
     // --- Start Execution ---
     DEBUG_LOG("Starting direct-threaded execution.");
     DISPATCH();
 
+#define READ_CONSTANT() ((Value*)*frame->ip++)
+#define READ_ARG() ((uintptr_t)*frame->ip++)
+
+    DISPATCH();
+
     // --- Opcode Implementations ---
 
 OP_RETURN_IMPL: {
-    vm->last_popped_value = pop(vm);
-    result = vm->last_result;
-    goto cleanup;
+    Value res = pop(vm);
+    vm->last_popped_value = res;
+
+    free(frame->code);
+    frame->code = NULL;
+    frame->ip = NULL;
+
+    vm->frame_count--;
+    if (vm->frame_count == 0) {
+        pop(vm);  // Pop the initial function object to allow GC
+        goto RETURN;
+    }
+    vm->stack_top = frame->slots;
+    push(vm, res);
+
+    frame = &vm->frames[vm->frame_count - 1];
+    DISPATCH();
+}
+
+OP_CALL_IMPL: {
+    int arg_count = (int)READ_ARG();
+    Value callee = peek(vm, arg_count);
+
+    if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_FUNCTION) {
+        fprintf(stderr, "Runtime error: Can only call functions.\n");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+
+    ObjFunction* function = AS_FUNCTION(callee);
+    if (arg_count != function->arity) {
+        fprintf(
+            stderr,
+            "Function %s: Runtime error: Expected %d arguments but got %d.\n",
+            function->name, function->arity, arg_count);
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+
+    if (vm->frame_count == FRAMES_MAX) {
+        fprintf(stderr,
+                "Runtime error: Stack overflow (too many call frames).\n");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+
+    frame = &vm->frames[vm->frame_count++];
+    frame->function = function;
+    frame->slots = vm->stack_top - arg_count - 1;
+    frame->ip = loadThreadedCode(&function->chunk, dispatch_table);
+    DISPATCH();
 }
 
 OP_CONSTANT_IMPL: {
-    // The operand is the next pointer in the instruction stream.
-    Value* const_ix = (Value*)*ip++;
+    Value* const_ix = READ_CONSTANT();
     push(vm, *const_ix);
     DISPATCH();
 }
@@ -394,15 +466,15 @@ OP_POP_IMPL: {
 }
 
 OP_JUMP_IMPL: {
-    uint16_t offset = (uint16_t)(uintptr_t)(*ip++);
-    ip += offset;
+    uint16_t offset = (uint16_t)(uintptr_t)(*frame->ip++);
+    frame->ip += offset;
     DISPATCH();
 }
 
 OP_JUMP_IF_FALSE_IMPL: {
-    uint16_t offset = (uint16_t)(uintptr_t)(*ip++);
+    uint16_t offset = (uint16_t)(uintptr_t)(*frame->ip++);
     if (isFalsey(peek(vm, 0))) {
-        ip += offset;
+        frame->ip += offset;
     }
     DISPATCH();
 }
@@ -413,19 +485,19 @@ OP_ADD_IMPL: {
     if (IS_NUMBER(a) && IS_NUMBER(b)) {
         if (!addNumbers(vm, a, b)) {
             result = INTERPRET_RUNTIME_ERROR;
-            goto cleanup;
+            goto RETURN;
         }
     } else if (IS_STRING(a) && IS_STRING(b)) {
         if (!concatStrings(vm, a, b)) {
             result = INTERPRET_RUNTIME_ERROR;
-            goto cleanup;
+            goto RETURN;
         }
     } else {
         fprintf(stderr,
                 "Runtime error: Operands must be two numbers or two strings "
                 "for addition.\n");
         result = INTERPRET_RUNTIME_ERROR;
-        goto cleanup;
+        goto RETURN;
     }
     DISPATCH();
 }
@@ -442,19 +514,19 @@ OP_MULTIPLY_IMPL: {
     if (IS_NUMBER(a) && IS_NUMBER(b)) {
         if (!multiplyNumbers(vm, a, b)) {
             result = INTERPRET_RUNTIME_ERROR;
-            goto cleanup;
+            goto RETURN;
         }
     } else if (IS_STRING(a) && IS_NUMBER(b)) {
         if (!duplicateString(vm, a, b)) {
             result = INTERPRET_RUNTIME_ERROR;
-            goto cleanup;
+            goto RETURN;
         }
     } else {
         fprintf(stderr,
                 "Runtime error: Operands must be two numbers or a string and "
                 "a number for multiplication.\n");
         result = INTERPRET_RUNTIME_ERROR;
-        goto cleanup;
+        goto RETURN;
     }
     DISPATCH();
 }
@@ -470,7 +542,7 @@ OP_NEGATE_IMPL: {
         fprintf(stderr,
                 "Runtime error: Operand must be a number for negation.\n");
         result = INTERPRET_RUNTIME_ERROR;
-        goto cleanup;
+        goto RETURN;
     }
     push(vm, NUMBER_VAL(-AS_NUMBER(value)));
     DISPATCH();
@@ -514,34 +586,32 @@ OP_LESS_IMPL: {
 }
 
 OP_SET_GLOBAL_IMPL: {
-    uint16_t const_ix = (uint16_t)(uintptr_t)(*ip++);
-    Value name = vm->chunk->constants.values[const_ix];
+    uint16_t const_ix = (uint16_t)READ_ARG();
+    Value name = frame->function->chunk.constants.values[const_ix];
     tableInsert(&vm->globals, name, peek(vm, 0));
     DISPATCH();
 }
 
 OP_GET_GLOBAL_IMPL: {
-    uint16_t const_ix = (uint16_t)(uintptr_t)(*ip++);
-    Value name = vm->chunk->constants.values[const_ix];
+    uint16_t const_ix = (uint16_t)READ_ARG();
+    Value name = frame->function->chunk.constants.values[const_ix];
     Value* value = tableGet(&vm->globals, name);
     if (value == NULL) {
         fprintf(stderr, "Undefined variable '%.*s'.\n", AS_STRING(name)->length,
                 AS_STRING(name)->chars);
         result = INTERPRET_RUNTIME_ERROR;
-        goto cleanup;
+        goto RETURN;
     }
     push(vm, *value);
     DISPATCH();
 }
 
-cleanup:
-    if (loaded_code != NULL) {
-        free(loaded_code);
+RETURN:
+    if (frame->code != NULL) {
+        free(frame->code);
+        frame->code = NULL;
+        frame->ip = NULL;
     }
-    if (byte_to_slot_map != NULL) {
-        free(byte_to_slot_map);
-    }
-    reallocate(jumps_to_patch, sizeof(int) * jumps_capacity, 0);
     return result;
 
 #else

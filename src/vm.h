@@ -18,13 +18,12 @@ typedef enum {
 
 typedef struct {
     ObjFunction* function;
-    uint8_t ip;
+    void** code;  // Pointer to the loaded threaded code for this frame
+    void** ip;
     Value* slots;
 } CallFrame;
 
 typedef struct VM {
-    Chunk* chunk;  // The chunk of code this VM is executing
-
     CallFrame frames[FRAMES_MAX];
     int frame_count;
 
@@ -38,7 +37,8 @@ typedef struct VM {
 
     Value last_popped_value;  // Store the last popped value
 
-    Value stack[];  // Flexible Array Member for the stack
+    Value
+        stack[];  // (!!!) Flexible Array Member for the stack. Keep at the end.
 } VM;
 
 // Creates and initializes a new VM with a given stack capacity.
