@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "chunk.h"
 #include "common.h"
@@ -95,17 +96,37 @@ static void patchJump(Compiler* compiler, int offset) {
 
 static void initCompiler(Compiler* compiler, Compiler* enclosing) {
     compiler->enclosing = enclosing;
+    compiler->local_count = 0;
+    compiler->scope_depth = 0;
     if (enclosing != NULL) {
         compiler->parser = enclosing->parser;
         compiler->vm = enclosing->vm;
     }
     compiler->function = newFunction(enclosing ? enclosing->vm : compiler->vm);
     push(enclosing ? enclosing->vm : compiler->vm, OBJ_VAL(compiler->function));
+
+    Local* local = &compiler->locals[compiler->local_count++];
+    local->depth = 0;
+    local->name.start = "";
+    local->name.length = 0;
 }
 
 static ObjFunction* endCompiler(Compiler* compiler) {
     emitReturn(compiler);
     return compiler->function;
+}
+
+static void beginScope(Compiler* compiler) { compiler->scope_depth++; }
+
+static void endScope(Compiler* compiler) {
+    compiler->scope_depth--;
+
+    while (compiler->local_count > 0 &&
+           compiler->locals[compiler->local_count - 1].depth >
+               compiler->scope_depth) {
+        emitByte(compiler, OP_POP);
+        compiler->local_count--;
+    }
 }
 
 static void parseNumber(Compiler* compiler) {
@@ -170,22 +191,74 @@ static void parseOr(Compiler* compiler) {
     consume(compiler, TOKEN_RPAREN, "Expect ')' after 'or' expression");
 }
 
-static int parseVariable(Compiler* compiler) {
-    Token identifier =
-        consume(compiler, TOKEN_IDENTIFIER, "Expect identifier after 'let'.");
-    if (compiler->parser->hadError) return -1;
-    ObjString* var_name =
-        copyString(compiler->vm, identifier.start, identifier.length);
-    return addConstant(&compiler->function->chunk, OBJ_VAL(var_name));
+// static int parseVariable(Compiler* compiler) {
+//     Token identifier =
+//         consume(compiler, TOKEN_IDENTIFIER, "Expect identifier after
+//         'let'.");
+//     if (compiler->parser->hadError) return -1;
+//
+//     return
+// }
+
+static void addLocal(Compiler* compiler, Token name) {
+    if (compiler->local_count >= MAX_LOCALS) {
+        compiler->parser->hadError = true;
+        DEBUG_LOG("[line %d] Error: Too many local variables in function.",
+                  compiler->parser->current.line);
+        return;
+    }
+    Local* local = &compiler->locals[compiler->local_count++];
+    local->name = name;
+    local->depth = compiler->scope_depth;
+}
+
+static int resolveLocal(Compiler* compiler, Token name) {
+    for (int i = compiler->local_count - 1; i >= 0; i--) {
+        Local* local = &compiler->locals[i];
+        if (local->name.length == name.length &&
+            memcmp(local->name.start, name.start, name.length) == 0) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 static void parseLet(Compiler* compiler) {
-    int var_index = parseVariable(compiler);
+    Token identifier =
+        consume(compiler, TOKEN_IDENTIFIER, "Expect identifier after `let`.");
     if (compiler->parser->hadError) return;
+
     parseExpression(compiler);
     if (compiler->parser->hadError) return;
-    emitByte(compiler, OP_SET_GLOBAL);
-    emitBytes(compiler, (uint8_t)(var_index >> 8), (uint8_t)(var_index & 0xff));
+
+    if (compiler->scope_depth > 0) {
+        for (int i = compiler->local_count - 1; i >= 0; i--) {
+            Local* local = &compiler->locals[i];
+            if (local->depth != -1 && local->depth < compiler->scope_depth) {
+                break;
+            }
+            if (local->name.length == identifier.length &&
+                memcmp(local->name.start, identifier.start,
+                       identifier.length) == 0) {
+                compiler->parser->hadError = true;
+                DEBUG_LOG(
+                    "[line %d] Error: Cannot redeclare variable '%.*s' in this "
+                    "scope.",
+                    identifier.line, identifier.length, identifier.start);
+                return;
+            }
+        }
+        addLocal(compiler, identifier);
+    } else {
+        ObjString* var_name =
+            copyString(compiler->vm, identifier.start, identifier.length);
+        int var_index =
+            addConstant(&compiler->function->chunk, OBJ_VAL(var_name));
+        emitByte(compiler, OP_SET_GLOBAL);
+        emitBytes(compiler, (uint8_t)(var_index >> 8),
+                  (uint8_t)(var_index & 0xff));
+    }
+
     consume(compiler, TOKEN_RPAREN, "Expect ')' after 'let' expression");
     if (compiler->parser->hadError) return;
 }
@@ -219,6 +292,7 @@ static void parseCond(Compiler* compiler) {
 static void compileFunction(Compiler* compiler) {
     Compiler fn_compiler;
     initCompiler(&fn_compiler, compiler);
+    push(fn_compiler.vm, OBJ_VAL(fn_compiler.function));
 
     if (fn_compiler.parser->current.type == TOKEN_IDENTIFIER) {
         Token fn_name = consume(&fn_compiler, TOKEN_IDENTIFIER,
@@ -230,16 +304,23 @@ static void compileFunction(Compiler* compiler) {
     }
 
     consume(&fn_compiler, TOKEN_LBRAKET, "Expect '[' for function parameters.");
-    int arity = 0;
-    while (fn_compiler.parser->current.type != TOKEN_RBRAKET) {
-        Token param_name =
-            consume(&fn_compiler, TOKEN_IDENTIFIER, "Expect parameter name.");
-        if (fn_compiler.parser->hadError) return;
-        ObjString* param_str =
-            copyString(fn_compiler.vm, param_name.start, param_name.length);
-        arity++;
-        // TODO: Do something with these parameters
+
+    if (fn_compiler.parser->current.type != TOKEN_RBRAKET) {
+        do {
+            fn_compiler.function->arity++;
+            if (fn_compiler.function->arity >= MAX_LOCALS) {
+                compiler->parser->hadError = true;
+                DEBUG_LOG(
+                    "[line %d] Error: max function parameter limit reached.",
+                    fn_compiler.parser->current.line);
+                return;
+            }
+            Token param = consume(&fn_compiler, TOKEN_IDENTIFIER,
+                                  "Expect parameter name.");
+            addLocal(&fn_compiler, param);
+        } while (fn_compiler.parser->current.type == TOKEN_IDENTIFIER);
     }
+
     consume(&fn_compiler, TOKEN_RBRAKET, "Expect ']' after parameters.");
 
     while (fn_compiler.parser->current.type != TOKEN_RPAREN) {
@@ -249,7 +330,6 @@ static void compileFunction(Compiler* compiler) {
     consume(&fn_compiler, TOKEN_RPAREN, "Expect ')' after function body.");
 
     ObjFunction* function = endCompiler(&fn_compiler);
-    function->arity = arity;
     pop(compiler->vm);
     emitConstant(compiler, OBJ_VAL(function));
 }
@@ -354,6 +434,13 @@ static void parseGrouping(Compiler* compiler) {
 }
 
 static void namedVariable(Compiler* compiler, Token name) {
+    // Try local lookup first
+    int arg = resolveLocal(compiler, name);
+    if (arg != -1) {
+        emitBytes(compiler, OP_GET_LOCAL, (uint8_t)arg);
+        return;
+    }
+    // Fall back to global lookup
     ObjString* var_name = copyString(compiler->vm, name.start, name.length);
     int const_index =
         addConstant(&compiler->function->chunk, OBJ_VAL(var_name));

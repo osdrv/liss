@@ -389,12 +389,12 @@ static char* test_compile(void) {
             .name = "compile let expression",
             .src = "(let x 42)",
             .expected_instructions =
-                (uint8_t[]){OP_CONSTANT, 0, 1, OP_SET_GLOBAL, 0, 0, OP_RETURN},
+                (uint8_t[]){OP_CONSTANT, 0, 0, OP_SET_GLOBAL, 0, 1, OP_RETURN},
             .expected_instruction_count = 7,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_OBJ_STRING, .as.obj_string = "x"},
                     {EXPECT_NUMBER, .as.number = 42.0},
+                    {EXPECT_OBJ_STRING, .as.obj_string = "x"},
                 },
             .expected_constant_size = 2,
         },
@@ -402,14 +402,14 @@ static char* test_compile(void) {
             .name = "compile let expression with get global",
             .src = "(let b (+ a 1))",
             .expected_instructions =
-                (uint8_t[]){OP_GET_GLOBAL, 0, 1, OP_CONSTANT, 0, 2, OP_ADD,
-                            OP_SET_GLOBAL, 0, 0, OP_RETURN},
+                (uint8_t[]){OP_GET_GLOBAL, 0, 0, OP_CONSTANT, 0, 1, OP_ADD,
+                            OP_SET_GLOBAL, 0, 2, OP_RETURN},
             .expected_instruction_count = 11,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_OBJ_STRING, .as.obj_string = "b"},
                     {EXPECT_OBJ_STRING, .as.obj_string = "a"},
                     {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_OBJ_STRING, .as.obj_string = "b"},
                 },
             .expected_constant_size = 3,
         },
