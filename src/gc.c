@@ -86,6 +86,10 @@ void freeObject(Obj* object) {
     switch (object->type) {
         case OBJ_FUNCTION: {
             ObjFunction* function = (ObjFunction*)object;
+            if (function->loaded_code != NULL) {
+                FREE_ARRAY(void*, function->loaded_code,
+                           function->loaded_code_size);
+            }
             freeChunk(&function->chunk);
             reallocate(function, sizeof(ObjFunction), 0);
             break;

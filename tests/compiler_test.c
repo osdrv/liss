@@ -33,17 +33,22 @@ typedef struct {
     size_t expected_instruction_count;
     ExpectedConstant* expected_constants;
     size_t expected_constant_size;
+    bool is_failing;
 } CompilerTestCase;
 
 static char* assert_instructions(Chunk* chunk, uint8_t expected[],
                                  size_t expected_count) {
     mu_assert("Chunk instruction count does not match expected count.",
               chunk->count == (int)expected_count);
+
     for (size_t i = 0; i < expected_count; i++) {
         if (chunk->code[i] != expected[i]) {
             DEBUG_LOG("At instruction %zu: expected %d but got %d", i,
                       expected[i], chunk->code[i]);
-            printChunk(chunk);
+
+            char* str = sprintChunk(chunk);
+            DEBUG_LOG("%s", str);
+            free(str);
         }
         mu_assert("Chunk instruction does not match expected instruction.",
                   chunk->code[i] == expected[i]);
@@ -79,9 +84,13 @@ static char* assert_function(Value* value, const char* expected) {
     mu_assert("Value is not an object.", IS_OBJ(*value));
     mu_assert("Object is not a function.", OBJ_TYPE(*value) == OBJ_FUNCTION);
     ObjFunction* function = AS_FUNCTION(*value);
-    mu_assert(
-        "Function name does not match expected.",
-        function->name != NULL && strcmp(function->name->chars, expected) == 0);
+    if (expected != NULL) {
+        mu_assert("Function name does not match expected.",
+                  function->name != NULL &&
+                      strcmp(function->name->chars, expected) == 0);
+    } else {
+        mu_assert("Function name is not NULL.", function->name == NULL);
+    }
     return NULL;
 }
 
@@ -306,14 +315,14 @@ static char* test_compile(void) {
         },
         {
             .name = "compile compare operation: = operator",
-            .src = "(= 1 1)",
+            .src = "(= 1 2)",
             .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_CONSTANT,
                                                  0, 1, OP_EQUAL, OP_RETURN},
             .expected_instruction_count = 8,
             .expected_constants =
                 (ExpectedConstant[]){
                     {EXPECT_NUMBER, .as.number = 1.0},
-                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_NUMBER, .as.number = 2.0},
                 },
             .expected_constant_size = 2,
         },
@@ -434,29 +443,44 @@ static char* test_compile(void) {
             .expected_instruction_count = 4,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_OBJ_FUNCTION, .as.obj_function = "fn"},
+                    {EXPECT_OBJ_FUNCTION, .as.obj_function = NULL},
                 },
             .expected_constant_size = 1,
         },
         {
             .name = "named function no params",
             .src = "(fn myFunc [])",
-            .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_RETURN},
+            .expected_instructions =
+                (uint8_t[]){OP_SET_GLOBAL, 0, 0, OP_RETURN},
             .expected_instruction_count = 4,
+            .expected_constant_size = 1,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_OBJ_FUNCTION, .as.obj_function = "myFunc"},
+                    {EXPECT_OBJ_STRING, .as.obj_string = "myFunc"},
                 },
-            .expected_constant_size = 1,
         },
         {
             .name = "function with body",
             .src = "(fn addOne [x] (+ x 1))",
-            .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_RETURN},
+            .expected_instructions =
+                (uint8_t[]){OP_SET_GLOBAL, 0, 0, OP_RETURN},
             .expected_instruction_count = 4,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_OBJ_FUNCTION, .as.obj_function = "addOne"},
+                    {EXPECT_OBJ_STRING, .as.obj_string = "addOne"},
+                },
+            .expected_constant_size = 1,
+        },
+        {
+            .name = "function call no args",
+            .src = "(fn greet [] \"Hello\") (greet)",
+            .expected_instructions =
+                (uint8_t[]){OP_SET_GLOBAL, 0, 0, OP_POP, OP_GET_GLOBAL, 0, 0,
+                            OP_CALL, 0, OP_RETURN},
+            .expected_instruction_count = 10,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_STRING, .as.obj_string = "greet"},
                 },
             .expected_constant_size = 1,
         },
@@ -465,7 +489,13 @@ static char* test_compile(void) {
     for (size_t i = 0; i < sizeof(compile_tests) / sizeof(compile_tests[0]);
          i++) {
         CompilerTestCase* test = &compile_tests[i];
+        DEBUG_LOG("Running test: %s", test->name);
         VM* vm = newVM(256);
+
+        if (test->is_failing) {
+            DEBUG_LOG("Set a breakpoint for a failing test");
+            __builtin_debugtrap();
+        }
 
         ObjFunction* function = compile(vm, test->src);
         mu_assert("Compiler should not fail.", function != NULL);
@@ -473,10 +503,11 @@ static char* test_compile(void) {
         Chunk* chunk = &function->chunk;
 
         if (chunk->count != (int)test->expected_instruction_count) {
-            DEBUG_LOG("Unexpected instruction count");
-            printChunk(chunk);
+            ERROR_LOG("Unexpected instruction count");
+            char* str = sprintChunk(chunk);
+            DEBUG_LOG("%s", str);
+            free(str);
         }
-        DEBUG_LOG("Running test: %s", test->name);
         mu_assert("Instruction count should match expected count.",
                   chunk->count == (int)test->expected_instruction_count);
         mu_assert(

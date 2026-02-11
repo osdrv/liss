@@ -2,6 +2,7 @@
 #define liss_chunk_h
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "common.h"
 #include "opcode.h"
@@ -23,6 +24,13 @@ typedef struct {
     // We can add a dynamic array for line numbers here later.
 } Chunk;
 
+#define DEBUG_CHUNK(fmt, chunk)          \
+    do {                                 \
+        char* strc = sprintChunk(chunk); \
+        DEBUG_LOG(fmt, strc);            \
+        free(strc);                      \
+    } while (0)
+
 void initValueArray(ValueArray* array);
 void writeValueArray(ValueArray* array, Value value);
 void freeValueArray(ValueArray* array);
@@ -36,6 +44,6 @@ void writeChunk(Chunk* chunk, uint8_t byte);
 // Adds a constant to the chunk's constant pool and returns its index.
 int addConstant(Chunk* chunk, Value value);
 
-void printChunk(const Chunk* chunk);
+char* sprintChunk(const Chunk* chunk);
 
 #endif

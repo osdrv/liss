@@ -325,7 +325,6 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_STRING, .as.string = ""},
     },
-    // TODO: failing because we parse negative numbers as unary minus operation
     {
         .name = "string duplication with negative number error",
         .src = "(* \"oops\" -2)",
@@ -335,6 +334,28 @@ static VMTestCase interpret_tests[] = {
         .name = "string duplication with non-number error",
         .src = "(* \"nope\" true)",
         .expected_result = INTERPRET_RUNTIME_ERROR,
+    },
+    {
+        .name = "empty function call should return NULL",
+        .src = "(fn foo []) (foo)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NIL},
+    },
+    {
+        .name = "function call returning a local variable",
+        .src = "(fn foo []"
+               "  (let x 123)"
+               "  x"
+               ")"
+               "(foo)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NUMBER, .as.number = 123.0},
+    },
+    {
+        .name = "function call with parameters",
+        .src = "(fn add [a b] (+ a b)) (add 10 20)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NUMBER, .as.number = 30.0},
     },
 };
 

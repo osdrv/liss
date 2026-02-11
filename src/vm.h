@@ -8,7 +8,7 @@
 #include "value.h"
 
 #define STACK_MAX 256
-#define FRAMES_MAX 64
+#define FRAMES_MAX 16  // TODO: make this configurable
 
 typedef enum {
     INTERPRET_OK,
@@ -18,7 +18,6 @@ typedef enum {
 
 typedef struct {
     ObjFunction* function;
-    void** code;  // Pointer to the loaded threaded code for this frame
     void** ip;
     Value* slots;
 } CallFrame;
@@ -53,5 +52,9 @@ InterpretResult interpret(VM* vm, const char* source);
 // Stack operations
 void push(VM* vm, Value value);
 Value pop(VM* vm);
+Value peek(VM* vm, int distance);
+
+void printStack(VM* vm);
+void printConsts(Chunk* chunk);
 
 #endif

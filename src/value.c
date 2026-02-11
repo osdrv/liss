@@ -1,8 +1,10 @@
 #include "value.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "object.h"
 
 bool valuesEqual(Value a, Value b) {
@@ -37,30 +39,54 @@ bool valuesEqual(Value a, Value b) {
     return false;  // Unreachable.
 }
 
-void printValue(Value value) {
+char* sprintValue(Value value) {
+    char* buffer = NULL;
+    size_t buffer_size = 0;
+    size_t offset = 0;
+
+#define APPEND_TO_BUFFER(fmt, ...)                                     \
+    do {                                                               \
+        int needed = snprintf(NULL, 0, fmt, ##__VA_ARGS__);            \
+        if (offset + needed + 1 > buffer_size) {                       \
+            buffer_size = (buffer_size == 0) ? 256 : buffer_size * 2;  \
+            buffer = realloc(buffer, buffer_size);                     \
+        }                                                              \
+        offset += snprintf(buffer + offset, buffer_size - offset, fmt, \
+                           ##__VA_ARGS__);                             \
+    } while (0)
+
     switch (value.type) {
         case VAL_BOOL:
-            printf(AS_BOOL(value) ? "true" : "false");
+            APPEND_TO_BUFFER("%s", AS_BOOL(value) ? "true" : "false");
             break;
         case VAL_NIL:
-            printf("nil");
+            APPEND_TO_BUFFER("nil");
             break;
-        case VAL_NUMBER:
-            printf("Number: %g", AS_NUMBER(value));
+        case VAL_NUMBER: {
+            APPEND_TO_BUFFER("%g", AS_NUMBER(value));
             break;
+        }
         case VAL_OBJ:
             switch (OBJ_TYPE(value)) {
                 case OBJ_STRING:
-                    printf("\"%s\"", AS_CSTRING(value));
+                    APPEND_TO_BUFFER("\"%s\"", AS_CSTRING(value));
                     break;
                 case OBJ_FUNCTION:
-                    printf("<fn %s>", AS_FUNCTION(value)->name
-                                          ? AS_FUNCTION(value)->name->chars
-                                          : "code");
+                    APPEND_TO_BUFFER("<fn %s>",
+                                     AS_FUNCTION(value)->name
+                                         ? AS_FUNCTION(value)->name->chars
+                                         : "<code>");
                     break;
+                default:
+                    APPEND_TO_BUFFER("<object>");
             }
             break;
+        default:
+            APPEND_TO_BUFFER("<unknown value>");
     }
+#undef APPEND_TO_BUFFER
+    buffer[offset] = '\0';
+    return buffer;
 }
 
 bool isFalsey(Value value) {

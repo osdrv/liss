@@ -60,93 +60,131 @@ void writeChunk(Chunk* chunk, uint8_t byte) {
 }
 
 int addConstant(Chunk* chunk, Value value) {
+    for (int i = 0; i < chunk->constants.count; i++) {
+        if (valuesEqual(chunk->constants.values[i], value)) {
+            return i;  // Return existing index if constant already exists
+        }
+    }
     writeValueArray(&chunk->constants, value);
     // Return the index where the constant was appended.
     return chunk->constants.count - 1;
 }
 
-void printChunk(const Chunk* chunk) {
+char* sprintChunk(const Chunk* chunk) {
+    char* buffer = NULL;
+    size_t buffer_size = 0;
+    size_t offset = 0;
+
+#define APPEND_TO_BUFFER(fmt, ...)                                     \
+    do {                                                               \
+        int needed = snprintf(NULL, 0, fmt, ##__VA_ARGS__);            \
+        if (offset + needed + 1 > buffer_size) {                       \
+            buffer_size = (buffer_size == 0) ? 128 : buffer_size * 2;  \
+            buffer = realloc(buffer, buffer_size);                     \
+        }                                                              \
+        offset += snprintf(buffer + offset, buffer_size - offset, fmt, \
+                           ##__VA_ARGS__);                             \
+    } while (0)
+
     for (int i = 0; i < chunk->count; i++) {
-        printf("%04d ", i);
+        APPEND_TO_BUFFER("%04d ", i);
         uint8_t opcode = chunk->code[i];
         switch (opcode) {
             case OP_CONSTANT: {
                 uint16_t const_index =
                     (uint16_t)(chunk->code[i + 1]) << 8 | chunk->code[i + 2];
-                printf("OP_CONSTANT %d '", const_index);
-                printValue(chunk->constants.values[const_index]);
-                printf("'\n");
+                APPEND_TO_BUFFER("OP_CONSTANT %d '", const_index);
+                char* value_str =
+                    sprintValue(chunk->constants.values[const_index]);
+                APPEND_TO_BUFFER("%s'\n", value_str);
+                free(value_str);
                 i += 2;  // Skip the operand byte
                 break;
             }
             case OP_RETURN:
-                printf("OP_RETURN\n");
+                APPEND_TO_BUFFER("OP_RETURN\n");
                 break;
             case OP_POP:
-                printf("OP_POP\n");
+                APPEND_TO_BUFFER("OP_POP\n");
                 break;
             case OP_JUMP: {
                 uint16_t offset =
                     (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
-                printf("OP_JUMP %d\n", offset);
+                APPEND_TO_BUFFER("OP_JUMP %d\n", offset);
                 i += 2;  // Skip the operand bytes
                 break;
             }
             case OP_JUMP_IF_FALSE: {
                 uint16_t offset =
                     (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
-                printf("OP_JUMP_IF_FALSE %d\n", offset);
+                APPEND_TO_BUFFER("OP_JUMP_IF_FALSE %d\n", offset);
                 i += 2;  // Skip the operand bytes
                 break;
             }
             case OP_ADD:
-                printf("OP_ADD\n");
+                APPEND_TO_BUFFER("OP_ADD\n");
                 break;
             case OP_SUBTRACT:
-                printf("OP_SUBTRACT\n");
+                APPEND_TO_BUFFER("OP_SUBTRACT\n");
                 break;
             case OP_MULTIPLY:
-                printf("OP_MULTIPLY\n");
+                APPEND_TO_BUFFER("OP_MULTIPLY\n");
                 break;
             case OP_DIVIDE:
-                printf("OP_DIVIDE\n");
+                APPEND_TO_BUFFER("OP_DIVIDE\n");
                 break;
             case OP_TRUE:
-                printf("OP_TRUE\n");
+                APPEND_TO_BUFFER("OP_TRUE\n");
                 break;
             case OP_FALSE:
-                printf("OP_FALSE\n");
+                APPEND_TO_BUFFER("OP_FALSE\n");
                 break;
             case OP_NULL:
-                printf("OP_NULL\n");
+                APPEND_TO_BUFFER("OP_NULL\n");
                 break;
             case OP_NOT:
-                printf("OP_NOT\n");
+                APPEND_TO_BUFFER("OP_NOT\n");
                 break;
             case OP_SET_GLOBAL:
                 uint16_t set_index =
                     (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
-                printf("OP_SET_GLOBAL %d\n", set_index);
+                APPEND_TO_BUFFER("OP_SET_GLOBAL %d\n", set_index);
                 i += 2;  // Skip the operand bytes
                 break;
             case OP_GET_GLOBAL:
                 uint16_t get_index =
                     (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
-                printf("OP_GET_GLOBAL %d\n", get_index);
+                APPEND_TO_BUFFER("OP_GET_GLOBAL %d\n", get_index);
                 i += 2;  // Skip the operand bytes
                 break;
             case OP_EQUAL:
-                printf("OP_EQUAL\n");
+                APPEND_TO_BUFFER("OP_EQUAL\n");
                 break;
             case OP_GREATER:
-                printf("OP_GREATER\n");
+                APPEND_TO_BUFFER("OP_GREATER\n");
                 break;
             case OP_LESS:
-                printf("OP_LESS\n");
+                APPEND_TO_BUFFER("OP_LESS\n");
+                break;
+            case OP_CALL:
+                uint8_t arg_count = chunk->code[i + 1];
+                i++;
+                APPEND_TO_BUFFER("OP_CALL %d\n", arg_count);
+                break;
+            case OP_GET_LOCAL:
+                APPEND_TO_BUFFER("OP_GET_LOCAL %d\n", chunk->code[i + 1]);
+                i++;
+                break;
+            case OP_SET_LOCAL:
+                APPEND_TO_BUFFER("OP_SET_LOCAL %d\n", chunk->code[i + 1]);
+                i++;
                 break;
             default:
-                printf("Unknown opcode %d\n", opcode);
+                APPEND_TO_BUFFER("Unknown opcode %d\n", opcode);
                 break;
         }
     }
+#undef APPEND_TO_BUFFER
+    buffer[offset] = '\0';  // Null-terminate the string
+    return buffer;
 }

@@ -5,6 +5,7 @@
 #include "vm.h"
 
 #define MAX_LOCALS 256
+#define MAX_ARITY 255
 
 typedef struct {
     Scanner scanner;

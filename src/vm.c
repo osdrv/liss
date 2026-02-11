@@ -18,7 +18,7 @@
 
 // --- Forward Declarations ---
 static InterpretResult run(VM* vm);
-static void** loadThreadedCode(Chunk* chunk, void* dispatch_table[]);
+static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]);
 
 // --- VM Lifecycle ---
 
@@ -31,7 +31,7 @@ VM* newVM(size_t stack_capacity) {
     vm->last_result = INTERPRET_OK;
     initTable(&vm->strings);
     initTable(&vm->globals);
-    DEBUG_LOG("Initialized new VM with stack capacity %zu.", stack_capacity);
+    DEBUG_LOG("Initialized new VM with stack capacity %zu", stack_capacity);
     return vm;
 }
 
@@ -57,15 +57,11 @@ InterpretResult interpret(VM* vm, const char* source) {
         return INTERPRET_COMPILE_ERROR;
     }
 
-    // Keep the function object alive by pushing it onto the stack
-    push(vm, OBJ_VAL(function));
-
     vm->frame_count = 1;
     CallFrame* frame = &vm->frames[0];
     frame->function = function;
     frame->slots = vm->stack;
     frame->ip = NULL;
-    frame->code = NULL;
     frame->slots = NULL;
 
     InterpretResult result = run(vm);
@@ -76,7 +72,7 @@ InterpretResult interpret(VM* vm, const char* source) {
 
 void push(VM* vm, Value value) {
     if ((size_t)(vm->stack_top - vm->stack) >= vm->stack_capacity) {
-        fprintf(stderr, "Stack overflow.\n");
+        ERROR_LOG("Stack overflow");
         vm->last_result = INTERPRET_RUNTIME_ERROR;
         return;
     }
@@ -86,7 +82,7 @@ void push(VM* vm, Value value) {
 
 Value pop(VM* vm) {
     if (vm->stack_top == vm->stack) {
-        fprintf(stderr, "Stack underflow.\n");
+        ERROR_LOG("Stack underflow");
         vm->last_result = INTERPRET_RUNTIME_ERROR;
         return NIL_VAL;
     }
@@ -112,7 +108,7 @@ static bool concatStrings(VM* vm, Value a, Value b) {
     int length = left->length + right->length;
     char* chars = (char*)malloc(length + 1);
     if (chars == NULL) {
-        fprintf(stderr, "Memory allocation failed for string concatenation.\n");
+        ERROR_LOG("Memory allocation failed for string concatenation");
         return false;
     }
     memcpy(chars, left->chars, left->length);
@@ -138,8 +134,7 @@ static bool multiplyNumbers(VM* vm, Value a, Value b) {
 
 static bool duplicateString(VM* vm, Value a, Value b) {
     if (!IS_STRING(a) || !IS_NUMBER(b)) {
-        fprintf(stderr,
-                "Type error: Expected string and number for duplication.\n");
+        ERROR_LOG("Type error: Expected string and number for duplication");
         return false;
     }
 
@@ -147,9 +142,8 @@ static bool duplicateString(VM* vm, Value a, Value b) {
     double count_double = AS_NUMBER(b);
 
     if (count_double < 0 || trunc(count_double) != count_double) {
-        fprintf(
-            stderr,
-            "Value error: Duplication count must be a non-negative integer.\n");
+        ERROR_LOG(
+            "Value error: Duplication count must be a non-negative integer");
         return false;
     }
 
@@ -170,7 +164,7 @@ static bool duplicateString(VM* vm, Value a, Value b) {
     int len = str->length * count;
     char* chars = (char*)malloc(len + 1);
     if (chars == NULL) {
-        fprintf(stderr, "Memory allocation failed for string duplication.\n");
+        ERROR_LOG("Memory allocation failed for string duplication");
         return false;
     }
 
@@ -188,45 +182,53 @@ static bool duplicateString(VM* vm, Value a, Value b) {
     return true;
 }
 
-// TODO: uncomment if needed or remove
-// static void printStack(VM* vm) {
-//     printf("VM stack:\n");
-//     for (Value* slot = vm->stack; slot < vm->stack_top; slot++) {
-//         printf("  [ ");
-//         printValue(*slot);
-//         printf(" ]\n");
-//     }
-//     printf("\n");
-// }
+void printStack(VM* vm) {
+    DEBUG_LOG("VM stack:");
+    int i = 0;
+    for (Value* slot = vm->stack; slot < vm->stack_top; slot++) {
+        char* str = sprintValue(*slot);
+        DEBUG_LOG("  %04d: [ %s ]", i++, str);
+        free(str);
+    }
+}
 
-// TODO: uncomment if needed or remove
-// static void printConsts(VM* vm) {
-//     printf("Constants:\n");
-//     for (int i = 0; i < vm->chunk->constants.count; i++) {
-//         printf("  [%d] ", i);
-//         printValue(vm->chunk->constants.values[i]);
-//         printf("\n");
-//     }
-//     printf("\n");
-// }
+void printConsts(Chunk* chunk) {
+    DEBUG_LOG("Constants:");
+    for (int i = 0; i < chunk->constants.count; i++) {
+        char* str = sprintValue(chunk->constants.values[i]);
+        DEBUG_LOG("  %04d: %s", i, str);
+        free(str);
+    }
+}
 
 // --- VM Execution (Direct Threading) ---
 
-static void** loadThreadedCode(Chunk* chunk, void* dispatch_table[]) {
-    InterpretResult result = INTERPRET_OK;
+static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]) {
+    int result = 0;
+    if (function->loaded_code != NULL) {
+        return 0;  // Already loaded
+    }
+    Chunk* chunk = &function->chunk;
+
+    DEBUG_LOG(
+        "Loading function '%s' with %d bytecode instructions and %d constants",
+        function->name ? function->name->chars : "<unnamed>", chunk->count,
+        chunk->constants.count);
+    DEBUG_CHUNK("\n%s", chunk);
+
     // "Loader" stage: Convert byte-based chunk to pointer-based code.
     size_t loaded_code_size = sizeof(void*) * chunk->count;
     void** loaded_code = (void**)malloc(loaded_code_size);
     if (!loaded_code) {
-        fprintf(stderr, "Memory error loading threaded code.\n");
-        result = INTERPRET_RUNTIME_ERROR;
+        ERROR_LOG("Memory error loading threaded code");
+        result = -1;
         goto LOADER_CLEANUP;
     }
 
     int* byte_to_slot_map = malloc(sizeof(int) * chunk->count);
-    if (!byte_to_slot_map) {
-        fprintf(stderr, "Memory error allocating byte-to-slot map.\n");
-        result = INTERPRET_RUNTIME_ERROR;
+    if (byte_to_slot_map == NULL) {
+        ERROR_LOG("Memory error allocating byte-to-slot map");
+        result = -1;
         goto LOADER_CLEANUP;
     }
     for (int i = 0; i < chunk->count; i++) {
@@ -240,7 +242,7 @@ static void** loadThreadedCode(Chunk* chunk, void* dispatch_table[]) {
     uint8_t* bytecode = chunk->code;
     int loaded_idx = 0;
 
-    DEBUG_LOG("Loader first pass: Translating bytecode to threaded code.");
+    DEBUG_LOG("Loader first pass: translating bytecode to threaded code");
     while (bytecode < chunk->code + chunk->count) {
         int byte_offset = bytecode - chunk->code;
         byte_to_slot_map[byte_offset] = loaded_idx;
@@ -275,9 +277,8 @@ static void** loadThreadedCode(Chunk* chunk, void* dispatch_table[]) {
                         jumps_to_patch, sizeof(int) * old_capacity,
                         sizeof(int) * jumps_capacity);
                     if (jumps_to_patch == NULL) {
-                        fprintf(stderr,
-                                "Memory error allocating jumps to patch.\n");
-                        result = INTERPRET_RUNTIME_ERROR;
+                        ERROR_LOG("Memory error allocating jumps to patch");
+                        result = -1;
                         goto LOADER_CLEANUP;
                     }
                 }
@@ -294,6 +295,17 @@ static void** loadThreadedCode(Chunk* chunk, void* dispatch_table[]) {
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)const_index;
                 break;
             }
+            case OP_CALL: {
+                uint8_t arg_count = *bytecode++;
+                loaded_code[loaded_idx++] = (void*)(uintptr_t)arg_count;
+                break;
+            }
+            case OP_GET_LOCAL:
+            case OP_SET_LOCAL: {
+                uint8_t local_slot = *bytecode++;
+                loaded_code[loaded_idx++] = (void*)(uintptr_t)local_slot;
+                break;
+            }
             default:
                 break;  // No operands
         }
@@ -301,19 +313,19 @@ static void** loadThreadedCode(Chunk* chunk, void* dispatch_table[]) {
     loaded_code = reallocate(loaded_code, sizeof(void*) * chunk->count,
                              sizeof(void*) * loaded_idx);
     if (loaded_code == NULL) {
-        fprintf(stderr, "Memory error resizing loaded code.\n");
-        result = INTERPRET_RUNTIME_ERROR;
+        ERROR_LOG("Memory error resizing loaded code");
+        result = -1;
         goto LOADER_CLEANUP;
     }
 
-    DEBUG_LOG("Loader second pass: Patching jump offsets.");
+    DEBUG_LOG("Loader second pass: Patching jump offsets");
     for (int i = 0; i < jump_count; i++) {
         int operand_slot_ix = jumps_to_patch[i];
         int target_byte_addr = (int)(uintptr_t)loaded_code[operand_slot_ix];
         int target_slot_ix = byte_to_slot_map[target_byte_addr];
         if (target_slot_ix == -1) {
-            fprintf(stderr, "Invalid jump target during patching.\n");
-            result = INTERPRET_RUNTIME_ERROR;
+            ERROR_LOG("Invalid jump target during patching");
+            result = -1;
             goto LOADER_CLEANUP;
         }
 
@@ -326,11 +338,14 @@ LOADER_CLEANUP:
         free(byte_to_slot_map);
     }
     reallocate(jumps_to_patch, sizeof(int) * jumps_capacity, 0);
-    if (result != INTERPRET_OK) {
+    if (result != 0) {
         reallocate(loaded_code, sizeof(void*) * loaded_idx, 0);
-        return NULL;
+        function->loaded_code = NULL;
+    } else {
+        function->loaded_code_size = loaded_idx;
+        function->loaded_code = loaded_code;
     }
-    return loaded_code;
+    return result;
 }
 
 static InterpretResult run(VM* vm) {
@@ -341,16 +356,16 @@ static InterpretResult run(VM* vm) {
         push(vm, NUMBER_VAL(AS_NUMBER(a) op AS_NUMBER(b))); \
     } while (false)
 
-#define COMPARISON_OP(op)                                         \
-    do {                                                          \
-        Value b = pop(vm);                                        \
-        Value a = pop(vm);                                        \
-        if (a.type != b.type) {                                   \
-            fprintf(stderr, "Comparison type mismatch error.\n"); \
-            result = INTERPRET_RUNTIME_ERROR;                     \
-            goto RETURN;                                          \
-        }                                                         \
-        push(vm, BOOL_VAL(AS_NUMBER(a) op AS_NUMBER(b)));         \
+#define COMPARISON_OP(op)                                 \
+    do {                                                  \
+        Value b = pop(vm);                                \
+        Value a = pop(vm);                                \
+        if (a.type != b.type) {                           \
+            ERROR_LOG("Comparison type mismatch error");  \
+            result = INTERPRET_RUNTIME_ERROR;             \
+            goto RETURN;                                  \
+        }                                                 \
+        push(vm, BOOL_VAL(AS_NUMBER(a) op AS_NUMBER(b))); \
     } while (false)
 
 #define READ_BYTE() (*ip++)
@@ -364,18 +379,18 @@ static InterpretResult run(VM* vm) {
         &&OP_NEGATE_IMPL,     &&OP_TRUE_IMPL,          &&OP_FALSE_IMPL,
         &&OP_NULL_IMPL,       &&OP_NOT_IMPL,           &&OP_EQUAL_IMPL,
         &&OP_GREATER_IMPL,    &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
-        &&OP_GET_GLOBAL_IMPL,
+        &&OP_GET_GLOBAL_IMPL, &&OP_CALL_IMPL,          &&OP_GET_LOCAL_IMPL,
+        &&OP_SET_LOCAL_IMPL,
     };
 
     InterpretResult result = INTERPRET_OK;
     CallFrame* frame = &vm->frames[vm->frame_count - 1];
-    if (frame->ip == NULL) {
-        frame->code = loadThreadedCode(&frame->function->chunk, dispatch_table);
-        if (frame->code == NULL) {
+    if (frame->function->loaded_code == NULL) {
+        if (loadThreadedCode(frame->function, dispatch_table) != 0) {
             result = INTERPRET_RUNTIME_ERROR;
             goto RETURN;
         }
-        frame->ip = frame->code;
+        frame->ip = frame->function->loaded_code;
     }
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -390,7 +405,7 @@ static InterpretResult run(VM* vm) {
     } while (0)
 
     // --- Start Execution ---
-    DEBUG_LOG("Starting direct-threaded execution.");
+    DEBUG_LOG("Starting direct-threaded execution");
     DISPATCH();
 
 #define READ_CONSTANT() ((Value*)*frame->ip++)
@@ -403,11 +418,6 @@ static InterpretResult run(VM* vm) {
 OP_RETURN_IMPL: {
     Value res = pop(vm);
     vm->last_popped_value = res;
-
-    free(frame->code);
-    frame->code = NULL;
-    frame->ip = NULL;
-
     vm->frame_count--;
     if (vm->frame_count == 0) {
         pop(vm);  // Pop the initial function object to allow GC
@@ -417,40 +427,6 @@ OP_RETURN_IMPL: {
     push(vm, res);
 
     frame = &vm->frames[vm->frame_count - 1];
-    DISPATCH();
-}
-
-OP_CALL_IMPL: {
-    int arg_count = (int)READ_ARG();
-    Value callee = peek(vm, arg_count);
-
-    if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_FUNCTION) {
-        fprintf(stderr, "Runtime error: Can only call functions.\n");
-        result = INTERPRET_RUNTIME_ERROR;
-        goto RETURN;
-    }
-
-    ObjFunction* function = AS_FUNCTION(callee);
-    if (arg_count != function->arity) {
-        fprintf(
-            stderr,
-            "Function %s: Runtime error: Expected %d arguments but got %d.\n",
-            function->name, function->arity, arg_count);
-        result = INTERPRET_RUNTIME_ERROR;
-        goto RETURN;
-    }
-
-    if (vm->frame_count == FRAMES_MAX) {
-        fprintf(stderr,
-                "Runtime error: Stack overflow (too many call frames).\n");
-        result = INTERPRET_RUNTIME_ERROR;
-        goto RETURN;
-    }
-
-    frame = &vm->frames[vm->frame_count++];
-    frame->function = function;
-    frame->slots = vm->stack_top - arg_count - 1;
-    frame->ip = loadThreadedCode(&function->chunk, dispatch_table);
     DISPATCH();
 }
 
@@ -493,9 +469,9 @@ OP_ADD_IMPL: {
             goto RETURN;
         }
     } else {
-        fprintf(stderr,
-                "Runtime error: Operands must be two numbers or two strings "
-                "for addition.\n");
+        ERROR_LOG(
+            "Runtime error: operands must be two numbers or two strings "
+            "for addition");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -522,9 +498,9 @@ OP_MULTIPLY_IMPL: {
             goto RETURN;
         }
     } else {
-        fprintf(stderr,
-                "Runtime error: Operands must be two numbers or a string and "
-                "a number for multiplication.\n");
+        ERROR_LOG(
+            "Runtime error: operands must be two numbers or a string and "
+            "a number for multiplication");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -539,8 +515,7 @@ OP_DIVIDE_IMPL: {
 OP_NEGATE_IMPL: {
     Value value = pop(vm);
     if (!IS_NUMBER(value)) {
-        fprintf(stderr,
-                "Runtime error: Operand must be a number for negation.\n");
+        ERROR_LOG("Runtime error: operand must be a number for negation");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -557,6 +532,7 @@ OP_FALSE_IMPL: {
     push(vm, BOOL_VAL(false));
     DISPATCH();
 }
+
 OP_NULL_IMPL: {
     push(vm, NIL_VAL);
     DISPATCH();
@@ -597,8 +573,8 @@ OP_GET_GLOBAL_IMPL: {
     Value name = frame->function->chunk.constants.values[const_ix];
     Value* value = tableGet(&vm->globals, name);
     if (value == NULL) {
-        fprintf(stderr, "Undefined variable '%.*s'.\n", AS_STRING(name)->length,
-                AS_STRING(name)->chars);
+        ERROR_LOG("Undefined variable '%.*s'", AS_STRING(name)->length,
+                  AS_STRING(name)->chars);
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -606,19 +582,71 @@ OP_GET_GLOBAL_IMPL: {
     DISPATCH();
 }
 
-RETURN:
-    if (frame->code != NULL) {
-        free(frame->code);
-        frame->code = NULL;
-        frame->ip = NULL;
+OP_CALL_IMPL: {
+    int arg_count = (int)READ_ARG();
+    Value callee = peek(vm, arg_count);
+
+    if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_FUNCTION) {
+        ERROR_LOG("Runtime error: can only call functions");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
     }
+
+    ObjFunction* function = AS_FUNCTION(callee);
+    if (arg_count != function->arity) {
+        ERROR_LOG(
+            "Function %s: runtime error: expected %d arguments but got %d",
+            function->name, function->arity, arg_count);
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+
+    if (vm->frame_count == FRAMES_MAX) {
+        ERROR_LOG("Runtime error: stack overflow (too many call frames)");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+
+    if (function->loaded_code == NULL) {
+        if (loadThreadedCode(function, dispatch_table) != 0) {
+            result = INTERPRET_RUNTIME_ERROR;
+            goto RETURN;
+        }
+    }
+    frame = &vm->frames[vm->frame_count++];
+    frame->function = function;
+    frame->slots = vm->stack_top - arg_count - 1;
+    frame->ip = function->loaded_code;
+
+    // NOTE: LLDB frame code inspect: memory read -f dec -t uint8_t -c 9
+    // frame->function->chunk.code
+
+    DISPATCH();
+}
+
+OP_GET_LOCAL_IMPL: {
+    uint8_t slot = (uint8_t)READ_ARG();
+    push(vm, frame->slots[slot]);
+    DISPATCH();
+}
+
+OP_SET_LOCAL_IMPL: {
+    uint8_t slot = (uint8_t)READ_ARG();
+    frame->slots[slot] = peek(vm, 0);
+    DISPATCH();
+}
+
+RETURN:
     return result;
 
 #else
 // Fallback for compilers that don't support computed gotos (e.g., MSVC)
 #warning "Computed gotos not supported, falling back to switch-based dispatch."
     // ... switch-based implementation would go here ...
-    fprintf(stderr, "Direct threading not supported by this compiler.\n");
+    ERROR_LOG("Direct threading not supported by this compiler");
     return INTERPRET_RUNTIME_ERROR;
 #endif
 }
+
+#undef DEBUG_VALUE
+#undef DEBUG_CHUNK

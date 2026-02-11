@@ -34,6 +34,8 @@ typedef struct {
     int arity;
     Chunk chunk;
     ObjString* name;
+    void** loaded_code;
+    size_t loaded_code_size;
 } ObjFunction;
 
 // --- String Object ---

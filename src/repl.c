@@ -1,6 +1,7 @@
 #include "repl.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "common.h"
@@ -13,26 +14,28 @@ void runRepl() {
 
     char line[1024];
 
-    printf("LISS REPL. Type Ctrl+D (EOF) to exit.\n");
+    PRINTF("LISS REPL. Type Ctrl+D (EOF) to exit.\n");
 
     for (;;) {
-        printf("> ");
+        PRINTF("> ");
         if (!fgets(line, sizeof(line), stdin)) {
-            printf("\n");
+            PRINTF("\n");
             break;
         }
         InterpretResult result = interpret(vm, line);
         if (result == INTERPRET_RUNTIME_ERROR) {
             // Print the last popped value if available
             if (vm->last_popped_value.type != VAL_NIL) {
-                printf("Runtime error: ");
-                printValue(vm->last_popped_value);
-                printf("\n");
+                ERROR_LOG("Runtime error");
+                char* str = sprintValue(vm->last_popped_value);
+                DEBUG_LOG("%s", str);
+                free(str);
             }
         } else if (result == INTERPRET_OK) {
             // Print the last popped value
-            printValue(vm->last_popped_value);
-            printf("\n");
+            char* str = sprintValue(vm->last_popped_value);
+            PRINTF("%s", str);
+            free(str);
         }
     }
 

@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 // Forward-declare Obj so Value can have a pointer to it.
 typedef struct Obj Obj;
@@ -40,9 +41,16 @@ typedef struct {
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
 #define OBJ_VAL(object) ((Value){VAL_OBJ, {.obj = (Obj*)object}})
 
+#define DEBUG_VALUE(fmt, value)          \
+    do {                                 \
+        char* strv = sprintValue(value); \
+        DEBUG_LOG(fmt, strv);            \
+        free(strv);                      \
+    } while (0)
+
 bool valuesEqual(Value a, Value b);
 
-void printValue(Value value);
+char* sprintValue(Value value);
 
 bool isFalsey(Value value);
 

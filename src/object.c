@@ -38,6 +38,8 @@ ObjFunction* newFunction(VM* vm) {
     function->arity = 0;
     function->name = NULL;
     initChunk(&function->chunk);
+    function->loaded_code = NULL;
+    function->loaded_code_size = 0;
     return function;
 }
 
