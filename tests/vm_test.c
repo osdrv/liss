@@ -357,6 +357,28 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_NUMBER, .as.number = 30.0},
     },
+    {
+        .name = "nested empty function calls",
+        .src = "(fn outer []"
+               "  (fn inner [])"
+               "  (inner)"
+               ")"
+               "(outer)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NIL},
+    },
+    //{
+    //    .name = "nested function call",
+    //    .src = "(fn one [a b]"
+    //           "  (fn two [b]"
+    //           "    (+ a b)"
+    //           "  )"
+    //           "  (two b)"
+    //           ")"
+    //           "(one 1 2)",
+    //    .expected_result = INTERPRET_OK,
+    //    .expected_value = {EXPECT_NUMBER, .as.number = 3.0},
+    //},
 };
 
 static char* test_vm_interpret(void) {

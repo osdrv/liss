@@ -36,8 +36,8 @@ typedef struct VM {
 
     Value last_popped_value;  // Store the last popped value
 
-    Value
-        stack[];  // (!!!) Flexible Array Member for the stack. Keep at the end.
+    // (!!!) Flexible Array Member for the stack. Keep at the end.
+    Value stack[];
 } VM;
 
 // Creates and initializes a new VM with a given stack capacity.

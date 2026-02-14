@@ -99,6 +99,7 @@ static void initCompiler(Compiler* compiler, Compiler* enclosing) {
     compiler->enclosing = enclosing;
     compiler->local_count = 0;
     compiler->scope_depth = 0;
+
     if (enclosing != NULL) {
         compiler->parser = enclosing->parser;
         compiler->vm = enclosing->vm;
@@ -319,6 +320,9 @@ static ObjFunction* compileFunction(Compiler* compiler) {
         parseExpression(&fn_compiler);
         if (fn_compiler.parser->hadError) return NULL;
         is_empty_body = false;
+        // We compare init_chunk_count to the current chunk count to determine
+        // if the expression we just parsed emitted any bytecode. If it didn't,
+        // we don't need to emit a POP instruction.
         if (WILL_READ_BODY()) {
             emitByte(&fn_compiler, OP_POP);
         }
@@ -339,9 +343,7 @@ static ObjFunction* compileFunction(Compiler* compiler) {
     DEBUG_LOG("Compiler VM stack afer compile function: ");
     for (Value* slot = compiler->vm->stack; slot < compiler->vm->stack_top;
          slot++) {
-        char* strv = sprintValue(*slot);
-        DEBUG_LOG("  [ %s ]", strv);
-        free(strv);
+        DEBUG_VALUE("  [ %s ]", *slot);
     }
 
     return function;
@@ -376,19 +378,36 @@ static void parseGrouping(Compiler* compiler) {
                     .length = function->name->length,
                     .line = compiler->parser->previous.line,
                 };
-                push(compiler->vm, OBJ_VAL(function));
                 if (compiler->scope_depth > 0) {
+                    DEBUG_LOG(
+                        "Compiling local named fn '%s': function_ptr=%p, "
+                        "function_name_ptr=%p",
+                        function->name->chars, (void*)function,
+                        (void*)function->name);
+                    DEBUG_LOG(
+                        "After push for local fn: value_on_stack_type=%d, "
+                        "value_on_stack=",
+                        peek(compiler->vm, 0).type);
+                    DEBUG_VALUE("%s", peek(compiler->vm, 0));
                     // If the function has a name and we're in a local scope, we
                     // store it in a local variable so it can be recursive.
+                    push(compiler->vm, OBJ_VAL(function));
                     addLocal(compiler, token);
+                    DEBUG_LOG("addLocal for '%s' to slot %d\n", token.start,
+                              compiler->local_count - 1);
                 } else {
                     // If we're in the global scope, we store the function in a
                     // global variable with the same name.
                     // pop(compiler->vm);
-                    int var_index = identifierConstant(compiler, token);
+                    // int fn_const_ix = addConstant(currentChunk(compiler),
+                    // OBJ_VAL(function)); emitConstant(compiler,
+                    // currentChunk(compiler)->constants.values[fn_const_ix]);
+                    emitConstant(compiler, OBJ_VAL(function));
+                    // int var_index = identifierConstant(compiler, token);
+                    int var_name_ix = identifierConstant(compiler, token);
                     emitByte(compiler, OP_SET_GLOBAL);
-                    emitBytes(compiler, (uint8_t)(var_index >> 8),
-                              (uint8_t)(var_index & 0xff));
+                    emitBytes(compiler, (uint8_t)(var_name_ix >> 8),
+                              (uint8_t)(var_name_ix & 0xff));
                 }
             } else {
                 // Anonymous functions are not stored in a variable, so we just

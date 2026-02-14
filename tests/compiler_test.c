@@ -451,11 +451,20 @@ static char* test_compile(void) {
             .name = "named function no params",
             .src = "(fn myFunc [])",
             .expected_instructions =
-                (uint8_t[]){OP_SET_GLOBAL, 0, 0, OP_RETURN},
-            .expected_instruction_count = 4,
-            .expected_constant_size = 1,
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_SET_GLOBAL,
+                    0,
+                    1,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 7,
+            .expected_constant_size = 2,
             .expected_constants =
                 (ExpectedConstant[]){
+                    {EXPECT_OBJ_FUNCTION, .as.obj_function = "myFunc"},
                     {EXPECT_OBJ_STRING, .as.obj_string = "myFunc"},
                 },
         },
@@ -463,26 +472,42 @@ static char* test_compile(void) {
             .name = "function with body",
             .src = "(fn addOne [x] (+ x 1))",
             .expected_instructions =
-                (uint8_t[]){OP_SET_GLOBAL, 0, 0, OP_RETURN},
-            .expected_instruction_count = 4,
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_SET_GLOBAL,
+                    0,
+                    1,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 7,
             .expected_constants =
                 (ExpectedConstant[]){
+                    {EXPECT_OBJ_FUNCTION, .as.obj_function = "addOne"},
                     {EXPECT_OBJ_STRING, .as.obj_string = "addOne"},
                 },
-            .expected_constant_size = 1,
+            .expected_constant_size = 2,
         },
         {
             .name = "function call no args",
             .src = "(fn greet [] \"Hello\") (greet)",
             .expected_instructions =
-                (uint8_t[]){OP_SET_GLOBAL, 0, 0, OP_POP, OP_GET_GLOBAL, 0, 0,
-                            OP_CALL, 0, OP_RETURN},
-            .expected_instruction_count = 10,
+                (uint8_t[]){
+                    OP_CONSTANT, 0, 0,
+                    OP_SET_GLOBAL, 0, 1,
+                    OP_POP,
+                    OP_GET_GLOBAL, 0, 1,
+                    OP_CALL, 0,
+                    OP_RETURN,
+            },
+            .expected_instruction_count = 13,
             .expected_constants =
                 (ExpectedConstant[]){
+                    {EXPECT_OBJ_FUNCTION, .as.obj_function = "greet"},
                     {EXPECT_OBJ_STRING, .as.obj_string = "greet"},
                 },
-            .expected_constant_size = 1,
+            .expected_constant_size = 2,
         },
     };
 

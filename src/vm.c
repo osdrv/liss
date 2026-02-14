@@ -56,6 +56,9 @@ InterpretResult interpret(VM* vm, const char* source) {
     if (function == NULL) {
         return INTERPRET_COMPILE_ERROR;
     }
+    vm->stack_top = vm->stack;  // Reset stack top for new execution
+    push(vm,
+         OBJ_VAL(function));  // Push the function onto the stack for GC safety
 
     vm->frame_count = 1;
     CallFrame* frame = &vm->frames[0];
@@ -417,6 +420,10 @@ static InterpretResult run(VM* vm) {
 
 OP_RETURN_IMPL: {
     Value res = pop(vm);
+    DEBUG_LOG(
+        "OP_RETURN: FrameCount=%d (before decr), ret_val_type=%d ret_val=",
+        vm->frame_count, res.type);
+    DEBUG_VALUE("%s", res);
     vm->last_popped_value = res;
     vm->frame_count--;
     if (vm->frame_count == 0) {
@@ -585,9 +592,16 @@ OP_GET_GLOBAL_IMPL: {
 OP_CALL_IMPL: {
     int arg_count = (int)READ_ARG();
     Value callee = peek(vm, arg_count);
+    DEBUG_LOG(
+        "[DEBUG] OP_CALL: FrameCount=%d, arg_count=%d, callee_type=%d, "
+        "callee_value=",
+        vm->frame_count, arg_count, callee.type);
+    DEBUG_VALUE("%s", callee);
 
     if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_FUNCTION) {
         ERROR_LOG("Runtime error: can only call functions");
+        printStack(vm);
+        printConsts(&frame->function->chunk);
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
