@@ -30,9 +30,10 @@ bool valuesEqual(Value a, Value b) {
                         return memcmp(strA->chars, strB->chars, strA->length) ==
                                0;
                     default:
-                        return false;
+                        break;
                 }
-            // TODO: Deep comparison for certain object types (e.g., strings).
+            // Fallback to pointer comparison for other object types (e.g.,
+            // functions).
             return AS_OBJ(a) == AS_OBJ(b);  // Compare object pointers.
     }
 

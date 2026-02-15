@@ -280,6 +280,7 @@ static void parseCond(Compiler* compiler) {
 static ObjFunction* compileFunction(Compiler* compiler) {
     Compiler fn_compiler;
     initCompiler(&fn_compiler, compiler);
+
     push(compiler->vm, OBJ_VAL(fn_compiler.function));
 
     fn_compiler.scope_depth = compiler->scope_depth + 1;
@@ -335,17 +336,6 @@ static ObjFunction* compileFunction(Compiler* compiler) {
 #undef WILL_READ_BODY
 
     ObjFunction* function = endCompiler(&fn_compiler);
-
-    pop(compiler->vm);  // Pop the function object from the stack
-
-    DEBUG_VALUE("Compiled function: %s", OBJ_VAL(function));
-
-    DEBUG_LOG("Compiler VM stack afer compile function: ");
-    for (Value* slot = compiler->vm->stack; slot < compiler->vm->stack_top;
-         slot++) {
-        DEBUG_VALUE("  [ %s ]", *slot);
-    }
-
     return function;
 }
 
@@ -369,51 +359,48 @@ static void parseGrouping(Compiler* compiler) {
             break;
         case TOKEN_FN_KW:
             advance(compiler);
-            ObjFunction* function = compileFunction(compiler);
-
-            if (compiler->parser->hadError) return;
-            if (function->name != NULL && function->name->length > 0) {
-                Token token = {
-                    .start = function->name->chars,
-                    .length = function->name->length,
-                    .line = compiler->parser->previous.line,
-                };
+            Token fn_name = {0};
+            bool is_named_fn = false;
+            if (compiler->parser->current.type == TOKEN_IDENTIFIER) {
+                fn_name = consume(compiler, TOKEN_IDENTIFIER,
+                                  "expect function name after 'fn'");
+                if (compiler->parser->hadError) return;
+                is_named_fn = true;
                 if (compiler->scope_depth > 0) {
-                    DEBUG_LOG(
-                        "Compiling local named fn '%s': function_ptr=%p, "
-                        "function_name_ptr=%p",
-                        function->name->chars, (void*)function,
-                        (void*)function->name);
-                    DEBUG_LOG(
-                        "After push for local fn: value_on_stack_type=%d, "
-                        "value_on_stack=",
-                        peek(compiler->vm, 0).type);
-                    DEBUG_VALUE("%s", peek(compiler->vm, 0));
-                    // If the function has a name and we're in a local scope, we
-                    // store it in a local variable so it can be recursive.
-                    push(compiler->vm, OBJ_VAL(function));
-                    addLocal(compiler, token);
-                    DEBUG_LOG("addLocal for '%s' to slot %d\n", token.start,
-                              compiler->local_count - 1);
+                    addLocal(compiler, fn_name);
+                }
+            }
+
+            ObjFunction* func = compileFunction(compiler);
+            if (compiler->parser->hadError) return;
+            if (is_named_fn) {
+                func->name =
+                    copyString(compiler->vm, fn_name.start, fn_name.length);
+            }
+
+            emitConstant(compiler, OBJ_VAL(func));
+
+            pop(compiler->vm);
+
+            if (is_named_fn) {
+                if (compiler->scope_depth > 0) {
+                    int local_slot = resolveLocal(compiler, fn_name);
+                    if (local_slot == -1) {
+                        compiler->parser->hadError = true;
+                        ERROR_LOG(
+                            "[line %d] Error: Failed to resolve local variable "
+                            "for "
+                            "function name '%.*s'",
+                            fn_name.line, fn_name.length, fn_name.start);
+                        return;
+                    }
+                    emitBytes(compiler, OP_SET_LOCAL, (uint8_t)local_slot);
                 } else {
-                    // If we're in the global scope, we store the function in a
-                    // global variable with the same name.
-                    // pop(compiler->vm);
-                    // int fn_const_ix = addConstant(currentChunk(compiler),
-                    // OBJ_VAL(function)); emitConstant(compiler,
-                    // currentChunk(compiler)->constants.values[fn_const_ix]);
-                    emitConstant(compiler, OBJ_VAL(function));
-                    // int var_index = identifierConstant(compiler, token);
-                    int var_name_ix = identifierConstant(compiler, token);
+                    int var_name_ix = identifierConstant(compiler, fn_name);
                     emitByte(compiler, OP_SET_GLOBAL);
                     emitBytes(compiler, (uint8_t)(var_name_ix >> 8),
                               (uint8_t)(var_name_ix & 0xff));
                 }
-            } else {
-                // Anonymous functions are not stored in a variable, so we just
-                // emit them as constants.
-                // pop(compiler->vm);
-                emitConstant(compiler, OBJ_VAL(function));
             }
             break;
         case TOKEN_NOT_OP:
@@ -627,8 +614,6 @@ ObjFunction* compile(VM* vm, const char* source) {
     }
 
     ObjFunction* function = endCompiler(&compiler);
-
-    // pop(vm);
 
     return parser.hadError ? NULL : function;
 }

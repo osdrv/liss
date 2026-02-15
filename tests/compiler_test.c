@@ -494,13 +494,20 @@ static char* test_compile(void) {
             .src = "(fn greet [] \"Hello\") (greet)",
             .expected_instructions =
                 (uint8_t[]){
-                    OP_CONSTANT, 0, 0,
-                    OP_SET_GLOBAL, 0, 1,
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_SET_GLOBAL,
+                    0,
+                    1,
                     OP_POP,
-                    OP_GET_GLOBAL, 0, 1,
-                    OP_CALL, 0,
+                    OP_GET_GLOBAL,
+                    0,
+                    1,
+                    OP_CALL,
+                    0,
                     OP_RETURN,
-            },
+                },
             .expected_instruction_count = 13,
             .expected_constants =
                 (ExpectedConstant[]){
