@@ -336,7 +336,9 @@ static ObjFunction* compileFunction(Compiler* compiler) {
 
     consume(&fn_compiler, TOKEN_RBRAKET, "Expect ']' after parameters");
 
-#define WILL_READ_BODY() (fn_compiler.parser->current.type != TOKEN_RPAREN)
+#define WILL_READ_BODY() (fn_compiler.parser->current.type != TOKEN_RPAREN && \
+                         fn_compiler.parser->current.type != TOKEN_ZERO && \
+                         fn_compiler.parser->current.type != TOKEN_EOF)
 
     bool is_empty_body = true;
     while (WILL_READ_BODY()) {
@@ -553,7 +555,7 @@ static void parseGrouping(Compiler* compiler) {
                     // Otherwise, it's a block
                 default:
                     parseBlock(compiler);
-                    return;
+                    goto END_PARSE_GROUPING;
             }
 
             parseExpression(compiler);

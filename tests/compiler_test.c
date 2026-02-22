@@ -556,6 +556,27 @@ static char* test_compile(void) {
                 },
             .expected_constant_size = 3,
         },
+        {
+            .name = "parse block of expressions",
+            .src = "(1 2 3 4 5)",
+            .expected_instructions =
+                (uint8_t[]){OP_CONSTANT, 0, 0, OP_POP,
+                    OP_CONSTANT, 0, 1, OP_POP,
+                    OP_CONSTANT, 0, 2, OP_POP,
+                    OP_CONSTANT, 0, 3, OP_POP,
+                    OP_CONSTANT, 0, 4, OP_RETURN,
+                },
+            .expected_instruction_count = 20,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_NUMBER, .as.number = 2.0},
+                    {EXPECT_NUMBER, .as.number = 3.0},
+                    {EXPECT_NUMBER, .as.number = 4.0},
+                    {EXPECT_NUMBER, .as.number = 5.0},
+                },
+            .expected_constant_size = 5,
+        },
     };
 
     for (size_t i = 0; i < sizeof(compile_tests) / sizeof(compile_tests[0]);
