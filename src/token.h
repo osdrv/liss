@@ -2,6 +2,8 @@
 #define liss_token_h
 
 typedef enum {
+    TOKEN_ZERO, // Sentinel value for uninitialized tokens
+
     TOKEN_EOF,
     TOKEN_ERROR,
 

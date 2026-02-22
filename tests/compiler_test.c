@@ -516,6 +516,46 @@ static char* test_compile(void) {
                 },
             .expected_constant_size = 2,
         },
+        {
+            .name = "anonymous function call",
+            .src = "((fn [x] (+ x 1)) 41)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT, 0, 0,
+                    OP_CONSTANT, 0, 1,
+                    OP_CALL, 1,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 9,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_FUNCTION, .as.obj_function = NULL},
+                    {EXPECT_NUMBER, .as.number = 41.0},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "named function call",
+            .src = "(fn addOne [x] (+ x 1)) (addOne 41)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT, 0, 0,
+                    OP_SET_GLOBAL, 0, 1,
+                    OP_POP,
+                    OP_GET_GLOBAL, 0, 1,
+                    OP_CONSTANT, 0, 2,
+                    OP_CALL, 1,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 16,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_FUNCTION, .as.obj_function = "addOne"},
+                    {EXPECT_OBJ_STRING, .as.obj_string = "addOne"},
+                    {EXPECT_NUMBER, .as.number = 41.0},
+                },
+            .expected_constant_size = 3,
+        },
     };
 
     for (size_t i = 0; i < sizeof(compile_tests) / sizeof(compile_tests[0]);

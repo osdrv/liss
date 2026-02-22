@@ -11,6 +11,7 @@ typedef struct {
     Scanner scanner;
     Token current;
     Token previous;
+    Token next;
     bool hadError;
     bool panicMode;
 } Parser;

@@ -16,14 +16,27 @@ static void parseExpression(Compiler* compiler);
 static void initParser(Parser* parser) {
     parser->hadError = false;
     parser->panicMode = false;
+    parser->previous = (Token){0};
+    parser->current = (Token){0};
+    parser->next = (Token){0};
 }
 
+// Function advance moves the parser forward.
+// In case this is the first read, it will read two tokens to fill both current and next.
+// If the current token is an error, it will report it and keep advancing until it finds a non-error token or reaches the end of the input.
 static void advance(Compiler* compiler) {
     Parser* parser = compiler->parser;
+
     parser->previous = parser->current;
+    parser->current = parser->next;
 
     for (;;) {
-        parser->current = scanToken(&parser->scanner);
+        parser->current = parser->next;
+        parser->next = scanToken(&parser->scanner);
+        // If the current token is TOKEN_ZERO, read one more token as it wasn't read yet.
+        if (parser->current.type == TOKEN_ZERO) {
+            continue;
+        }
         if (parser->current.type != TOKEN_ERROR) break;
 
         parser->hadError = true;
@@ -122,11 +135,20 @@ static void beginScope(Compiler* compiler) { compiler->scope_depth++; }
 static void endScope(Compiler* compiler) {
     compiler->scope_depth--;
 
+    int locals_in_scope = 0;
     while (compiler->local_count > 0 &&
            compiler->locals[compiler->local_count - 1].depth >
                compiler->scope_depth) {
-        emitByte(compiler, OP_POP);
+        locals_in_scope++;
         compiler->local_count--;
+    }
+
+    if (locals_in_scope > 0) {
+        emitBytes(compiler, OP_SET_LOCAL, (uint8_t)compiler->local_count);
+        // Pop all locals in scope except the last one
+        for (int i = 0; i < locals_in_scope - 1; i++) {
+            emitByte(compiler, OP_POP);
+        }
     }
 }
 
@@ -339,6 +361,18 @@ static ObjFunction* compileFunction(Compiler* compiler) {
     return function;
 }
 
+static void parseBlock(Compiler* compiler) {
+    beginScope(compiler);
+    while (compiler->parser->current.type != TOKEN_RPAREN) {
+        parseExpression(compiler);
+        if (compiler->parser->hadError) return;
+        if (compiler->parser->current.type != TOKEN_RPAREN) {
+            emitByte(compiler, OP_POP);
+        }
+    }
+    endScope(compiler);
+}
+
 static void parseGrouping(Compiler* compiler) {
     switch (compiler->parser->current.type) {
         case TOKEN_AND_KW:
@@ -494,6 +528,34 @@ static void parseGrouping(Compiler* compiler) {
             break;
         }
         default: {
+            // A grouping is either a function call or a block of 1+
+            // expressions. The disambiguation strategy is the following:
+            // 1. If the next token is an identifier, it is a function call.
+            // 2. If the next token is an open parenthesis and the next after is
+            // a FN keyword,
+            //   it is a function call with an anonymous function as the callee.
+            // 3. Otherwise, it's a block.
+            // if (compiler->parser->current.type == TOKEN_IDENTIFIER) {
+            //    parseFunctionCall(compiler);
+            //} else {
+            //    parseBlock(compiler);
+            //}
+            // if (compiler->parser->hadError) return;
+            // break;
+
+            switch (compiler->parser->current.type) {
+                case TOKEN_IDENTIFIER:
+                    break;  // It's a function call, we will parse it below
+                case TOKEN_LPAREN:
+                    if (compiler->parser->next.type == TOKEN_FN_KW) {
+                        break;  // It's a function call with an anonymous function callee
+                    }
+                    // Otherwise, it's a block
+                default:
+                    parseBlock(compiler);
+                    return;
+            }
+
             parseExpression(compiler);
             int arg_count = 0;
             while (compiler->parser->current.type != TOKEN_RPAREN) {
