@@ -29,6 +29,7 @@ VM* newVM(size_t stack_capacity) {
     vm->stack_top = vm->stack;
     vm->objects = NULL;
     vm->last_result = INTERPRET_OK;
+    vm->open_upvalues = NULL;
     initTable(&vm->strings);
     initTable(&vm->globals);
     DEBUG_LOG("Initialized new VM with stack capacity %zu", stack_capacity);
@@ -56,13 +57,16 @@ InterpretResult interpret(VM* vm, const char* source) {
     if (function == NULL) {
         return INTERPRET_COMPILE_ERROR;
     }
+    push(vm, OBJ_VAL(function));  // Push the function for GC safety
+    ObjClosure* closure = newClosure(vm, function);
+    pop(vm);  // Pop the function after creating the closure
+
     vm->stack_top = vm->stack;  // Reset stack top for new execution
-    push(vm,
-         OBJ_VAL(function));  // Push the function onto the stack for GC safety
+    push(vm, OBJ_VAL(closure));
 
     vm->frame_count = 1;
     CallFrame* frame = &vm->frames[0];
-    frame->function = function;
+    frame->closure = closure;
     frame->slots = vm->stack;
     frame->ip = NULL;
     frame->slots = NULL;
@@ -133,6 +137,43 @@ static bool multiplyNumbers(VM* vm, Value a, Value b) {
     pop(vm);
     push(vm, NUMBER_VAL(AS_NUMBER(a) * AS_NUMBER(b)));
     return true;
+}
+
+static ObjUpvalue* captureUpvalue(VM* vm, Value* local) {
+    ObjUpvalue* prev = NULL;
+    ObjUpvalue* curr = vm->open_upvalues;
+
+    // Find the right place to insert the new upvalue (sorted by location)
+    while (curr != NULL && curr->location > local) {
+        prev = curr;
+        curr = curr->next;
+    }
+
+    // Found an existing upvalue for the same local variable, reuse it
+    if (curr != NULL && curr->location == local) {
+        return curr;
+    }
+
+    // Not found, create a new upvalue and insert it into the list
+    ObjUpvalue* new = newUpvalue(vm, local);
+    new->next = curr;
+
+    if (prev == NULL) {
+        vm->open_upvalues = new;
+    } else {
+        prev->next = new;
+    }
+
+    return new;
+}
+
+static void closeUpvalue(VM* vm, Value* last) {
+    while (vm->open_upvalues != NULL && vm->open_upvalues->location >= last) {
+        ObjUpvalue* upvalue = vm->open_upvalues;
+        upvalue->closed = *upvalue->location;
+        upvalue->location = &upvalue->closed;
+        vm->open_upvalues = upvalue->next;
+    }
 }
 
 static bool duplicateString(VM* vm, Value a, Value b) {
@@ -309,6 +350,30 @@ static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]) {
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)local_slot;
                 break;
             }
+            case OP_CLOSURE: {
+                uint16_t const_index =
+                    (uint16_t)(bytecode[0] << 8) | bytecode[1];
+                bytecode += 2;
+                loaded_code[loaded_idx++] =
+                    (void*)&chunk->constants.values[const_index];
+
+                ObjFunction* fn =
+                    AS_FUNCTION(chunk->constants.values[const_index]);
+                for (int i = 0; i < fn->upvalue_cnt; i++) {
+                    uint8_t is_local = *bytecode++;
+                    uint8_t index = *bytecode++;
+                    loaded_code[loaded_idx++] =
+                        (void*)(uintptr_t)(is_local ? 1 : 0);
+                    loaded_code[loaded_idx++] = (void*)(uintptr_t)index;
+                }
+                break;
+            }
+            case OP_GET_UPVALUE:
+            case OP_SET_UPVALUE: {
+                uint8_t upvalue_slot = *bytecode++;
+                loaded_code[loaded_idx++] = (void*)(uintptr_t)upvalue_slot;
+                break;
+            }
             default:
                 break;  // No operands
         }
@@ -376,24 +441,25 @@ static InterpretResult run(VM* vm) {
 
     // The dispatch table: an array of opcode implementation addresses.
     static void* dispatch_table[] = {
-        &&OP_RETURN_IMPL,     &&OP_CONSTANT_IMPL,      &&OP_POP_IMPL,
-        &&OP_JUMP_IMPL,       &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
-        &&OP_SUBTRACT_IMPL,   &&OP_MULTIPLY_IMPL,      &&OP_DIVIDE_IMPL,
-        &&OP_NEGATE_IMPL,     &&OP_TRUE_IMPL,          &&OP_FALSE_IMPL,
-        &&OP_NULL_IMPL,       &&OP_NOT_IMPL,           &&OP_EQUAL_IMPL,
-        &&OP_GREATER_IMPL,    &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
-        &&OP_GET_GLOBAL_IMPL, &&OP_CALL_IMPL,          &&OP_GET_LOCAL_IMPL,
-        &&OP_SET_LOCAL_IMPL,
+        &&OP_RETURN_IMPL,      &&OP_CONSTANT_IMPL,      &&OP_POP_IMPL,
+        &&OP_JUMP_IMPL,        &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
+        &&OP_SUBTRACT_IMPL,    &&OP_MULTIPLY_IMPL,      &&OP_DIVIDE_IMPL,
+        &&OP_NEGATE_IMPL,      &&OP_TRUE_IMPL,          &&OP_FALSE_IMPL,
+        &&OP_NULL_IMPL,        &&OP_NOT_IMPL,           &&OP_EQUAL_IMPL,
+        &&OP_GREATER_IMPL,     &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
+        &&OP_GET_GLOBAL_IMPL,  &&OP_CALL_IMPL,          &&OP_GET_LOCAL_IMPL,
+        &&OP_SET_LOCAL_IMPL,   &&OP_CLOSURE_IMPL,       &&OP_GET_UPVALUE_IMPL,
+        &&OP_SET_UPVALUE_IMPL,
     };
 
     InterpretResult result = INTERPRET_OK;
     CallFrame* frame = &vm->frames[vm->frame_count - 1];
-    if (frame->function->loaded_code == NULL) {
-        if (loadThreadedCode(frame->function, dispatch_table) != 0) {
+    if (frame->closure->function->loaded_code == NULL) {
+        if (loadThreadedCode(frame->closure->function, dispatch_table) != 0) {
             result = INTERPRET_RUNTIME_ERROR;
             goto RETURN;
         }
-        frame->ip = frame->function->loaded_code;
+        frame->ip = frame->closure->function->loaded_code;
     }
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -424,6 +490,7 @@ OP_RETURN_IMPL: {
         "OP_RETURN: FrameCount=%d (before decr), ret_val_type=%d ret_val=",
         vm->frame_count, res.type);
     DEBUG_VALUE("%s", res);
+    closeUpvalue(vm, frame->slots);
     vm->last_popped_value = res;
     vm->frame_count--;
     if (vm->frame_count == 0) {
@@ -432,8 +499,8 @@ OP_RETURN_IMPL: {
     }
     vm->stack_top = frame->slots;
     push(vm, res);
-
     frame = &vm->frames[vm->frame_count - 1];
+
     DISPATCH();
 }
 
@@ -570,14 +637,14 @@ OP_LESS_IMPL: {
 
 OP_SET_GLOBAL_IMPL: {
     uint16_t const_ix = (uint16_t)READ_ARG();
-    Value name = frame->function->chunk.constants.values[const_ix];
+    Value name = frame->closure->function->chunk.constants.values[const_ix];
     tableInsert(&vm->globals, name, peek(vm, 0));
     DISPATCH();
 }
 
 OP_GET_GLOBAL_IMPL: {
     uint16_t const_ix = (uint16_t)READ_ARG();
-    Value name = frame->function->chunk.constants.values[const_ix];
+    Value name = frame->closure->function->chunk.constants.values[const_ix];
     Value* value = tableGet(&vm->globals, name);
     if (value == NULL) {
         ERROR_LOG("Undefined variable '%.*s'", AS_STRING(name)->length,
@@ -598,19 +665,19 @@ OP_CALL_IMPL: {
         vm->frame_count, arg_count, callee.type);
     DEBUG_VALUE("%s", callee);
 
-    if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_FUNCTION) {
+    if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_CLOSURE) {
         ERROR_LOG("Runtime error: can only call functions");
         printStack(vm);
-        printConsts(&frame->function->chunk);
+        printConsts(&frame->closure->function->chunk);
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
 
-    ObjFunction* function = AS_FUNCTION(callee);
-    if (arg_count != function->arity) {
+    ObjClosure* closure = AS_CLOSURE(callee);
+    if (arg_count != closure->function->arity) {
         ERROR_LOG(
             "Function %s: runtime error: expected %d arguments but got %d",
-            function->name, function->arity, arg_count);
+            closure->function->name, closure->function->arity, arg_count);
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -621,16 +688,16 @@ OP_CALL_IMPL: {
         goto RETURN;
     }
 
-    if (function->loaded_code == NULL) {
-        if (loadThreadedCode(function, dispatch_table) != 0) {
+    if (closure->function->loaded_code == NULL) {
+        if (loadThreadedCode(closure->function, dispatch_table) != 0) {
             result = INTERPRET_RUNTIME_ERROR;
             goto RETURN;
         }
     }
     frame = &vm->frames[vm->frame_count++];
-    frame->function = function;
+    frame->closure = closure;
     frame->slots = vm->stack_top - arg_count - 1;
-    frame->ip = function->loaded_code;
+    frame->ip = closure->function->loaded_code;
 
     // NOTE: LLDB frame code inspect: memory read -f dec -t uint8_t -c 9
     // frame->function->chunk.code
@@ -647,6 +714,37 @@ OP_GET_LOCAL_IMPL: {
 OP_SET_LOCAL_IMPL: {
     uint8_t slot = (uint8_t)READ_ARG();
     frame->slots[slot] = peek(vm, 0);
+    DISPATCH();
+}
+
+OP_CLOSURE_IMPL: {
+    Value* fn_val = READ_CONSTANT();
+    ObjFunction* fn = AS_FUNCTION(*fn_val);
+    ObjClosure* closure = newClosure(vm, fn);
+    push(vm, OBJ_VAL(closure));
+    for (int i = 0; i < closure->upvalue_cnt; i++) {
+        uint8_t is_local = (uint8_t)READ_ARG();
+        uint8_t index = (uint8_t)READ_ARG();
+        if (is_local) {
+            closure->upvalues[i] = captureUpvalue(vm, frame->slots + index);
+        } else {
+            closure->upvalues[i] = frame->closure->upvalues[index];
+        }
+    }
+    DISPATCH();
+}
+
+OP_GET_UPVALUE_IMPL: {
+    uint8_t slot = (uint8_t)READ_ARG();
+    ObjUpvalue* upvalue = frame->closure->upvalues[slot];
+    push(vm, *upvalue->location);
+    DISPATCH();
+}
+
+OP_SET_UPVALUE_IMPL: {
+    uint8_t slot = (uint8_t)READ_ARG();
+    ObjUpvalue* upvalue = frame->closure->upvalues[slot];
+    *upvalue->location = peek(vm, 0);
     DISPATCH();
 }
 

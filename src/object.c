@@ -36,11 +36,36 @@ ObjFunction* newFunction(VM* vm) {
     ObjFunction* function =
         (ObjFunction*)allocateObject(vm, sizeof(ObjFunction), OBJ_FUNCTION);
     function->arity = 0;
+    function->upvalue_cnt = 0;
     function->name = NULL;
     initChunk(&function->chunk);
     function->loaded_code = NULL;
     function->loaded_code_size = 0;
     return function;
+}
+
+ObjClosure* newClosure(VM* vm, ObjFunction* function) {
+    ObjUpvalue** upvalues =
+        reallocate(NULL, 0, sizeof(ObjUpvalue*) * function->upvalue_cnt);
+    for (int i = 0; i < function->upvalue_cnt; i++) {
+        upvalues[i] = NULL;
+    }
+
+    ObjClosure* closure =
+        (ObjClosure*)allocateObject(vm, sizeof(ObjClosure), OBJ_CLOSURE);
+    closure->function = function;
+    closure->upvalues = upvalues;
+    closure->upvalue_cnt = function->upvalue_cnt;
+    return closure;
+}
+
+ObjUpvalue* newUpvalue(VM* vm, Value* slot) {
+    ObjUpvalue* upvalue =
+        (ObjUpvalue*)allocateObject(vm, sizeof(ObjUpvalue), OBJ_UPVALUE);
+    upvalue->location = slot;
+    upvalue->closed = NIL_VAL;
+    upvalue->next = NULL;
+    return upvalue;
 }
 
 // --- String ---

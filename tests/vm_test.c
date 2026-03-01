@@ -379,6 +379,29 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_NUMBER, .as.number = 3.0},
     },
+    {
+        .name = "basic closure",
+        .src = "(fn outer [a b]"
+               "  (fn inner []"
+               "    (+ a b)"
+               "  )"
+               "  inner"
+               ")"
+               "(let closure (outer 10 20))"
+               "(closure)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NUMBER, .as.number = 30.0},
+    },
+    {
+        .name = "lambda closure",
+        .src = "(fn mk_multiplier [x]"
+               "         (fn [y] (* x y))"
+               ")"
+               "(let double (mk_multiplier 2))"
+               "(double 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NUMBER, .as.number = 10.0},
+    },
 };
 
 static char* test_vm_interpret(void) {

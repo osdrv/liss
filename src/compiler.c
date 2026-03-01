@@ -22,8 +22,9 @@ static void initParser(Parser* parser) {
 }
 
 // Function advance moves the parser forward.
-// In case this is the first read, it will read two tokens to fill both current and next.
-// If the current token is an error, it will report it and keep advancing until it finds a non-error token or reaches the end of the input.
+// In case this is the first read, it will read two tokens to fill both current
+// and next. If the current token is an error, it will report it and keep
+// advancing until it finds a non-error token or reaches the end of the input.
 static void advance(Compiler* compiler) {
     Parser* parser = compiler->parser;
 
@@ -33,7 +34,8 @@ static void advance(Compiler* compiler) {
     for (;;) {
         parser->current = parser->next;
         parser->next = scanToken(&parser->scanner);
-        // If the current token is TOKEN_ZERO, read one more token as it wasn't read yet.
+        // If the current token is TOKEN_ZERO, read one more token as it wasn't
+        // read yet.
         if (parser->current.type == TOKEN_ZERO) {
             continue;
         }
@@ -123,6 +125,8 @@ static void initCompiler(Compiler* compiler, Compiler* enclosing) {
     local->depth = 0;
     local->name.start = "";
     local->name.length = 0;
+
+    compiler->upvalue_cnt = 0;
 }
 
 static ObjFunction* endCompiler(Compiler* compiler) {
@@ -235,6 +239,40 @@ static int resolveLocal(Compiler* compiler, Token name) {
     return -1;
 }
 
+static int addUpvalue(Compiler* compiler, uint8_t index, bool is_local) {
+    int cnt = compiler->upvalue_cnt;
+    for (int i = 0; i < cnt; i++) {
+        Upvalue* upvalue = &compiler->upvalues[i];
+        if (upvalue->index == index && upvalue->is_local == is_local) {
+            return i;
+        }
+    }
+    if (cnt == MAX_UPVALUES) {
+        ERROR_LOG("Too many closure variables in function.");
+        return -1;
+    }
+    compiler->upvalues[cnt].is_local = is_local;
+    compiler->upvalues[cnt].index = index;
+    compiler->function->upvalue_cnt = cnt + 1;
+    return compiler->upvalue_cnt++;
+}
+
+static int resolveUpvalue(Compiler* compiler, Token name) {
+    if (compiler->enclosing == NULL) return -1;
+
+    int local = resolveLocal(compiler->enclosing, name);
+    if (local != -1) {
+        return addUpvalue(compiler, (uint8_t)local, true);
+    }
+
+    int upvalue = resolveUpvalue(compiler->enclosing, name);
+    if (upvalue != -1) {
+        return addUpvalue(compiler, (uint8_t)upvalue, false);
+    }
+
+    return -1;
+}
+
 static int identifierConstant(Compiler* compiler, Token name) {
     ObjString* var_name = copyString(compiler->vm, name.start, name.length);
     return addConstant(&compiler->function->chunk, OBJ_VAL(var_name));
@@ -299,67 +337,68 @@ static void parseCond(Compiler* compiler) {
     patchJump(compiler, end_jump);
 }
 
-static ObjFunction* compileFunction(Compiler* compiler) {
-    Compiler fn_compiler;
-    initCompiler(&fn_compiler, compiler);
+static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
+    initCompiler(fn_compiler, compiler);
 
-    push(compiler->vm, OBJ_VAL(fn_compiler.function));
+    push(compiler->vm, OBJ_VAL(fn_compiler->function));
 
-    fn_compiler.scope_depth = compiler->scope_depth + 1;
+    fn_compiler->scope_depth = compiler->scope_depth + 1;
 
-    if (fn_compiler.parser->current.type == TOKEN_IDENTIFIER) {
-        Token fn_name = consume(&fn_compiler, TOKEN_IDENTIFIER,
+    if (fn_compiler->parser->current.type == TOKEN_IDENTIFIER) {
+        Token fn_name = consume(fn_compiler, TOKEN_IDENTIFIER,
                                 "expect function name after 'fn'");
-        fn_compiler.function->name =
-            copyString(fn_compiler.vm, fn_name.start, fn_name.length);
+        fn_compiler->function->name =
+            copyString(fn_compiler->vm, fn_name.start, fn_name.length);
     } else {
-        fn_compiler.function->name = NULL;
+        fn_compiler->function->name = NULL;
     }
 
-    consume(&fn_compiler, TOKEN_LBRAKET, "expect '[' for function parameters");
+    consume(fn_compiler, TOKEN_LBRAKET, "expect '[' for function parameters");
 
-    if (fn_compiler.parser->current.type != TOKEN_RBRAKET) {
+    if (fn_compiler->parser->current.type != TOKEN_RBRAKET) {
         do {
-            fn_compiler.function->arity++;
-            if (fn_compiler.function->arity >= MAX_LOCALS) {
+            fn_compiler->function->arity++;
+            if (fn_compiler->function->arity >= MAX_LOCALS) {
                 compiler->parser->hadError = true;
                 ERROR_LOG(
                     "[line %d] Error: max function parameter limit reached",
-                    fn_compiler.parser->current.line);
+                    fn_compiler->parser->current.line);
                 return NULL;
             }
-            Token param = consume(&fn_compiler, TOKEN_IDENTIFIER,
-                                  "Expect parameter name");
-            addLocal(&fn_compiler, param);
-        } while (fn_compiler.parser->current.type == TOKEN_IDENTIFIER);
+            Token param =
+                consume(fn_compiler, TOKEN_IDENTIFIER, "Expect parameter name");
+            if (fn_compiler->parser->hadError) return NULL;
+            addLocal(fn_compiler, param);
+        } while (fn_compiler->parser->current.type == TOKEN_IDENTIFIER);
     }
 
-    consume(&fn_compiler, TOKEN_RBRAKET, "Expect ']' after parameters");
+    consume(fn_compiler, TOKEN_RBRAKET, "Expect ']' after parameters");
 
-#define WILL_READ_BODY() (fn_compiler.parser->current.type != TOKEN_RPAREN && \
-                         fn_compiler.parser->current.type != TOKEN_ZERO && \
-                         fn_compiler.parser->current.type != TOKEN_EOF)
+#define WILL_READ_BODY()                                  \
+    (fn_compiler->parser->current.type != TOKEN_RPAREN && \
+     fn_compiler->parser->current.type != TOKEN_ZERO &&   \
+     fn_compiler->parser->current.type != TOKEN_EOF)
 
     bool is_empty_body = true;
     while (WILL_READ_BODY()) {
-        parseExpression(&fn_compiler);
-        if (fn_compiler.parser->hadError) return NULL;
+        parseExpression(fn_compiler);
+        if (fn_compiler->parser->hadError) return NULL;
         is_empty_body = false;
         // We compare init_chunk_count to the current chunk count to determine
         // if the expression we just parsed emitted any bytecode. If it didn't,
         // we don't need to emit a POP instruction.
         if (WILL_READ_BODY()) {
-            emitByte(&fn_compiler, OP_POP);
+            emitByte(fn_compiler, OP_POP);
         }
     }
     if (is_empty_body) {
         // If the function body is empty, we emit a null value so it returns nil
-        emitByte(&fn_compiler, OP_NULL);
+        emitByte(fn_compiler, OP_NULL);
     }
 
 #undef WILL_READ_BODY
 
-    ObjFunction* function = endCompiler(&fn_compiler);
+    ObjFunction* function = endCompiler(fn_compiler);
     return function;
 }
 
@@ -407,14 +446,21 @@ static void parseGrouping(Compiler* compiler) {
                 }
             }
 
-            ObjFunction* func = compileFunction(compiler);
+            Compiler fn_compiler;
+            ObjFunction* func = compileFunction(compiler, &fn_compiler);
             if (compiler->parser->hadError) return;
             if (is_named_fn) {
                 func->name =
                     copyString(compiler->vm, fn_name.start, fn_name.length);
             }
 
-            emitConstant(compiler, OBJ_VAL(func));
+            int arg = addConstant(currentChunk(compiler), OBJ_VAL(func));
+            emitByte(compiler, OP_CLOSURE);
+            emitBytes(compiler, (uint8_t)(arg >> 8), (uint8_t)(arg & 0xff));
+            for (int i = 0; i < func->upvalue_cnt; i++) {
+                emitByte(compiler, fn_compiler.upvalues[i].is_local ? 1 : 0);
+                emitByte(compiler, fn_compiler.upvalues[i].index);
+            }
 
             pop(compiler->vm);
 
@@ -550,7 +596,8 @@ static void parseGrouping(Compiler* compiler) {
                     break;  // It's a function call, we will parse it below
                 case TOKEN_LPAREN:
                     if (compiler->parser->next.type == TOKEN_FN_KW) {
-                        break;  // It's a function call with an anonymous function callee
+                        break;  // It's a function call with an anonymous
+                                // function callee
                     }
                     // Otherwise, it's a block
                 default:
@@ -589,6 +636,14 @@ static void namedVariable(Compiler* compiler, Token name) {
         emitBytes(compiler, OP_GET_LOCAL, (uint8_t)arg);
         return;
     }
+
+    // Try upvalues
+    arg = resolveUpvalue(compiler, name);
+    if (arg != -1) {
+        emitBytes(compiler, OP_GET_UPVALUE, (uint8_t)arg);
+        return;
+    }
+
     // Fall back to global lookup
     int const_index = identifierConstant(compiler, name);
 

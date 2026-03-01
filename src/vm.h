@@ -17,7 +17,7 @@ typedef enum {
 } InterpretResult;
 
 typedef struct {
-    ObjFunction* function;
+    ObjClosure* closure;
     void** ip;
     Value* slots;
 } CallFrame;
@@ -34,7 +34,8 @@ typedef struct VM {
     Table strings;
     Table globals;
 
-    Value last_popped_value;  // Store the last popped value
+    Value last_popped_value;    // Store the last popped value
+    ObjUpvalue* open_upvalues;  // Linked list of open upvalues
 
     // (!!!) Flexible Array Member for the stack. Keep at the end.
     Value stack[];

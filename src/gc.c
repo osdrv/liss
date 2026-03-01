@@ -46,6 +46,19 @@ void markObject(VM* vm, Obj* object) {
         case OBJ_STRING:
             // Strings have no references to other objects.
             break;
+        case OBJ_CLOSURE: {
+            ObjClosure* closure = (ObjClosure*)object;
+            markObject(vm, (Obj*)closure->function);
+            for (int i = 0; i < closure->upvalue_cnt; i++) {
+                markObject(vm, (Obj*)closure->upvalues[i]);
+            }
+            break;
+        }
+        case OBJ_UPVALUE: {
+            ObjUpvalue* upvalue = (ObjUpvalue*)object;
+            markValue(vm, upvalue->closed);
+            break;
+        }
     }
 }
 
@@ -98,6 +111,18 @@ void freeObject(Obj* object) {
             ObjString* string = (ObjString*)object;
             reallocate(string->chars, string->length + 1, 0);
             reallocate(string, sizeof(ObjString), 0);
+            break;
+        }
+        case OBJ_CLOSURE: {
+            ObjClosure* closure = (ObjClosure*)object;
+            reallocate(closure->upvalues,
+                       sizeof(ObjUpvalue*) * closure->upvalue_cnt, 0);
+            reallocate(closure, sizeof(ObjClosure), 0);
+            break;
+        }
+        case OBJ_UPVALUE: {
+            ObjUpvalue* upvalue = (ObjUpvalue*)object;
+            reallocate(upvalue, sizeof(ObjUpvalue), 0);
             break;
         }
     }

@@ -15,6 +15,8 @@ typedef struct VM VM;
 typedef enum {
     OBJ_FUNCTION,
     OBJ_STRING,
+    OBJ_CLOSURE,
+    OBJ_UPVALUE,
     // Future object types will be added here
     // OBJ_LIST,
     // etc.
@@ -32,6 +34,7 @@ struct Obj {
 typedef struct {
     Obj obj;
     int arity;
+    int upvalue_cnt;
     Chunk chunk;
     ObjString* name;
     void** loaded_code;
@@ -47,6 +50,23 @@ typedef struct ObjString {
     uint32_t hash;
 } ObjString;
 
+typedef struct ObjUpvalue {
+    Obj obj;
+    Value* location;  // Pointer to the variable this upvalue is capturing
+                      // (either on the stack or closed)
+    Value closed;  // If the upvalue is closed, this holds the value. Otherwise,
+                   // it's unused.
+    struct ObjUpvalue* next;  // For linking upvalues in a list (e.g., for GC)
+} ObjUpvalue;
+
+typedef struct {
+    Obj obj;
+    ObjFunction* function;  // The function this closure wraps
+    ObjUpvalue**
+        upvalues;  // Array of pointers to the upvalues this closure captures
+    int upvalue_cnt;
+} ObjClosure;
+
 // --- Helper Functions and Macros ---
 
 // Safely checks if a Value is an object of a given ObjType.
@@ -60,11 +80,15 @@ static inline bool isObjType(Value value, ObjType type) {
 // Macros for checking the specific object type of a Value.
 #define IS_FUNCTION(value) isObjType(value, OBJ_FUNCTION)
 #define IS_STRING(value) isObjType(value, OBJ_STRING)
+#define IS_CLOSURE(value) isObjType(value, OBJ_CLOSURE)
+#define IS_UPVALUE(value) isObjType(value, OBJ_UPVALUE)
 
 // Macros for casting a Value to a specific object type pointer.
 #define AS_FUNCTION(value) ((ObjFunction*)AS_OBJ(value))
 #define AS_STRING(value) ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((ObjString*)AS_OBJ(value))->chars)
+#define AS_CLOSURE(value) ((ObjClosure*)AS_OBJ(value))
+#define AS_UPVALUE(value) ((ObjUpvalue*)AS_OBJ(value))
 
 // Helper function to compute the hash of a string.
 uint32_t hashString(const char* key, int length);
@@ -72,6 +96,9 @@ uint32_t hashString(const char* key, int length);
 // --- Function Prototypes ---
 
 ObjFunction* newFunction(VM* vm);
+
+ObjClosure* newClosure(VM* vm, ObjFunction* function);
+ObjUpvalue* newUpvalue(VM* vm, Value* slot);
 
 // Allocates an ObjString on the heap and returns a pointer to it.
 ObjString* takeString(VM* vm, char* chars, int length);

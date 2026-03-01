@@ -439,7 +439,7 @@ static char* test_compile(void) {
         {
             .name = "empty function",
             .src = "(fn [])",
-            .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_RETURN},
+            .expected_instructions = (uint8_t[]){OP_CLOSURE, 0, 0, OP_RETURN},
             .expected_instruction_count = 4,
             .expected_constants =
                 (ExpectedConstant[]){
@@ -452,7 +452,7 @@ static char* test_compile(void) {
             .src = "(fn myFunc [])",
             .expected_instructions =
                 (uint8_t[]){
-                    OP_CONSTANT,
+                    OP_CLOSURE,
                     0,
                     0,
                     OP_SET_GLOBAL,
@@ -473,7 +473,7 @@ static char* test_compile(void) {
             .src = "(fn addOne [x] (+ x 1))",
             .expected_instructions =
                 (uint8_t[]){
-                    OP_CONSTANT,
+                    OP_CLOSURE,
                     0,
                     0,
                     OP_SET_GLOBAL,
@@ -494,7 +494,7 @@ static char* test_compile(void) {
             .src = "(fn greet [] \"Hello\") (greet)",
             .expected_instructions =
                 (uint8_t[]){
-                    OP_CONSTANT,
+                    OP_CLOSURE,
                     0,
                     0,
                     OP_SET_GLOBAL,
@@ -521,9 +521,14 @@ static char* test_compile(void) {
             .src = "((fn [x] (+ x 1)) 41)",
             .expected_instructions =
                 (uint8_t[]){
-                    OP_CONSTANT, 0, 0,
-                    OP_CONSTANT, 0, 1,
-                    OP_CALL, 1,
+                    OP_CLOSURE,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_CALL,
+                    1,
                     OP_RETURN,
                 },
             .expected_instruction_count = 9,
@@ -539,12 +544,21 @@ static char* test_compile(void) {
             .src = "(fn addOne [x] (+ x 1)) (addOne 41)",
             .expected_instructions =
                 (uint8_t[]){
-                    OP_CONSTANT, 0, 0,
-                    OP_SET_GLOBAL, 0, 1,
+                    OP_CLOSURE,
+                    0,
+                    0,
+                    OP_SET_GLOBAL,
+                    0,
+                    1,
                     OP_POP,
-                    OP_GET_GLOBAL, 0, 1,
-                    OP_CONSTANT, 0, 2,
-                    OP_CALL, 1,
+                    OP_GET_GLOBAL,
+                    0,
+                    1,
+                    OP_CONSTANT,
+                    0,
+                    2,
+                    OP_CALL,
+                    1,
                     OP_RETURN,
                 },
             .expected_instruction_count = 16,
@@ -560,10 +574,9 @@ static char* test_compile(void) {
             .name = "parse block of expressions",
             .src = "(1 2 3 4 5)",
             .expected_instructions =
-                (uint8_t[]){OP_CONSTANT, 0, 0, OP_POP,
-                    OP_CONSTANT, 0, 1, OP_POP,
-                    OP_CONSTANT, 0, 2, OP_POP,
-                    OP_CONSTANT, 0, 3, OP_POP,
+                (uint8_t[]){
+                    OP_CONSTANT, 0, 0, OP_POP,    OP_CONSTANT, 0, 1, OP_POP,
+                    OP_CONSTANT, 0, 2, OP_POP,    OP_CONSTANT, 0, 3, OP_POP,
                     OP_CONSTANT, 0, 4, OP_RETURN,
                 },
             .expected_instruction_count = 20,

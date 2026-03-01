@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "memory.h"  // We will create this new file for memory management helpers.
+#include "object.h"
 #include "opcode.h"
 #include "value.h"
 
@@ -179,6 +180,30 @@ char* sprintChunk(const Chunk* chunk) {
                 APPEND_TO_BUFFER("OP_SET_LOCAL %d\n", chunk->code[i + 1]);
                 i++;
                 break;
+            case OP_CLOSURE: {
+                uint16_t const_index =
+                    (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
+                APPEND_TO_BUFFER("OP_CLOSURE %d\n", const_index);
+                i += 2;  // Skip the operand bytes
+                ObjFunction* fn =
+                    AS_FUNCTION(chunk->constants.values[const_index]);
+                for (int j = 0; j < fn->upvalue_cnt; j++) {
+                    uint8_t is_local = chunk->code[i + 1];
+                    uint8_t index = chunk->code[i + 2];
+                    APPEND_TO_BUFFER("    Upvalue %d: is_local=%d, index=%d\n",
+                                     j, is_local, index);
+                    i += 2;  // Skip the upvalue operand bytes
+                }
+                break;
+                case OP_GET_UPVALUE:
+                    APPEND_TO_BUFFER("OP_GET_UPVALUE %d\n", chunk->code[i + 1]);
+                    i++;
+                    break;
+                case OP_SET_UPVALUE:
+                    APPEND_TO_BUFFER("OP_SET_UPVALUE %d\n", chunk->code[i + 1]);
+                    i++;
+                    break;
+            }
             default:
                 APPEND_TO_BUFFER("Unknown opcode %d\n", opcode);
                 break;

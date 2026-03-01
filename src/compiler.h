@@ -5,6 +5,7 @@
 #include "vm.h"
 
 #define MAX_LOCALS 256
+#define MAX_UPVALUES 256
 #define MAX_ARITY 255
 
 typedef struct {
@@ -21,6 +22,11 @@ typedef struct {
     int depth;
 } Local;
 
+typedef struct {
+    uint8_t index;
+    bool is_local;
+} Upvalue;
+
 typedef struct Compiler Compiler;
 
 struct Compiler {
@@ -32,6 +38,9 @@ struct Compiler {
     Local locals[MAX_LOCALS];
     int local_count;
     int scope_depth;
+
+    Upvalue upvalues[MAX_UPVALUES];
+    int upvalue_cnt;
 };
 
 ObjFunction* compile(VM* vm, const char* source);
