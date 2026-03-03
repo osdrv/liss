@@ -204,6 +204,11 @@ char* sprintChunk(const Chunk* chunk) {
                     i++;
                     break;
             }
+            case OP_TAIL_CALL:
+                uint8_t tail_arg_count = chunk->code[i + 1];
+                i++;
+                APPEND_TO_BUFFER("OP_TAIL_CALL %d\n", tail_arg_count);
+                break;
             default:
                 APPEND_TO_BUFFER("Unknown opcode %d\n", opcode);
                 break;

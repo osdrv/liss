@@ -69,7 +69,6 @@ InterpretResult interpret(VM* vm, const char* source) {
     frame->closure = closure;
     frame->slots = vm->stack;
     frame->ip = NULL;
-    frame->slots = NULL;
 
     InterpretResult result = run(vm);
     return result;
@@ -374,6 +373,11 @@ static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]) {
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)upvalue_slot;
                 break;
             }
+            case OP_TAIL_CALL: {
+                uint8_t arg_cnt = *bytecode++;
+                loaded_code[loaded_idx++] = (void*)(uintptr_t)arg_cnt;
+                break;
+            }
             default:
                 break;  // No operands
         }
@@ -449,7 +453,7 @@ static InterpretResult run(VM* vm) {
         &&OP_GREATER_IMPL,     &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
         &&OP_GET_GLOBAL_IMPL,  &&OP_CALL_IMPL,          &&OP_GET_LOCAL_IMPL,
         &&OP_SET_LOCAL_IMPL,   &&OP_CLOSURE_IMPL,       &&OP_GET_UPVALUE_IMPL,
-        &&OP_SET_UPVALUE_IMPL,
+        &&OP_SET_UPVALUE_IMPL, &&OP_TAIL_CALL_IMPL,
     };
 
     InterpretResult result = INTERPRET_OK;
@@ -745,6 +749,44 @@ OP_SET_UPVALUE_IMPL: {
     uint8_t slot = (uint8_t)READ_ARG();
     ObjUpvalue* upvalue = frame->closure->upvalues[slot];
     *upvalue->location = peek(vm, 0);
+    DISPATCH();
+}
+
+OP_TAIL_CALL_IMPL: {
+    int arg_cnt = (int)READ_ARG();
+    Value callee = peek(vm, arg_cnt);
+
+    if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_CLOSURE) {
+        ERROR_LOG("Runtime error: can only call functions");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+
+    ObjClosure* closure = AS_CLOSURE(callee);
+    if (arg_cnt != closure->function->arity) {
+        ERROR_LOG(
+            "Function %s: runtime error: expected %d arguments but got %d",
+            closure->function->name, closure->function->arity, arg_cnt);
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+
+    closeUpvalue(vm, frame->slots);
+
+    Value* src = vm->stack_top - arg_cnt - 1;
+    Value* dest = frame->slots;
+
+    memmove(dest, src, sizeof(Value) * (arg_cnt + 1));
+    vm->stack_top = dest + arg_cnt + 1;
+
+    frame->closure = closure;
+    if (closure->function->loaded_code == NULL) {
+        if (loadThreadedCode(closure->function, dispatch_table) != 0) {
+            result = INTERPRET_RUNTIME_ERROR;
+            goto RETURN;
+        }
+    }
+    frame->ip = closure->function->loaded_code;
     DISPATCH();
 }
 

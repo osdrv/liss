@@ -11,7 +11,7 @@
 #include "token.h"
 #include "vm.h"
 
-static void parseExpression(Compiler* compiler);
+static void parseExpression(Compiler* compiler, bool is_tail);
 
 static void initParser(Parser* parser) {
     parser->hadError = false;
@@ -110,6 +110,13 @@ static void patchJump(Compiler* compiler, int offset) {
     currentChunk(compiler)->code[offset + 1] = jump & 0xff;
 }
 
+static void maybePatchTailCall(Compiler* compiler) {
+    Chunk* chunk = currentChunk(compiler);
+    if (chunk->count >= 2 && chunk->code[chunk->count - 2] == OP_CALL) {
+        chunk->code[chunk->count - 2] = OP_TAIL_CALL;
+    }
+}
+
 static void initCompiler(Compiler* compiler, Compiler* enclosing) {
     compiler->enclosing = enclosing;
     compiler->local_count = 0;
@@ -171,13 +178,13 @@ static void parseAnd(Compiler* compiler) {
     int jump_list[100];
     int jump_count = 0;
 
-    parseExpression(compiler);
+    parseExpression(compiler, false);
     if (compiler->parser->hadError) return;
 
     while (compiler->parser->current.type != TOKEN_RPAREN) {
         int jump = emitJump(compiler, OP_JUMP_IF_FALSE);
         jump_list[jump_count++] = jump;
-        parseExpression(compiler);
+        parseExpression(compiler, false);
         if (compiler->parser->hadError) return;
     }
 
@@ -197,7 +204,7 @@ static void parseOr(Compiler* compiler) {
     int jump_list[100];
     int jump_count = 0;
 
-    parseExpression(compiler);
+    parseExpression(compiler, false);
     if (compiler->parser->hadError) return;
 
     while (compiler->parser->current.type != TOKEN_RPAREN) {
@@ -207,7 +214,7 @@ static void parseOr(Compiler* compiler) {
         jump_list[jump_count++] = end_jump;
         patchJump(compiler, else_jump);
         emitByte(compiler, OP_POP);
-        parseExpression(compiler);
+        parseExpression(compiler, false);
         if (compiler->parser->hadError) return;
     }
 
@@ -283,7 +290,7 @@ static void parseLet(Compiler* compiler) {
         consume(compiler, TOKEN_IDENTIFIER, "expect an identifier after `let`");
     if (compiler->parser->hadError) return;
 
-    parseExpression(compiler);
+    parseExpression(compiler, false);
     if (compiler->parser->hadError) return;
 
     if (compiler->scope_depth > 0) {
@@ -312,15 +319,15 @@ static void parseLet(Compiler* compiler) {
     }
 }
 
-static void parseCond(Compiler* compiler) {
+static void parseCond(Compiler* compiler, bool is_tail) {
     // Parse condition
-    parseExpression(compiler);
+    parseExpression(compiler, false);
     if (compiler->parser->hadError) return;
     int else_jump = emitJump(compiler, OP_JUMP_IF_FALSE);
     emitByte(compiler, OP_POP);
 
     // Parse then branch
-    parseExpression(compiler);
+    parseExpression(compiler, is_tail);
     if (compiler->parser->hadError) return;
     int end_jump = emitJump(compiler, OP_JUMP);
     patchJump(compiler, else_jump);
@@ -328,7 +335,7 @@ static void parseCond(Compiler* compiler) {
 
     // Parse else branch
     if (compiler->parser->current.type != TOKEN_RPAREN) {
-        parseExpression(compiler);
+        parseExpression(compiler, is_tail);
         if (compiler->parser->hadError) return;
     } else {
         // If there's no else branch, we emit a null value
@@ -381,7 +388,7 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
 
     bool is_empty_body = true;
     while (WILL_READ_BODY()) {
-        parseExpression(fn_compiler);
+        parseExpression(fn_compiler, false);
         if (fn_compiler->parser->hadError) return NULL;
         is_empty_body = false;
         // We compare init_chunk_count to the current chunk count to determine
@@ -389,6 +396,10 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
         // we don't need to emit a POP instruction.
         if (WILL_READ_BODY()) {
             emitByte(fn_compiler, OP_POP);
+        } else {
+            // If this is the last expression in the function body, we check if it's
+            // a tail call and emit a return if it isn't.
+            maybePatchTailCall(fn_compiler);
         }
     }
     if (is_empty_body) {
@@ -402,19 +413,21 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
     return function;
 }
 
-static void parseBlock(Compiler* compiler) {
+static void parseBlock(Compiler* compiler, bool is_tail) {
     beginScope(compiler);
     while (compiler->parser->current.type != TOKEN_RPAREN) {
-        parseExpression(compiler);
+        parseExpression(compiler, false);
         if (compiler->parser->hadError) return;
         if (compiler->parser->current.type != TOKEN_RPAREN) {
             emitByte(compiler, OP_POP);
+        } else if (is_tail) {
+            maybePatchTailCall(compiler);
         }
     }
     endScope(compiler);
 }
 
-static void parseGrouping(Compiler* compiler) {
+static void parseGrouping(Compiler* compiler, bool is_tail) {
     switch (compiler->parser->current.type) {
         case TOKEN_AND_KW:
             advance(compiler);
@@ -426,7 +439,7 @@ static void parseGrouping(Compiler* compiler) {
             break;
         case TOKEN_COND_KW:
             advance(compiler);
-            parseCond(compiler);
+            parseCond(compiler, is_tail);
             break;
         case TOKEN_LET_KW:
             advance(compiler);
@@ -488,7 +501,7 @@ static void parseGrouping(Compiler* compiler) {
         case TOKEN_NOT_OP:
         case TOKEN_NOT_KW:
             advance(compiler);
-            parseExpression(compiler);
+            parseExpression(compiler, is_tail);
             if (compiler->parser->hadError) return;
             emitByte(compiler, OP_NOT);
             break;
@@ -514,11 +527,11 @@ static void parseGrouping(Compiler* compiler) {
         case TOKEN_LESS_EQUAL_KW: {
             TokenType op = compiler->parser->current.type;
             advance(compiler);
-            parseExpression(compiler);
+            parseExpression(compiler, false);
             if (compiler->parser->hadError) return;
 
             while (compiler->parser->current.type != TOKEN_RPAREN) {
-                parseExpression(compiler);
+                parseExpression(compiler, false);
                 switch (op) {
                     // Tokens with 2+ arity:
                     case TOKEN_PLUS_OP:
@@ -601,11 +614,11 @@ static void parseGrouping(Compiler* compiler) {
                     }
                     // Otherwise, it's a block
                 default:
-                    parseBlock(compiler);
+                    parseBlock(compiler, false);
                     goto END_PARSE_GROUPING;
             }
 
-            parseExpression(compiler);
+            parseExpression(compiler, false);
             int arg_count = 0;
             while (compiler->parser->current.type != TOKEN_RPAREN) {
                 if (arg_count > MAX_ARITY) {
@@ -616,11 +629,12 @@ static void parseGrouping(Compiler* compiler) {
                         compiler->parser->current.line);
                     return;
                 }
-                parseExpression(compiler);
+                parseExpression(compiler, false);
                 if (compiler->parser->hadError) return;
                 arg_count++;
             }
-            emitBytes(compiler, OP_CALL, (uint8_t)arg_count);
+            emitBytes(compiler, is_tail ? OP_TAIL_CALL : OP_CALL,
+                      (uint8_t)arg_count);
             break;
         }
     }
@@ -659,7 +673,7 @@ static void namedVariable(Compiler* compiler, Token name) {
               (uint8_t)(const_index & 0xff));
 }
 
-static void parseExpression(Compiler* compiler) {
+static void parseExpression(Compiler* compiler, bool is_tail) {
     switch (compiler->parser->current.type) {
         case TOKEN_NUMBER:
             advance(compiler);
@@ -683,7 +697,7 @@ static void parseExpression(Compiler* compiler) {
             break;
         case TOKEN_LPAREN:
             advance(compiler);
-            parseGrouping(compiler);
+            parseGrouping(compiler, is_tail);
             break;
         case TOKEN_IDENTIFIER:
             namedVariable(compiler, compiler->parser->current);
@@ -692,7 +706,7 @@ static void parseExpression(Compiler* compiler) {
         case TOKEN_MINUS_OP:
             // Unary minus
             advance(compiler);
-            parseExpression(compiler);
+            parseExpression(compiler, false);
             emitByte(compiler, OP_NEGATE);
             break;
         default:
@@ -719,7 +733,7 @@ ObjFunction* compile(VM* vm, const char* source) {
 #define WILL_READ_BODY() (compiler.parser->current.type != TOKEN_EOF)
 
     do {
-        parseExpression(&compiler);
+        parseExpression(&compiler, true);
         if (compiler.parser->hadError) break;
         if (WILL_READ_BODY()) {
             emitByte(&compiler, OP_POP);

@@ -49,6 +49,12 @@ const char* opcodeToString(OpCode opcode) {
             return "OP_SET_LOCAL";
         case OP_CLOSURE:
             return "OP_CLOSURE";
+        case OP_GET_UPVALUE:
+            return "OP_GET_UPVALUE";
+        case OP_SET_UPVALUE:
+            return "OP_SET_UPVALUE";
+        case OP_TAIL_CALL:
+            return "OP_TAIL_CALL";
         default:
             return "UNKNOWN_OPCODE";
     }

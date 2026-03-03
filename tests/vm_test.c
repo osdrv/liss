@@ -402,6 +402,15 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_NUMBER, .as.number = 10.0},
     },
+    {
+        .name = "tail call optimization",
+        .src = "(let count_down (fn [n]"
+               "  (cond (= n 0) \"done\""
+               "    (count_down (- n 1)))))"
+               "(count_down 100000)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_STRING, .as.string = "done"},
+    },
 };
 
 static char* test_vm_interpret(void) {
