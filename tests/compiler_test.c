@@ -12,7 +12,8 @@
 #include "vm.h"
 
 typedef enum {
-    EXPECT_NUMBER,
+    EXPECT_INT,
+    EXPECT_REAL,
     EXPECT_OBJ_STRING,
     EXPECT_OBJ_FUNCTION,
 } ExpectedConstantType;
@@ -20,7 +21,8 @@ typedef enum {
 typedef struct {
     ExpectedConstantType type;
     union {
-        double number;
+        int64_t integer;
+        double real;
         const char* obj_string;
         const char* obj_function;
     } as;
@@ -62,10 +64,17 @@ static char* assert_values_equal(Value* a, Value* b) {
     return NULL;
 }
 
-static char* assert_number(Value value, double expected) {
-    mu_assert("Value is not a number.", IS_NUMBER(value));
-    mu_assert("Number value does not match expected.",
-              AS_NUMBER(value) == expected);
+static char* assert_int(Value value, int64_t expected) {
+    mu_assert("Value is not an integer.", IS_INT(value));
+    mu_assert("Integer value does not match expected.",
+              AS_INT(value) == expected);
+    return NULL;
+}
+
+static char* assert_real(Value value, double expected) {
+    mu_assert("Value is not a real number.", IS_REAL(value));
+    mu_assert("Real value does not match expected.",
+              AS_REAL(value) == expected);
     return NULL;
 }
 
@@ -102,9 +111,13 @@ static char* assert_constants(Chunk* chunk, ExpectedConstant expected[],
         Value actual = chunk->constants.values[i];
         ExpectedConstant exp = expected[i];
         switch (exp.type) {
-            case EXPECT_NUMBER:
+            case EXPECT_INT:
                 mu_assert("Constant verification failed for number.",
-                          assert_number(actual, exp.as.number) == NULL);
+                          assert_int(actual, exp.as.integer) == NULL);
+                break;
+            case EXPECT_REAL:
+                mu_assert("Constant verification failed for real.",
+                          assert_real(actual, exp.as.real) == NULL);
                 break;
             case EXPECT_OBJ_STRING:
                 mu_assert("Constant verification failed for string.",
@@ -132,7 +145,7 @@ static char* test_compile(void) {
             .expected_instruction_count = 4,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 123.0},
+                    {EXPECT_INT, .as.integer = 123},
                 },
             .expected_constant_size = 1,
         },
@@ -155,8 +168,8 @@ static char* test_compile(void) {
             .expected_instruction_count = 8,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 1.0},
-                    {EXPECT_NUMBER, .as.number = 2.0},
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
                 },
             .expected_constant_size = 2,
         },
@@ -169,9 +182,9 @@ static char* test_compile(void) {
             .expected_instruction_count = 12,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 10.0},
-                    {EXPECT_NUMBER, .as.number = 5.0},
-                    {EXPECT_NUMBER, .as.number = 3.0},
+                    {EXPECT_INT, .as.integer = 10},
+                    {EXPECT_INT, .as.integer = 5},
+                    {EXPECT_INT, .as.integer = 3},
                 },
             .expected_constant_size = 3,
         },
@@ -279,7 +292,7 @@ static char* test_compile(void) {
             .expected_instruction_count = 14,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 123.0},
+                    {EXPECT_INT, .as.integer = 123},
                 },
             .expected_constant_size = 1,
         },
@@ -294,7 +307,7 @@ static char* test_compile(void) {
             .expected_instruction_count = 14,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 123.0},
+                    {EXPECT_INT, .as.integer = 123},
                 },
             .expected_constant_size = 1,
         },
@@ -308,8 +321,8 @@ static char* test_compile(void) {
             .expected_instruction_count = 16,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 123.0},
-                    {EXPECT_NUMBER, .as.number = 456.0},
+                    {EXPECT_INT, .as.integer = 123},
+                    {EXPECT_INT, .as.integer = 456},
                 },
             .expected_constant_size = 2,
         },
@@ -321,8 +334,8 @@ static char* test_compile(void) {
             .expected_instruction_count = 8,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 1.0},
-                    {EXPECT_NUMBER, .as.number = 2.0},
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
                 },
             .expected_constant_size = 2,
         },
@@ -335,8 +348,8 @@ static char* test_compile(void) {
             .expected_instruction_count = 9,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 1.0},
-                    {EXPECT_NUMBER, .as.number = 2.0},
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
                 },
             .expected_constant_size = 2,
         },
@@ -348,8 +361,8 @@ static char* test_compile(void) {
             .expected_instruction_count = 8,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 2.0},
-                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_INT, .as.integer = 2},
+                    {EXPECT_INT, .as.integer = 1},
                 },
             .expected_constant_size = 2,
         },
@@ -361,8 +374,8 @@ static char* test_compile(void) {
             .expected_instruction_count = 8,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 1.0},
-                    {EXPECT_NUMBER, .as.number = 2.0},
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
                 },
             .expected_constant_size = 2,
         },
@@ -375,8 +388,8 @@ static char* test_compile(void) {
             .expected_instruction_count = 9,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 1.0},
-                    {EXPECT_NUMBER, .as.number = 2.0},
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
                 },
             .expected_constant_size = 2,
         },
@@ -389,8 +402,8 @@ static char* test_compile(void) {
             .expected_instruction_count = 9,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 2.0},
-                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_INT, .as.integer = 2},
+                    {EXPECT_INT, .as.integer = 1},
                 },
             .expected_constant_size = 2,
         },
@@ -402,7 +415,7 @@ static char* test_compile(void) {
             .expected_instruction_count = 7,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 42.0},
+                    {EXPECT_INT, .as.integer = 42},
                     {EXPECT_OBJ_STRING, .as.obj_string = "x"},
                 },
             .expected_constant_size = 2,
@@ -417,7 +430,7 @@ static char* test_compile(void) {
             .expected_constants =
                 (ExpectedConstant[]){
                     {EXPECT_OBJ_STRING, .as.obj_string = "a"},
-                    {EXPECT_NUMBER, .as.number = 1.0},
+                    {EXPECT_INT, .as.integer = 1},
                     {EXPECT_OBJ_STRING, .as.obj_string = "b"},
                 },
             .expected_constant_size = 3,
@@ -431,8 +444,8 @@ static char* test_compile(void) {
             .expected_instruction_count = 10,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 1.0},
-                    {EXPECT_NUMBER, .as.number = 2.0},
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
                 },
             .expected_constant_size = 2,
         },
@@ -535,7 +548,7 @@ static char* test_compile(void) {
             .expected_constants =
                 (ExpectedConstant[]){
                     {EXPECT_OBJ_FUNCTION, .as.obj_function = NULL},
-                    {EXPECT_NUMBER, .as.number = 41.0},
+                    {EXPECT_INT, .as.integer = 41},
                 },
             .expected_constant_size = 2,
         },
@@ -566,7 +579,7 @@ static char* test_compile(void) {
                 (ExpectedConstant[]){
                     {EXPECT_OBJ_FUNCTION, .as.obj_function = "addOne"},
                     {EXPECT_OBJ_STRING, .as.obj_string = "addOne"},
-                    {EXPECT_NUMBER, .as.number = 41.0},
+                    {EXPECT_INT, .as.integer = 41},
                 },
             .expected_constant_size = 3,
         },
@@ -582,11 +595,11 @@ static char* test_compile(void) {
             .expected_instruction_count = 20,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_NUMBER, .as.number = 1.0},
-                    {EXPECT_NUMBER, .as.number = 2.0},
-                    {EXPECT_NUMBER, .as.number = 3.0},
-                    {EXPECT_NUMBER, .as.number = 4.0},
-                    {EXPECT_NUMBER, .as.number = 5.0},
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                    {EXPECT_INT, .as.integer = 3},
+                    {EXPECT_INT, .as.integer = 4},
+                    {EXPECT_INT, .as.integer = 5},
                 },
             .expected_constant_size = 5,
         },

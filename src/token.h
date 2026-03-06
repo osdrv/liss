@@ -60,7 +60,8 @@ typedef enum {
 
     TOKEN_FN_KW,
     TOKEN_IDENTIFIER,
-    TOKEN_NUMBER,
+    TOKEN_INT,
+    TOKEN_REAL,
     TOKEN_STRING,
     TOKEN_TRUE_KW,
     TOKEN_FALSE_KW,

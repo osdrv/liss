@@ -100,13 +100,6 @@ Value peek(VM* vm, int distance) { return vm->stack_top[-1 - distance]; }
 
 typedef bool (*BinaryOpFn)(VM* vm, Value a, Value b);
 
-static bool addNumbers(VM* vm, Value a, Value b) {
-    pop(vm);
-    pop(vm);
-    push(vm, NUMBER_VAL(AS_NUMBER(a) + AS_NUMBER(b)));
-    return true;
-}
-
 static bool concatStrings(VM* vm, Value a, Value b) {
     ObjString* left = AS_STRING(a);
     ObjString* right = AS_STRING(b);
@@ -128,13 +121,6 @@ static bool concatStrings(VM* vm, Value a, Value b) {
     pop(vm);
 
     push(vm, OBJ_VAL(result));
-    return true;
-}
-
-static bool multiplyNumbers(VM* vm, Value a, Value b) {
-    pop(vm);
-    pop(vm);
-    push(vm, NUMBER_VAL(AS_NUMBER(a) * AS_NUMBER(b)));
     return true;
 }
 
@@ -176,30 +162,24 @@ static void closeUpvalue(VM* vm, Value* last) {
 }
 
 static bool duplicateString(VM* vm, Value a, Value b) {
-    if (!IS_STRING(a) || !IS_NUMBER(b)) {
+    if (!IS_STRING(a) || !IS_INT(b)) {
         ERROR_LOG("Type error: Expected string and number for duplication");
         return false;
     }
 
     ObjString* str = AS_STRING(a);
-    double count_double = AS_NUMBER(b);
+    int64_t count = AS_INT(b);
 
-    if (count_double < 0 || trunc(count_double) != count_double) {
+    if (count < 0) {
         ERROR_LOG(
             "Value error: Duplication count must be a non-negative integer");
         return false;
-    }
-
-    int count = (int)count_double;
-
-    if (count == 0) {
+    } else if (count == 0) {
         pop(vm);
         pop(vm);
         push(vm, OBJ_VAL(copyString(vm, "", 0)));
         return true;
-    }
-
-    if (count == 1) {
+    } else if (count == 1) {
         pop(vm);
         return true;  // No duplication needed
     }
@@ -421,23 +401,48 @@ LOADER_CLEANUP:
 }
 
 static InterpretResult run(VM* vm) {
-#define BINARY_OP(op)                                       \
-    do {                                                    \
-        Value b = pop(vm);                                  \
-        Value a = pop(vm);                                  \
-        push(vm, NUMBER_VAL(AS_NUMBER(a) op AS_NUMBER(b))); \
+#define BINARY_OP(op)                                                         \
+    do {                                                                      \
+        Value b = pop(vm);                                                    \
+        Value a = pop(vm);                                                    \
+        if (IS_INT(a) && IS_INT(b)) {                                         \
+            push(vm, INT_VAL(AS_INT(a) op AS_INT(b)));                        \
+        } else if (IS_REAL(a) && IS_REAL(b)) {                                \
+            push(vm, REAL_VAL(AS_REAL(a) op AS_REAL(b)));                     \
+        } else if (IS_INT(a) && IS_REAL(b)) {                                 \
+            push(vm, REAL_VAL((double)AS_INT(a) op AS_REAL(b)));              \
+        } else if (IS_REAL(a) && IS_INT(b)) {                                 \
+            push(vm, REAL_VAL(AS_REAL(a) op(double) AS_INT(b)));              \
+        } else {                                                              \
+            ERROR_LOG(                                                        \
+                "Type error: operands must be numbers for binary operation"); \
+            result = INTERPRET_RUNTIME_ERROR;                                 \
+            goto RETURN;                                                      \
+        }                                                                     \
     } while (false)
 
-#define COMPARISON_OP(op)                                 \
-    do {                                                  \
-        Value b = pop(vm);                                \
-        Value a = pop(vm);                                \
-        if (a.type != b.type) {                           \
-            ERROR_LOG("Comparison type mismatch error");  \
-            result = INTERPRET_RUNTIME_ERROR;             \
-            goto RETURN;                                  \
-        }                                                 \
-        push(vm, BOOL_VAL(AS_NUMBER(a) op AS_NUMBER(b))); \
+#define COMPARISON_OP(op)                                        \
+    do {                                                         \
+        Value b = pop(vm);                                       \
+        Value a = pop(vm);                                       \
+        if (a.type != b.type) {                                  \
+            ERROR_LOG("Comparison type mismatch error");         \
+            result = INTERPRET_RUNTIME_ERROR;                    \
+            goto RETURN;                                         \
+        }                                                        \
+        if (IS_INT(a) && IS_INT(b)) {                            \
+            push(vm, BOOL_VAL(AS_INT(a) op AS_INT(b)));          \
+        } else if (IS_REAL(a) && IS_REAL(b)) {                   \
+            push(vm, BOOL_VAL(AS_REAL(a) op AS_REAL(b)));        \
+        } else if (IS_INT(a) && IS_REAL(b)) {                    \
+            push(vm, BOOL_VAL((double)AS_INT(a) op AS_REAL(b))); \
+        } else if (IS_REAL(a) && IS_INT(b)) {                    \
+            push(vm, BOOL_VAL(AS_REAL(a) op(double) AS_INT(b))); \
+        } else {                                                 \
+            ERROR_LOG("Comparison type mismatch error");         \
+            result = INTERPRET_RUNTIME_ERROR;                    \
+            goto RETURN;                                         \
+        }                                                        \
     } while (false)
 
 #define READ_BYTE() (*ip++)
@@ -536,11 +541,8 @@ OP_JUMP_IF_FALSE_IMPL: {
 OP_ADD_IMPL: {
     Value b = peek(vm, 0);
     Value a = peek(vm, 1);
-    if (IS_NUMBER(a) && IS_NUMBER(b)) {
-        if (!addNumbers(vm, a, b)) {
-            result = INTERPRET_RUNTIME_ERROR;
-            goto RETURN;
-        }
+    if (IS_NUMERIC(a) && IS_NUMERIC(b)) {
+        BINARY_OP(+);
     } else if (IS_STRING(a) && IS_STRING(b)) {
         if (!concatStrings(vm, a, b)) {
             result = INTERPRET_RUNTIME_ERROR;
@@ -565,12 +567,9 @@ OP_MULTIPLY_IMPL: {
     Value b = peek(vm, 0);
     Value a = peek(vm, 1);
 
-    if (IS_NUMBER(a) && IS_NUMBER(b)) {
-        if (!multiplyNumbers(vm, a, b)) {
-            result = INTERPRET_RUNTIME_ERROR;
-            goto RETURN;
-        }
-    } else if (IS_STRING(a) && IS_NUMBER(b)) {
+    if (IS_NUMERIC(a) && IS_NUMERIC(b)) {
+        BINARY_OP(*);
+    } else if (IS_STRING(a) && IS_INT(b)) {
         if (!duplicateString(vm, a, b)) {
             result = INTERPRET_RUNTIME_ERROR;
             goto RETURN;
@@ -592,12 +591,16 @@ OP_DIVIDE_IMPL: {
 
 OP_NEGATE_IMPL: {
     Value value = pop(vm);
-    if (!IS_NUMBER(value)) {
-        ERROR_LOG("Runtime error: operand must be a number for negation");
+    if (!IS_NUMERIC(value)) {
+        ERROR_LOG("Runtime error: negation operand must be a number");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
-    push(vm, NUMBER_VAL(-AS_NUMBER(value)));
+    if (IS_INT(value)) {
+        push(vm, INT_VAL(-AS_INT(value)));
+    } else {
+        push(vm, REAL_VAL(-AS_REAL(value)));
+    }
     DISPATCH();
 }
 

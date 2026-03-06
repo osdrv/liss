@@ -6,8 +6,10 @@ const char* printTokenType(TokenType type) {
             return "TOKEN_FN_KW";
         case TOKEN_IDENTIFIER:
             return "TOKEN_IDENTIFIER";
-        case TOKEN_NUMBER:
-            return "TOKEN_NUMBER";
+        case TOKEN_INT:
+            return "TOKEN_INT";
+        case TOKEN_REAL:
+            return "TOKEN_REAL";
         case TOKEN_STRING:
             return "TOKEN_STRING";
         case TOKEN_TRUE_KW:

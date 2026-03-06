@@ -22,8 +22,8 @@ static char* test_table_insert_and_get(void) {
     Table table;
     initTable(&table);
 
-    Value key = NUMBER_VAL(42.0);
-    Value value = NUMBER_VAL(3.14);
+    Value key = REAL_VAL(42.0);
+    Value value = REAL_VAL(3.14);
 
     tableInsert(&table, key, value);
 
@@ -58,7 +58,7 @@ static char* test_table_insert_string_obj(void) {
     Table table;
     initTable(&table);
 
-    Value key = NUMBER_VAL(1.0);
+    Value key = REAL_VAL(1.0);
     ObjString* obj_str = newObjString("foo", 4);
     Value value = OBJ_VAL(obj_str);
 
@@ -79,12 +79,12 @@ static char* test_table_insert_and_get_nonexistent_key(void) {
     Table table;
     initTable(&table);
 
-    Value key = NUMBER_VAL(100.0);
-    Value value = NUMBER_VAL(1.23);
+    Value key = REAL_VAL(100.0);
+    Value value = REAL_VAL(1.23);
 
     tableInsert(&table, key, value);
 
-    Value nonexistent_key = NUMBER_VAL(200.0);
+    Value nonexistent_key = REAL_VAL(200.0);
     Value* retrieved = tableGet(&table, nonexistent_key);
     mu_assert("Retrieved value for nonexistent key should be NULL",
               retrieved == NULL);
@@ -97,8 +97,8 @@ static char* test_table_remove_key(void) {
     Table table;
     initTable(&table);
 
-    Value key = NUMBER_VAL(50.0);
-    Value value = NUMBER_VAL(5.55);
+    Value key = REAL_VAL(50.0);
+    Value value = REAL_VAL(5.55);
 
     tableInsert(&table, key, value);
 

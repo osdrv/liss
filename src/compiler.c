@@ -164,8 +164,40 @@ static void endScope(Compiler* compiler) {
 }
 
 static void parseNumber(Compiler* compiler) {
-    double value = strtod(compiler->parser->previous.start, NULL);
-    emitConstant(compiler, NUMBER_VAL(value));
+    Token prev = compiler->parser->previous;
+    char* buf = (char*)malloc(prev.length + 1);
+    if (buf == NULL) {
+        compiler->parser->hadError = true;
+        ERROR_LOG(
+            "[line %d] Error: Memory allocation failed for number literal",
+            compiler->parser->previous.line);
+        return;
+    }
+    memcpy(buf, prev.start, prev.length);
+    buf[prev.length] = '\0';
+
+    if (prev.type == TOKEN_INT) {
+        int64_t value = strtoll(prev.start, NULL,
+                                0);  // Support hex, octal, and binary literals
+        if (errno == ERANGE) {
+            compiler->parser->hadError = true;
+            ERROR_LOG("[line %d] Error: Integer literal out of range",
+                      compiler->parser->previous.line);
+            goto PARSE_NUMBER_CLEANUP;
+        }
+        emitConstant(compiler, INT_VAL((double)value));
+    } else {
+        double value = strtod(compiler->parser->previous.start, NULL);
+        if (errno == ERANGE) {
+            compiler->parser->hadError = true;
+            ERROR_LOG("[line %d] Error: Real number literal out of range",
+                      compiler->parser->previous.line);
+            goto PARSE_NUMBER_CLEANUP;
+        }
+        emitConstant(compiler, REAL_VAL(value));
+    }
+PARSE_NUMBER_CLEANUP:
+    free(buf);
 }
 
 static void parseString(Compiler* compiler) {
@@ -397,8 +429,8 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
         if (WILL_READ_BODY()) {
             emitByte(fn_compiler, OP_POP);
         } else {
-            // If this is the last expression in the function body, we check if it's
-            // a tail call and emit a return if it isn't.
+            // If this is the last expression in the function body, we check if
+            // it's a tail call and emit a return if it isn't.
             maybePatchTailCall(fn_compiler);
         }
     }
@@ -675,7 +707,8 @@ static void namedVariable(Compiler* compiler, Token name) {
 
 static void parseExpression(Compiler* compiler, bool is_tail) {
     switch (compiler->parser->current.type) {
-        case TOKEN_NUMBER:
+        case TOKEN_INT:
+        case TOKEN_REAL:
             advance(compiler);
             parseNumber(compiler);
             break;

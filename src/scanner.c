@@ -117,21 +117,24 @@ static Token identifier(Scanner* scanner) {
 }
 
 static Token number(Scanner* scanner) {
+    bool is_real = false;
     while (isDigit(scanner)) advance(scanner);
 
     // Hex numbers start with 0x or 0X and contain hex digits only (no exponent)
     if (peek(scanner) == 'x' || peek(scanner) == 'X') {
         advance(scanner);
         while (isHexDigit(scanner)) advance(scanner);
-        return mkToken(scanner, TOKEN_NUMBER);
+        return mkToken(scanner, TOKEN_INT);
     }
 
     if (peek(scanner) == '.') {
+        is_real = true;
         advance(scanner);
         while (isDigit(scanner)) advance(scanner);
     }
 
     if (peek(scanner) == 'e' || peek(scanner) == 'E') {
+        is_real = true;
         advance(scanner);
         if (peek(scanner) == '+' || peek(scanner) == '-') {
             advance(scanner);
@@ -139,7 +142,7 @@ static Token number(Scanner* scanner) {
         while (isDigit(scanner)) advance(scanner);
     }
 
-    return mkToken(scanner, TOKEN_NUMBER);
+    return mkToken(scanner, is_real ? TOKEN_REAL : TOKEN_INT);
 }
 
 static Token string(Scanner* scanner) {

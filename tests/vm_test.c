@@ -10,7 +10,8 @@
 typedef enum {
     EXPECT_BOOL,
     EXPECT_NIL,
-    EXPECT_NUMBER,
+    EXPECT_INT,
+    EXPECT_REAL,
     EXPECT_STRING,
 } ExpectedValueType;
 
@@ -18,7 +19,8 @@ typedef struct {
     ExpectedValueType type;
     union {
         bool boolean;
-        double number;
+        int64_t integer;
+        double real;
         const char* string;
     } as;
 } ExpectedValue;
@@ -36,20 +38,27 @@ static char* test_vm_stack(void) {
     mu_assert("Failed to create VM", vm != NULL);
 
     // Test push and pop
-    push(vm, NUMBER_VAL(42.0));
+    push(vm, INT_VAL(42));
     Value v = pop(vm);
 
-    mu_assert("Popped value should be a number", IS_NUMBER(v));
-    mu_assert("Popped value should be 42.0", AS_NUMBER(v) == 42.0);
+    mu_assert("Popped value should be an integer", IS_INT(v));
+    mu_assert("Popped value should be 42", AS_INT(v) == 42);
 
     destroyVM(vm);
     return NULL;
 }
 
-static char* assert_number(Value value, double expected) {
-    mu_assert("Value is not a number.", IS_NUMBER(value));
-    mu_assert("Number value does not match expected.",
-              AS_NUMBER(value) == expected);
+static char* assert_int(Value value, int64_t expected) {
+    mu_assert("Value is not an integer.", IS_INT(value));
+    mu_assert("Integer value does not match expected.",
+              AS_INT(value) == expected);
+    return NULL;
+}
+
+static char* assert_real(Value value, double expected) {
+    mu_assert("Value is not a real number.", IS_REAL(value));
+    mu_assert("Real value does not match expected.",
+              AS_REAL(value) == expected);
     return NULL;
 }
 
@@ -81,19 +90,19 @@ static VMTestCase interpret_tests[] = {
         .name = "literal number",
         .src = "123",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 123.0},
+        .expected_value = {EXPECT_INT, .as.integer = 123},
     },
     {
         .name = "simple addition",
         .src = "(+ 1 2)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 3.0},
+        .expected_value = {EXPECT_INT, .as.integer = 3},
     },
     {
         .name = "nested expression",
         .src = "(- (+ 10 5) 3)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 12.0},
+        .expected_value = {EXPECT_INT, .as.integer = 12},
     },
     {
         .name = "not true",
@@ -147,13 +156,13 @@ static VMTestCase interpret_tests[] = {
         .name = "cond expression with else branch",
         .src = "(cond false 123 456)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 456.0},
+        .expected_value = {EXPECT_INT, .as.integer = 456},
     },
     {
         .name = "cond expression with then branch taken",
         .src = "(cond true 123 456)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 123.0},
+        .expected_value = {EXPECT_INT, .as.integer = 123},
     },
     {
         .name = "cond expression with no else branch resolving to else",
@@ -165,7 +174,7 @@ static VMTestCase interpret_tests[] = {
         .name = "cond expression with no else branch resolving to then",
         .src = "(cond true 123)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 123.0},
+        .expected_value = {EXPECT_INT, .as.integer = 123},
     },
     {
         .name = "equality true",
@@ -276,13 +285,13 @@ static VMTestCase interpret_tests[] = {
         .name = "basic let expression",
         .src = "(let x 10)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 10.0},
+        .expected_value = {EXPECT_INT, .as.integer = 10},
     },
     {
         .name = "let expression with arithmetic",
         .src = "(let y (+ 5 5))",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 10.0},
+        .expected_value = {EXPECT_INT, .as.integer = 10},
     },
     {
         .name = "let expression with boolean",
@@ -294,7 +303,7 @@ static VMTestCase interpret_tests[] = {
         .name = "let expression with get global",
         .src = "(let a 42) (let b (+ a 1))",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 43.0},
+        .expected_value = {EXPECT_INT, .as.integer = 43},
     },
     {
         .name = "string concatenation",
@@ -349,13 +358,13 @@ static VMTestCase interpret_tests[] = {
                ")"
                "(foo)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 123.0},
+        .expected_value = {EXPECT_INT, .as.integer = 123},
     },
     {
         .name = "function call with parameters",
         .src = "(fn add [a b] (+ a b)) (add 10 20)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 30.0},
+        .expected_value = {EXPECT_INT, .as.integer = 30},
     },
     {
         .name = "nested empty function calls",
@@ -377,7 +386,7 @@ static VMTestCase interpret_tests[] = {
                ")"
                "(one 1 2)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 3.0},
+        .expected_value = {EXPECT_INT, .as.integer = 3},
     },
     {
         .name = "basic closure",
@@ -390,7 +399,7 @@ static VMTestCase interpret_tests[] = {
                "(let closure (outer 10 20))"
                "(closure)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 30.0},
+        .expected_value = {EXPECT_INT, .as.integer = 30},
     },
     {
         .name = "lambda closure",
@@ -400,7 +409,7 @@ static VMTestCase interpret_tests[] = {
                "(let double (mk_multiplier 2))"
                "(double 5)",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_NUMBER, .as.number = 10.0},
+        .expected_value = {EXPECT_INT, .as.integer = 10},
     },
     {
         .name = "tail call optimization",
@@ -442,8 +451,11 @@ static char* test_vm_interpret(void) {
                 case EXPECT_NIL:
                     assert_msg = assert_nil(actual);
                     break;
-                case EXPECT_NUMBER:
-                    assert_msg = assert_number(actual, expected.as.number);
+                case EXPECT_INT:
+                    assert_msg = assert_int(actual, expected.as.integer);
+                    break;
+                case EXPECT_REAL:
+                    assert_msg = assert_real(actual, expected.as.real);
                     break;
                 case EXPECT_STRING:
                     assert_msg = assert_string(actual, expected.as.string);

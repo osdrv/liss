@@ -15,8 +15,10 @@ bool valuesEqual(Value a, Value b) {
             return AS_BOOL(a) == AS_BOOL(b);
         case VAL_NIL:
             return true;  // All nils are equal.
-        case VAL_NUMBER:
-            return AS_NUMBER(a) == AS_NUMBER(b);
+        case VAL_INT:
+            return AS_INT(a) == AS_INT(b);
+        case VAL_REAL:
+            return AS_REAL(a) == AS_REAL(b);
         case VAL_OBJ:
             if (OBJ_TYPE(a) != OBJ_TYPE(b)) {
                 return false;  // Different object types can't be equal.
@@ -63,8 +65,12 @@ char* sprintValue(Value value) {
         case VAL_NIL:
             APPEND_TO_BUFFER("nil");
             break;
-        case VAL_NUMBER: {
-            APPEND_TO_BUFFER("%g", AS_NUMBER(value));
+        case VAL_INT: {
+            APPEND_TO_BUFFER("%i", AS_INT(value));
+            break;
+        }
+        case VAL_REAL: {
+            APPEND_TO_BUFFER("%g", AS_REAL(value));
             break;
         }
         case VAL_OBJ:

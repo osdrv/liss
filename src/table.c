@@ -6,13 +6,6 @@
 #include "common.h"
 #include "object.h"
 
-// #define max(a, b)               \
-//     ({                          \
-//         __typeof__(a) _a = (a); \
-//         __typeof__(b) _b = (b); \
-//         _a > _b ? _a : _b;      \
-//     })
-
 #define TABLE_GROWTH_FACTOR 2
 #define TABLE_INITIAL_BUCKET_COUNT 8
 #define TABLE_MAX_LOAD 0.75
@@ -24,10 +17,15 @@ static size_t hashValue(Value value) {
             return AS_BOOL(value) ? 1 : 0;
         case VAL_NIL:
             return 0;
-        case VAL_NUMBER: {
-            double num = AS_NUMBER(value);
-            return (size_t)((int)num * 2654435761 %
+        case VAL_INT: {
+            int64_t num = AS_INT(value);
+            return (size_t)(num * 2654435761 %
                             4294967296);  // Knuth's multiplicative hash
+        }
+        case VAL_REAL: {
+            double num = AS_REAL(value);
+            return (size_t)((int)num * 2654435761 %
+                                        4294967296);  // Knuth's multiplicative hash
         }
         case VAL_OBJ:
             switch

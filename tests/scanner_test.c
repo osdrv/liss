@@ -97,18 +97,35 @@ static char* test_scanner_operator_keywords(void) {
     return NULL;
 }
 
-static char* test_scanner_number_literals(void) {
-    const char* source = "123 0.123 2.34e05 4.56E-02 0xFFFFFF";
+static char* test_scanner_int_literals(void) {
+    const char* source = "123 0 0xFFFFFF";
     Scanner scanner;
     initScanner(&scanner, source);
 
-    const char* expected_lexemes[] = {"123", "0.123", "2.34e05", "4.56E-02",
-                                      "0xFFFFFF"};
+    const char* expected_lexemes[] = {"123", "0", "0xFFFFFF"};
 
     for (size_t i = 0;
          i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
         Token token = scanToken(&scanner);
-        mu_assert("Expected TOKEN_NUMBER", token.type == TOKEN_NUMBER);
+        mu_assert("Expected TOKEN_INT", token.type == TOKEN_INT);
+        mu_assert("Unexpected lexeme",
+                  strncmp(token.start, expected_lexemes[i], token.length) == 0);
+    }
+
+    return NULL;
+}
+
+static char* test_scanner_real_literals(void) {
+    const char* source = "0.123 2.34e05 4.56E-02";
+    Scanner scanner;
+    initScanner(&scanner, source);
+
+    const char* expected_lexemes[] = {"0.123", "2.34e05", "4.56E-02"};
+
+    for (size_t i = 0;
+         i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
+        Token token = scanToken(&scanner);
+        mu_assert("Expected TOKEN_REAL", token.type == TOKEN_REAL);
         mu_assert("Unexpected lexeme",
                   strncmp(token.start, expected_lexemes[i], token.length) == 0);
     }
@@ -143,8 +160,8 @@ static char* test_scanner_nested_expression(void) {
     initScanner(&scanner, source);
 
     TokenType expected_types[] = {
-        TOKEN_LPAREN, TOKEN_MINUS_OP, TOKEN_LPAREN, TOKEN_PLUS_OP, TOKEN_NUMBER,
-        TOKEN_NUMBER, TOKEN_RPAREN,   TOKEN_NUMBER, TOKEN_RPAREN,  TOKEN_EOF};
+        TOKEN_LPAREN, TOKEN_MINUS_OP, TOKEN_LPAREN, TOKEN_PLUS_OP, TOKEN_INT,
+        TOKEN_INT,    TOKEN_RPAREN,   TOKEN_INT,    TOKEN_RPAREN,  TOKEN_EOF};
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {
         Token token = scanToken(&scanner);
@@ -160,9 +177,9 @@ static char* test_scanner_unary_minus(void) {
     initScanner(&scanner, source);
 
     TokenType expected_types[] = {
-        TOKEN_LPAREN,   TOKEN_MINUS_OP, TOKEN_NUMBER,
-        TOKEN_MINUS_OP, TOKEN_NUMBER,   TOKEN_MINUS_OP,
-        TOKEN_NUMBER,   TOKEN_RPAREN,   TOKEN_EOF,
+        TOKEN_LPAREN,   TOKEN_MINUS_OP, TOKEN_INT,
+        TOKEN_MINUS_OP, TOKEN_REAL,     TOKEN_MINUS_OP,
+        TOKEN_INT,      TOKEN_RPAREN,   TOKEN_EOF,
     };
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {
@@ -179,7 +196,8 @@ void scanner_suite(void) {
     mu_run_test(test_scanner_operators);
     mu_run_test(test_scanner_keywords);
     mu_run_test(test_scanner_operator_keywords);
-    mu_run_test(test_scanner_number_literals);
+    mu_run_test(test_scanner_int_literals);
+    mu_run_test(test_scanner_real_literals);
     mu_run_test(test_scanner_string_literals);
     mu_run_test(test_scanner_nested_expression);
     mu_run_test(test_scanner_unary_minus);
