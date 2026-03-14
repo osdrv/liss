@@ -5,6 +5,7 @@
 #include "vm.h"
 
 #define MAX_LOCALS 256
+#define MAX_GLOBALS 1024
 #define MAX_UPVALUES 256
 #define MAX_ARITY 255
 
@@ -41,6 +42,9 @@ struct Compiler {
 
     int upvalue_cnt;
     Upvalue upvalues[MAX_UPVALUES];
+
+    int added_globals_cnt;
+    Value added_globals[MAX_GLOBALS];
 };
 
 ObjFunction* compile(VM* vm, const char* source);

@@ -329,7 +329,32 @@ static void parseLet(Compiler* compiler) {
     parseExpression(compiler, false);
     if (compiler->parser->hadError) return;
 
-    if (compiler->scope_depth > 0) {
+    if (compiler->scope_depth == 0) {
+        // Global variable declaration
+        int var_index = identifierConstant(compiler, identifier);
+        Value name = currentChunk(compiler)->constants.values[var_index];
+        if (tableGet(&compiler->vm->globals, name) != NULL) {
+            compiler->parser->hadError = true;
+            ERROR_LOG(
+                "[line %d] Error: Cannot redeclare global variable '%.*s'",
+                identifier.line, identifier.length, identifier.start);
+            return;
+        }
+        if (compiler->added_globals_cnt >= MAX_GLOBALS) {
+            compiler->parser->hadError = true;
+            ERROR_LOG(
+                "[line %d] Error: Too many global variables declared in "
+                "program",
+                identifier.line);
+            return;
+        }
+        tableInsert(&compiler->vm->globals, name, NIL_VAL);
+        compiler->added_globals[compiler->added_globals_cnt++] = name;
+        emitByte(compiler, OP_SET_GLOBAL);
+        emitBytes(compiler, (uint8_t)(var_index >> 8),
+                  (uint8_t)(var_index & 0xff));
+    } else {
+        // Local variable declaration
         for (int i = compiler->local_count - 1; i >= 0; i--) {
             Local* local = &compiler->locals[i];
             if (local->depth != -1 && local->depth < compiler->scope_depth) {
@@ -345,20 +370,6 @@ static void parseLet(Compiler* compiler) {
             }
         }
         addLocal(compiler, identifier);
-    } else {
-        int var_index = identifierConstant(compiler, identifier);
-        Value name = currentChunk(compiler)->constants.values[var_index];
-        if (tableGet(&compiler->vm->globals, name) != NULL) {
-            compiler->parser->hadError = true;
-            ERROR_LOG(
-                "[line %d] Error: Cannot redeclare global variable '%.*s'",
-                identifier.line, identifier.length, identifier.start);
-            return;
-        }
-        tableInsert(&compiler->vm->globals, name, NIL_VAL);
-        emitByte(compiler, OP_SET_GLOBAL);
-        emitBytes(compiler, (uint8_t)(var_index >> 8),
-                  (uint8_t)(var_index & 0xff));
     }
 }
 
@@ -769,6 +780,7 @@ ObjFunction* compile(VM* vm, const char* source) {
     Compiler compiler;
     compiler.vm = vm;
     compiler.parser = &parser;
+    compiler.added_globals_cnt = 0;
     initCompiler(&compiler, NULL);
     push(vm, OBJ_VAL(compiler.function));
 
@@ -786,10 +798,14 @@ ObjFunction* compile(VM* vm, const char* source) {
 
 #undef WILL_READ_BODY
 
-    if (!compiler.parser->hadError) {
-        consume(&compiler, TOKEN_EOF, "expect the end of expression");
+    if (compiler.parser->hadError) {
+        for (int i = 0; i < compiler.added_globals_cnt; i++) {
+            tableRemove(&vm->globals, compiler.added_globals[i]);
+        }
+        return NULL;
     }
 
+    consume(&compiler, TOKEN_EOF, "expect the end of expression");
     ObjFunction* function = endCompiler(&compiler);
 
     return parser.hadError ? NULL : function;
