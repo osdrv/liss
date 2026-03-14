@@ -25,7 +25,7 @@ static size_t hashValue(Value value) {
         case VAL_REAL: {
             double num = AS_REAL(value);
             return (size_t)((int)num * 2654435761 %
-                                        4294967296);  // Knuth's multiplicative hash
+                            4294967296);  // Knuth's multiplicative hash
         }
         case VAL_OBJ:
             switch

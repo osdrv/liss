@@ -317,6 +317,10 @@ static int identifierConstant(Compiler* compiler, Token name) {
     return addConstant(&compiler->function->chunk, OBJ_VAL(var_name));
 }
 
+static bool identifiersEqual(Token* a, Token* b) {
+    return a->length == b->length && memcmp(a->start, b->start, a->length) == 0;
+}
+
 static void parseLet(Compiler* compiler) {
     Token identifier =
         consume(compiler, TOKEN_IDENTIFIER, "expect an identifier after `let`");
@@ -331,9 +335,7 @@ static void parseLet(Compiler* compiler) {
             if (local->depth != -1 && local->depth < compiler->scope_depth) {
                 break;
             }
-            if (local->name.length == identifier.length &&
-                memcmp(local->name.start, identifier.start,
-                       identifier.length) == 0) {
+            if (identifiersEqual(&identifier, &local->name)) {
                 compiler->parser->hadError = true;
                 ERROR_LOG(
                     "[line %d] Error: Cannot redeclare variable '%.*s' in this "
@@ -345,6 +347,15 @@ static void parseLet(Compiler* compiler) {
         addLocal(compiler, identifier);
     } else {
         int var_index = identifierConstant(compiler, identifier);
+        Value name = currentChunk(compiler)->constants.values[var_index];
+        if (tableGet(&compiler->vm->globals, name) != NULL) {
+            compiler->parser->hadError = true;
+            ERROR_LOG(
+                "[line %d] Error: Cannot redeclare global variable '%.*s'",
+                identifier.line, identifier.length, identifier.start);
+            return;
+        }
+        tableInsert(&compiler->vm->globals, name, NIL_VAL);
         emitByte(compiler, OP_SET_GLOBAL);
         emitBytes(compiler, (uint8_t)(var_index >> 8),
                   (uint8_t)(var_index & 0xff));

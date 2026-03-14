@@ -39,8 +39,8 @@ struct Compiler {
     int local_count;
     int scope_depth;
 
-    Upvalue upvalues[MAX_UPVALUES];
     int upvalue_cnt;
+    Upvalue upvalues[MAX_UPVALUES];
 };
 
 ObjFunction* compile(VM* vm, const char* source);
