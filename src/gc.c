@@ -59,6 +59,13 @@ void markObject(VM* vm, Obj* object) {
             markValue(vm, upvalue->closed);
             break;
         }
+        case OBJ_ERROR: {
+            ObjError* error = (ObjError*)object;
+            markObject(vm, (Obj*)error->message);
+            break;
+        }
+        case OBJ_NATIVE:
+            break;
     }
 }
 
@@ -123,6 +130,16 @@ void freeObject(Obj* object) {
         case OBJ_UPVALUE: {
             ObjUpvalue* upvalue = (ObjUpvalue*)object;
             reallocate(upvalue, sizeof(ObjUpvalue), 0);
+            break;
+        }
+        case OBJ_ERROR: {
+            ObjError* error = (ObjError*)object;
+            reallocate(error, sizeof(ObjError), 0);
+            break;
+        }
+        case OBJ_NATIVE: {
+            ObjNative* native = (ObjNative*)object;
+            reallocate(native, sizeof(ObjNative), 0);
             break;
         }
     }

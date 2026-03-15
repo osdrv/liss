@@ -12,6 +12,7 @@
 #include "gc.h"
 #include "memory.h"
 #include "object.h"
+#include "natives.h"
 #include "opcode.h"
 #include "table.h"
 #include "value.h"
@@ -32,6 +33,7 @@ VM* newVM(size_t stack_capacity) {
     vm->open_upvalues = NULL;
     initTable(&vm->strings);
     initTable(&vm->globals);
+    registerCoreNatives(vm);
     DEBUG_LOG("Initialized new VM with stack capacity %zu", stack_capacity);
     return vm;
 }
@@ -672,6 +674,22 @@ OP_CALL_IMPL: {
         vm->frame_count, arg_count, callee.type);
     DEBUG_VALUE("%s", callee);
 
+    if (IS_OBJ(callee) && OBJ_TYPE(callee) == OBJ_NATIVE) {
+        ObjNative* native = AS_NATIVE(callee);
+        if (native->arity != -1 && arg_count != native->arity) {
+            ERROR_LOG("Native function '%s': expected %d arguments but got %d",
+                      native->name ? native->name->chars : "<unnamed>",
+                      native->arity, arg_count);
+            result = INTERPRET_RUNTIME_ERROR;
+            goto RETURN;
+        }
+        Value value =
+            native->function(vm, arg_count, vm->stack_top - arg_count);
+        vm->stack_top -= arg_count + 1;  // Pop arguments and the native
+        push(vm, value);                 // Push the result of the native call
+        DISPATCH();
+    }
+
     if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_CLOSURE) {
         ERROR_LOG("Runtime error: can only call functions");
         printStack(vm);
@@ -758,6 +776,21 @@ OP_SET_UPVALUE_IMPL: {
 OP_TAIL_CALL_IMPL: {
     int arg_cnt = (int)READ_ARG();
     Value callee = peek(vm, arg_cnt);
+
+    if (IS_OBJ(callee) && OBJ_TYPE(callee) == OBJ_NATIVE) {
+        ObjNative* native = AS_NATIVE(callee);
+        if (native->arity != -1 && arg_cnt != native->arity) {
+            ERROR_LOG("Native function '%s': expected %d arguments but got %d",
+                      native->name ? native->name->chars : "<unnamed>",
+                      native->arity, arg_cnt);
+            result = INTERPRET_RUNTIME_ERROR;
+            goto RETURN;
+        }
+        Value value = native->function(vm, arg_cnt, vm->stack_top - arg_cnt);
+        vm->stack_top -= arg_cnt + 1;  // Pop arguments and the native
+        push(vm, value);               // Push the result of the native call
+        DISPATCH();
+    }
 
     if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_CLOSURE) {
         ERROR_LOG("Runtime error: can only call functions");

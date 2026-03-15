@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "chunk.h"
+#include "natives.h"
 #include "value.h"
 
 // Forward declarations for structs used in object definitions.
@@ -17,6 +18,8 @@ typedef enum {
     OBJ_STRING,
     OBJ_CLOSURE,
     OBJ_UPVALUE,
+    OBJ_ERROR,
+    OBJ_NATIVE,
     // Future object types will be added here
     // OBJ_LIST,
     // etc.
@@ -67,6 +70,20 @@ typedef struct {
     int upvalue_cnt;
 } ObjClosure;
 
+typedef struct {
+    Obj obj;
+    ObjString* message;
+} ObjError;
+
+typedef struct {
+    Obj obj;
+    // Function pointer for the native function implementation. It takes a VM
+    // pointer and an array of arguments, and returns a Value.
+    ObjString* name;
+    int arity;  // -1 for variadic functions
+    NativeFn function;
+} ObjNative;
+
 // --- Helper Functions and Macros ---
 
 // Safely checks if a Value is an object of a given ObjType.
@@ -82,6 +99,8 @@ static inline bool isObjType(Value value, ObjType type) {
 #define IS_STRING(value) isObjType(value, OBJ_STRING)
 #define IS_CLOSURE(value) isObjType(value, OBJ_CLOSURE)
 #define IS_UPVALUE(value) isObjType(value, OBJ_UPVALUE)
+#define IS_ERROR(value) isObjType(value, OBJ_ERROR)
+#define IS_NATIVE(value) isObjType(value, OBJ_NATIVE)
 
 // Macros for casting a Value to a specific object type pointer.
 #define AS_FUNCTION(value) ((ObjFunction*)AS_OBJ(value))
@@ -89,6 +108,8 @@ static inline bool isObjType(Value value, ObjType type) {
 #define AS_CSTRING(value) (((ObjString*)AS_OBJ(value))->chars)
 #define AS_CLOSURE(value) ((ObjClosure*)AS_OBJ(value))
 #define AS_UPVALUE(value) ((ObjUpvalue*)AS_OBJ(value))
+#define AS_ERROR(value) ((ObjError*)AS_OBJ(value))
+#define AS_NATIVE(value) ((ObjNative*)AS_OBJ(value))
 
 // Helper function to compute the hash of a string.
 uint32_t hashString(const char* key, int length);
@@ -99,6 +120,8 @@ ObjFunction* newFunction(VM* vm);
 
 ObjClosure* newClosure(VM* vm, ObjFunction* function);
 ObjUpvalue* newUpvalue(VM* vm, Value* slot);
+ObjError* newError(VM* vm, const char* message);
+ObjNative* newNative(VM* vm, const char* name, int arity, NativeFn function);
 
 // Allocates an ObjString on the heap and returns a pointer to it.
 ObjString* takeString(VM* vm, char* chars, int length);

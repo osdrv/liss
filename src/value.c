@@ -84,6 +84,14 @@ char* sprintValue(Value value) {
                                          ? AS_FUNCTION(value)->name->chars
                                          : "<code>");
                     break;
+                case OBJ_NATIVE:
+                    APPEND_TO_BUFFER("<native fn %s>",
+                                     AS_NATIVE(value)->name->chars);
+                    break;
+                case OBJ_ERROR:
+                    APPEND_TO_BUFFER("<error: %s>",
+                                     AS_ERROR(value)->message->chars);
+                    break;
                 default:
                     APPEND_TO_BUFFER("<object>");
             }

@@ -30,6 +30,14 @@ static Obj* allocateObject(VM* vm, size_t size, ObjType type) {
     return object;
 }
 
+ObjError* newError(VM* vm, const char* message) {
+    ObjString* msg_str = copyString(vm, message, (int)strlen(message));
+    ObjError* error =
+        (ObjError*)allocateObject(vm, sizeof(ObjError), OBJ_ERROR);
+    error->message = msg_str;
+    return error;
+}
+
 // --- Function ---
 
 ObjFunction* newFunction(VM* vm) {
@@ -57,6 +65,15 @@ ObjClosure* newClosure(VM* vm, ObjFunction* function) {
     closure->upvalues = upvalues;
     closure->upvalue_cnt = function->upvalue_cnt;
     return closure;
+}
+
+ObjNative* newNative(VM* vm, const char* name, int arity, NativeFn function) {
+    ObjNative* native =
+        (ObjNative*)allocateObject(vm, sizeof(ObjNative), OBJ_NATIVE);
+    native->arity = arity;
+    native->function = function;
+    native->name = copyString(vm, name, (int)strlen(name));
+    return native;
 }
 
 ObjUpvalue* newUpvalue(VM* vm, Value* slot) {
