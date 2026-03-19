@@ -11,8 +11,8 @@
 #include "compiler.h"
 #include "gc.h"
 #include "memory.h"
-#include "object.h"
 #include "natives.h"
+#include "object.h"
 #include "opcode.h"
 #include "table.h"
 #include "value.h"
@@ -285,7 +285,8 @@ static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]) {
                 break;
             }
             case OP_JUMP:
-            case OP_JUMP_IF_FALSE: {
+            case OP_JUMP_IF_FALSE:
+            case OP_TRY_START: {
                 // Read the relative offset from the original bytecode
                 uint16_t relative_byte_offset =
                     (uint16_t)(bytecode[0] << 8) | bytecode[1];
@@ -460,7 +461,8 @@ static InterpretResult run(VM* vm) {
         &&OP_GREATER_IMPL,     &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
         &&OP_GET_GLOBAL_IMPL,  &&OP_CALL_IMPL,          &&OP_GET_LOCAL_IMPL,
         &&OP_SET_LOCAL_IMPL,   &&OP_CLOSURE_IMPL,       &&OP_GET_UPVALUE_IMPL,
-        &&OP_SET_UPVALUE_IMPL, &&OP_TAIL_CALL_IMPL,
+        &&OP_SET_UPVALUE_IMPL, &&OP_TAIL_CALL_IMPL,     &&OP_TRY_START_IMPL,
+        &&OP_TRY_END_IMPL,
     };
 
     InterpretResult result = INTERPRET_OK;
@@ -478,6 +480,9 @@ static InterpretResult run(VM* vm) {
 #define DISPATCH()                             \
     do {                                       \
         if (vm->last_result != INTERPRET_OK) { \
+            if (vm->try_count > 0) {           \
+                goto RESCUE;                   \
+            }                                  \
             result = vm->last_result;          \
             goto RETURN;                       \
         }                                      \
@@ -681,11 +686,14 @@ OP_CALL_IMPL: {
                       native->name ? native->name->chars : "<unnamed>",
                       native->arity, arg_count);
             result = INTERPRET_RUNTIME_ERROR;
-            goto RETURN;
+            goto RESCUE;
         }
         Value value =
             native->function(vm, arg_count, vm->stack_top - arg_count);
         vm->stack_top -= arg_count + 1;  // Pop arguments and the native
+        if (vm->last_result != INTERPRET_OK) {
+            goto RESCUE;
+        }
         push(vm, value);                 // Push the result of the native call
         DISPATCH();
     }
@@ -823,6 +831,53 @@ OP_TAIL_CALL_IMPL: {
         }
     }
     frame->ip = closure->function->loaded_code;
+    DISPATCH();
+}
+
+OP_TRY_START_IMPL: {
+    uint16_t offset = (uint16_t)READ_ARG();
+    if (vm->try_count > TRY_MAX) {
+        ERROR_LOG("Runtime error: too many nested try blocks");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+
+    TryBlock* try_block = &vm->try_stack[vm->try_count++];
+    try_block->handler_ip = frame->ip + offset;
+    try_block->frame_count = vm->frame_count;
+    try_block->stack_top = vm->stack_top;
+
+    DISPATCH();
+}
+
+OP_TRY_END_IMPL: {
+    if (vm->try_count == 0) {
+        ERROR_LOG("Runtime error: OP_TRY_END without matching OP_TRY_START");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+    vm->try_count--;
+    DISPATCH();
+}
+
+RESCUE: {
+    TryBlock try_block = vm->try_stack[--vm->try_count];
+    while (vm->frame_count > try_block.frame_count) {
+        closeUpvalue(vm, vm->frames[vm->frame_count - 1].slots);
+        vm->frame_count--;
+    }
+
+    vm->stack_top = try_block.stack_top;
+    frame = &vm->frames[vm->frame_count - 1];
+    frame->ip = try_block.handler_ip;
+
+    push(vm, vm->raise_value);
+
+    vm->last_result =
+        INTERPRET_OK;  // Reset the last result to allow execution to continue
+    vm->raise_value =
+        NIL_VAL;  // Clear the raise value after handling the exception
+
     DISPATCH();
 }
 

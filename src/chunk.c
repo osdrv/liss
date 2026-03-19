@@ -209,6 +209,17 @@ char* sprintChunk(const Chunk* chunk) {
                 i++;
                 APPEND_TO_BUFFER("OP_TAIL_CALL %d\n", tail_arg_count);
                 break;
+            case OP_TRY_START: {
+                uint16_t handler_offset =
+                    (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
+                APPEND_TO_BUFFER("OP_TRY_START %d\n", handler_offset);
+                i += 2;  // Skip the operand bytes
+                break;
+            }
+            case OP_TRY_END: {
+                APPEND_TO_BUFFER("OP_TRY_END\n");
+                break;
+            }
             default:
                 APPEND_TO_BUFFER("Unknown opcode %d\n", opcode);
                 break;

@@ -33,6 +33,9 @@ typedef enum {
     OP_GET_UPVALUE,
     OP_SET_UPVALUE,
     OP_TAIL_CALL,
+
+    OP_TRY_START,
+    OP_TRY_END,
 } OpCode;
 
 #endif

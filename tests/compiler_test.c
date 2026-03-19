@@ -603,6 +603,35 @@ static char* test_compile(void) {
                 },
             .expected_constant_size = 5,
         },
+        {
+            .name = "compile try expression",
+            .src = "(try (/ 42 0))",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_TRY_START,
+                    0,
+                    11,
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_DIVIDE,
+                    OP_TRY_END,
+                    OP_JUMP,
+                    0,
+                    0,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 15,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 42},
+                    {EXPECT_INT, .as.integer = 0},
+                },
+            .expected_constant_size = 2,
+        },
     };
 
     for (size_t i = 0; i < sizeof(compile_tests) / sizeof(compile_tests[0]);

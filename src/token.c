@@ -30,8 +30,6 @@ const char* printTokenType(TokenType type) {
             return "TOKEN_AS_KW";
         case TOKEN_BREAKPOINT_KW:
             return "TOKEN_BREAKPOINT_KW";
-        case TOKEN_RAISE_KW:
-            return "TOKEN_RAISE_KW";
         case TOKEN_TRY_KW:
             return "TOKEN_TRY_KW";
         case TOKEN_AND_KW:

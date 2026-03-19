@@ -481,6 +481,14 @@ static void parseBlock(Compiler* compiler, bool is_tail) {
     endScope(compiler);
 }
 
+static void parseTry(Compiler* compiler) {
+    int jump_to = emitJump(compiler, OP_TRY_START);
+    parseExpression(compiler, false);
+    if (compiler->parser->hadError) return;
+    emitByte(compiler, OP_TRY_END);
+    patchJump(compiler, jump_to);
+}
+
 static void parseGrouping(Compiler* compiler, bool is_tail) {
     switch (compiler->parser->current.type) {
         case TOKEN_AND_KW:
@@ -551,6 +559,10 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                               (uint8_t)(var_name_ix & 0xff));
                 }
             }
+            break;
+        case TOKEN_TRY_KW:
+            advance(compiler);
+            parseTry(compiler);
             break;
         case TOKEN_NOT_OP:
         case TOKEN_NOT_KW:

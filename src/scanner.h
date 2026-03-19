@@ -31,8 +31,8 @@ static Keyword keywords[] = {
     {"mod", 3, TOKEN_MODULO_KW},    {"mul", 3, TOKEN_STAR_KW},
     {"ne", 2, TOKEN_NOT_EQUAL_KW},  {"not", 3, TOKEN_NOT_KW},
     {"null", 4, TOKEN_NULL_KW},     {"or", 2, TOKEN_OR_KW},
-    {"raise!", 6, TOKEN_RAISE_KW},  {"switch", 6, TOKEN_SWITCH_KW},
-    {"true", 4, TOKEN_TRUE_KW},     {"try", 3, TOKEN_TRY_KW},
+    {"switch", 6, TOKEN_SWITCH_KW}, {"true", 4, TOKEN_TRUE_KW},
+    {"try", 3, TOKEN_TRY_KW},
 };
 
 void initScanner(Scanner* scanner, const char* source);

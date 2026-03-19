@@ -20,6 +20,7 @@ void markRoots(VM* vm) {
     }
     markTable(vm, &vm->globals);
     markTable(vm, &vm->strings);
+    markValue(vm, vm->raise_value);
 }
 
 void markValue(VM* vm, Value value) {
@@ -65,6 +66,8 @@ void markObject(VM* vm, Obj* object) {
             break;
         }
         case OBJ_NATIVE:
+            ObjNative* native = (ObjNative*)object;
+            markObject(vm, (Obj*)native->name);
             break;
     }
 }

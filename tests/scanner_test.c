@@ -20,14 +20,14 @@ static char* test_scanner_whitespace(void) {
 }
 
 static char* test_scanner_keywords(void) {
-    const char* source = "fn let true false null as cond switch raise! try";
+    const char* source = "fn let true false null as cond switch try";
     Scanner scanner;
     initScanner(&scanner, source);
 
     TokenType expected_types[] = {
-        TOKEN_FN_KW,    TOKEN_LET_KW, TOKEN_TRUE_KW, TOKEN_FALSE_KW,
-        TOKEN_NULL_KW,  TOKEN_AS_KW,  TOKEN_COND_KW, TOKEN_SWITCH_KW,
-        TOKEN_RAISE_KW, TOKEN_TRY_KW, TOKEN_EOF};
+        TOKEN_FN_KW,   TOKEN_LET_KW, TOKEN_TRUE_KW, TOKEN_FALSE_KW,
+        TOKEN_NULL_KW, TOKEN_AS_KW,  TOKEN_COND_KW, TOKEN_SWITCH_KW,
+        TOKEN_TRY_KW,  TOKEN_EOF};
 
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {

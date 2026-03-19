@@ -7,7 +7,6 @@ typedef enum {
     TOKEN_EOF,
     TOKEN_ERROR,
 
-    TOKEN_RAISE_KW,
     TOKEN_TRY_KW,
 
     TOKEN_LPAREN,

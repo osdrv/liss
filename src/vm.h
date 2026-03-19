@@ -9,6 +9,7 @@
 
 #define STACK_MAX 256
 #define FRAMES_MAX 16  // TODO: make this configurable
+#define TRY_MAX 64
 
 typedef enum {
     INTERPRET_OK,
@@ -21,6 +22,13 @@ typedef struct {
     void** ip;
     Value* slots;
 } CallFrame;
+
+typedef struct {
+    void** handler_ip;  // Instruction pointer to jump to on exception
+    int frame_count;    // How many frames were active when the try block was
+                        // entered
+    Value* stack_top;   // Stack top at the time of entering the try block
+} TryBlock;
 
 typedef struct VM {
     CallFrame frames[FRAMES_MAX];
@@ -36,6 +44,10 @@ typedef struct VM {
 
     Value last_popped_value;    // Store the last popped value
     ObjUpvalue* open_upvalues;  // Linked list of open upvalues
+
+    TryBlock try_stack[TRY_MAX];
+    int try_count;
+    Value raise_value;
 
     // (!!!) Flexible Array Member for the stack. Keep at the end.
     Value stack[];

@@ -13,6 +13,7 @@ typedef enum {
     EXPECT_INT,
     EXPECT_REAL,
     EXPECT_STRING,
+    EXPECT_ERROR,
 } ExpectedValueType;
 
 typedef struct {
@@ -82,6 +83,16 @@ static char* assert_bool(Value value, bool expected) {
 
 static char* assert_nil(Value value) {
     mu_assert("Value is not null.", IS_NIL(value));
+    return NULL;
+}
+
+// For now, errors have no metadata, so we simply check the message.
+static char* assert_error(Value value, const char* expected) {
+    mu_assert("Value is not an object.", IS_OBJ(value));
+    mu_assert("Object is not an error.", OBJ_TYPE(value) == OBJ_ERROR);
+    ObjError* error = AS_ERROR(value);
+    mu_assert("Error message does not match expected.",
+              strcmp(error->message->chars, expected) == 0);
     return NULL;
 }
 
@@ -486,6 +497,23 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_STRING, .as.string = "done"},
     },
+    {
+        .name = "unhandled raise! should cause a runtime error",
+        .src = "(raise! \"did you miss me?\")",
+        .expected_result = INTERPRET_RUNTIME_ERROR,
+    },
+    {
+        .name = "try expression with no exception",
+        .src = "(try 123)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 123},
+    },
+    {
+        .name = "try expression with handled exception",
+        .src = "(try (raise! \"oops\"))",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_ERROR, .as.string = "oops"},
+    },
 };
 
 static char* test_vm_interpret(void) {
@@ -525,6 +553,9 @@ static char* test_vm_interpret(void) {
                     break;
                 case EXPECT_STRING:
                     assert_msg = assert_string(actual, expected.as.string);
+                    break;
+                case EXPECT_ERROR:
+                    assert_msg = assert_error(actual, expected.as.string);
                     break;
                 default:
                     mu_assert("Unknown expected value type in test", false);
