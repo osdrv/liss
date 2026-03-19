@@ -610,7 +610,7 @@ static char* test_compile(void) {
                 (uint8_t[]){
                     OP_TRY_START,
                     0,
-                    11,
+                    8,
                     OP_CONSTANT,
                     0,
                     0,
@@ -619,12 +619,9 @@ static char* test_compile(void) {
                     1,
                     OP_DIVIDE,
                     OP_TRY_END,
-                    OP_JUMP,
-                    0,
-                    0,
                     OP_RETURN,
                 },
-            .expected_instruction_count = 15,
+            .expected_instruction_count = 12,
             .expected_constants =
                 (ExpectedConstant[]){
                     {EXPECT_INT, .as.integer = 42},
