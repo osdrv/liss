@@ -503,10 +503,16 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_RUNTIME_ERROR,
     },
     {
-        .name = "try expression with no exception",
+        .name = "try expression with a scalar and no exception",
         .src = "(try 123)",
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_INT, .as.integer = 123},
+    },
+    {
+        .name = "try expression with an expression with no exception",
+        .src = "(try (+ 123 456))",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 579},
     },
     {
         .name = "try expression with handled exception",

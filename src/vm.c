@@ -34,6 +34,9 @@ VM* newVM(size_t stack_capacity) {
     initTable(&vm->strings);
     initTable(&vm->globals);
     registerCoreNatives(vm);
+    vm->try_count = 0;
+    vm->raise_value = NIL_VAL;
+    vm->last_popped_value = NIL_VAL;
     DEBUG_LOG("Initialized new VM with stack capacity %zu", stack_capacity);
     return vm;
 }
@@ -250,7 +253,7 @@ static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]) {
         goto LOADER_CLEANUP;
     }
 
-    int* byte_to_slot_map = malloc(sizeof(int) * chunk->count);
+    int* byte_to_slot_map = malloc(sizeof(int) * (chunk->count + 1));
     if (byte_to_slot_map == NULL) {
         ERROR_LOG("Memory error allocating byte-to-slot map");
         result = -1;

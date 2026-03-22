@@ -185,7 +185,7 @@ static void parseNumber(Compiler* compiler) {
                       compiler->parser->previous.line);
             goto PARSE_NUMBER_CLEANUP;
         }
-        emitConstant(compiler, INT_VAL((double)value));
+        emitConstant(compiler, INT_VAL(value));
     } else {
         double value = strtod(compiler->parser->previous.start, NULL);
         if (errno == ERANGE) {

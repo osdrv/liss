@@ -32,9 +32,11 @@ static Obj* allocateObject(VM* vm, size_t size, ObjType type) {
 
 ObjError* newError(VM* vm, const char* message) {
     ObjString* msg_str = copyString(vm, message, (int)strlen(message));
+    push(vm, OBJ_VAL(msg_str));  // Temporarily push to protect from GC
     ObjError* error =
         (ObjError*)allocateObject(vm, sizeof(ObjError), OBJ_ERROR);
     error->message = msg_str;
+    pop(vm);  // Pop after allocation
     return error;
 }
 
