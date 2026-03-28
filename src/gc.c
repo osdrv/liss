@@ -21,6 +21,7 @@ void markRoots(VM* vm) {
     markTable(vm, &vm->globals);
     markTable(vm, &vm->strings);
     markValue(vm, vm->raise_value);
+    markValue(vm, vm->empty_list);
 }
 
 void markValue(VM* vm, Value value) {
@@ -69,6 +70,17 @@ void markObject(VM* vm, Obj* object) {
             ObjNative* native = (ObjNative*)object;
             markObject(vm, (Obj*)native->name);
             break;
+        case OBJ_PAIR: {
+            ObjPair* pair = (ObjPair*)object;
+            markValue(vm, pair->first);
+            markValue(vm, pair->second);
+            break;
+        }
+        case OBJ_LIST: {
+            ObjList* list = (ObjList*)object;
+            markValue(vm, list->head);
+            break;
+        }
     }
 }
 
@@ -143,6 +155,16 @@ void freeObject(Obj* object) {
         case OBJ_NATIVE: {
             ObjNative* native = (ObjNative*)object;
             reallocate(native, sizeof(ObjNative), 0);
+            break;
+        }
+        case OBJ_PAIR: {
+            ObjPair* pair = (ObjPair*)object;
+            reallocate(pair, sizeof(ObjPair), 0);
+            break;
+        }
+        case OBJ_LIST: {
+            ObjList* list = (ObjList*)object;
+            reallocate(list, sizeof(ObjList), 0);
             break;
         }
     }

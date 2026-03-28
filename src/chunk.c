@@ -220,6 +220,12 @@ char* sprintChunk(const Chunk* chunk) {
                 APPEND_TO_BUFFER("OP_TRY_END\n");
                 break;
             }
+            case OP_LIST: {
+                uint8_t item_count = chunk->code[i + 1];
+                i++;
+                APPEND_TO_BUFFER("OP_LIST %d\n", item_count);
+                break;
+            }
             default:
                 APPEND_TO_BUFFER("Unknown opcode %d\n", opcode);
                 break;

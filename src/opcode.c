@@ -55,6 +55,8 @@ const char* opcodeToString(OpCode opcode) {
             return "OP_SET_UPVALUE";
         case OP_TAIL_CALL:
             return "OP_TAIL_CALL";
+        case OP_LIST:
+            return "OP_LIST";
         default:
             return "UNKNOWN_OPCODE";
     }

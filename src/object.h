@@ -20,9 +20,8 @@ typedef enum {
     OBJ_UPVALUE,
     OBJ_ERROR,
     OBJ_NATIVE,
-    // Future object types will be added here
-    // OBJ_LIST,
-    // etc.
+    OBJ_PAIR,
+    OBJ_LIST,
 } ObjType;
 
 struct Obj {
@@ -84,6 +83,18 @@ typedef struct {
     NativeFn function;
 } ObjNative;
 
+typedef struct {
+    Obj obj;
+    Value first;
+    Value second;
+} ObjPair;
+
+typedef struct {
+    Obj obj;
+    uint32_t len;
+    Value head;
+} ObjList;
+
 // --- Helper Functions and Macros ---
 
 // Safely checks if a Value is an object of a given ObjType.
@@ -101,6 +112,8 @@ static inline bool isObjType(Value value, ObjType type) {
 #define IS_UPVALUE(value) isObjType(value, OBJ_UPVALUE)
 #define IS_ERROR(value) isObjType(value, OBJ_ERROR)
 #define IS_NATIVE(value) isObjType(value, OBJ_NATIVE)
+#define IS_PAIR(value) isObjType(value, OBJ_PAIR)
+#define IS_LIST(value) isObjType(value, OBJ_LIST)
 
 // Macros for casting a Value to a specific object type pointer.
 #define AS_FUNCTION(value) ((ObjFunction*)AS_OBJ(value))
@@ -110,6 +123,8 @@ static inline bool isObjType(Value value, ObjType type) {
 #define AS_UPVALUE(value) ((ObjUpvalue*)AS_OBJ(value))
 #define AS_ERROR(value) ((ObjError*)AS_OBJ(value))
 #define AS_NATIVE(value) ((ObjNative*)AS_OBJ(value))
+#define AS_PAIR(value) ((ObjPair*)AS_OBJ(value))
+#define AS_LIST(value) ((ObjList*)AS_OBJ(value))
 
 // Helper function to compute the hash of a string.
 uint32_t hashString(const char* key, int length);
@@ -122,6 +137,8 @@ ObjClosure* newClosure(VM* vm, ObjFunction* function);
 ObjUpvalue* newUpvalue(VM* vm, Value* slot);
 ObjError* newError(VM* vm, const char* message);
 ObjNative* newNative(VM* vm, const char* name, int arity, NativeFn function);
+ObjPair* newPair(VM* vm, Value first, Value second);
+ObjList* newList(VM* vm, uint32_t len, Value head);
 
 // Allocates an ObjString on the heap and returns a pointer to it.
 ObjString* takeString(VM* vm, char* chars, int length);

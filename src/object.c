@@ -87,6 +87,22 @@ ObjUpvalue* newUpvalue(VM* vm, Value* slot) {
     return upvalue;
 }
 
+ObjPair* newPair(VM* vm, Value first, Value second) {
+    ObjPair* pair =
+        (ObjPair*)allocateObject(vm, sizeof(ObjPair), OBJ_PAIR);
+    pair->first = first;
+    pair->second = second;
+    return pair;
+}
+
+ObjList* newList(VM* vm, uint32_t len, Value head) {
+    ObjList* list =
+        (ObjList*)allocateObject(vm, sizeof(ObjList), OBJ_LIST);
+    list->len = len;
+    list->head = head;
+    return list;
+}
+
 // --- String ---
 
 uint32_t hashString(const char* key, int length) {

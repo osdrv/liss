@@ -489,6 +489,24 @@ static void parseTry(Compiler* compiler) {
     patchJump(compiler, jump_to);
 }
 
+static void parseList(Compiler* compiler) {
+    int len = 0;
+    while (compiler->parser->current.type != TOKEN_RBRAKET) {
+        parseExpression(compiler, false);
+        if (compiler->parser->hadError) return;
+        len++;
+    }
+    if (len > UINT8_MAX) {
+        compiler->parser->hadError = true;
+        ERROR_LOG("[line %d] Error: List literal too long",
+                  compiler->parser->current.line);
+        return;
+    }
+    consume(compiler, TOKEN_RBRAKET, "expect ']' after list literal");
+    if (compiler->parser->hadError) return;
+    emitBytes(compiler, OP_LIST, (uint8_t)(len & 0xff));
+}
+
 static void parseGrouping(Compiler* compiler, bool is_tail) {
     switch (compiler->parser->current.type) {
         case TOKEN_AND_KW:
@@ -775,6 +793,10 @@ static void parseExpression(Compiler* compiler, bool is_tail) {
             advance(compiler);
             parseExpression(compiler, false);
             emitByte(compiler, OP_NEGATE);
+            break;
+        case TOKEN_LBRAKET:
+        advance(compiler);
+        parseList(compiler);
             break;
         default:
             compiler->parser->hadError = true;

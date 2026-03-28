@@ -92,6 +92,26 @@ char* sprintValue(Value value) {
                     APPEND_TO_BUFFER("<error: %s>",
                                      AS_ERROR(value)->message->chars);
                     break;
+                case OBJ_LIST: {
+                    APPEND_TO_BUFFER("[");
+                    ObjList* list = AS_LIST(value);
+                    Value current = list->head;
+                    for (uint32_t i = 0; i < list->len; i++) {
+                        char* elem_str = sprintValue(current);
+                        APPEND_TO_BUFFER("%s", elem_str);
+                        free(elem_str);
+                        if (i < list->len - 1) {
+                            APPEND_TO_BUFFER(" ");
+                        }
+                        if (IS_PAIR(current)) {
+                            current = AS_PAIR(current)->second;
+                        } else {
+                            break;  // Not a proper list, stop here.
+                        }
+                    }
+                    APPEND_TO_BUFFER("]");
+                    break;
+                }
                 default:
                     APPEND_TO_BUFFER("<object>");
             }

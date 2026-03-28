@@ -49,6 +49,8 @@ typedef struct VM {
     int try_count;
     Value raise_value;
 
+    Value empty_list; // A singleton empty list object for reuse.
+
     // (!!!) Flexible Array Member for the stack. Keep at the end.
     Value stack[];
 } VM;

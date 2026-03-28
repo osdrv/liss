@@ -36,6 +36,8 @@ typedef enum {
 
     OP_TRY_START,
     OP_TRY_END,
+
+    OP_LIST,
 } OpCode;
 
 #endif
