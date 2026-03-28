@@ -795,8 +795,8 @@ static void parseExpression(Compiler* compiler, bool is_tail) {
             emitByte(compiler, OP_NEGATE);
             break;
         case TOKEN_LBRAKET:
-        advance(compiler);
-        parseList(compiler);
+            advance(compiler);
+            parseList(compiler);
             break;
         default:
             compiler->parser->hadError = true;

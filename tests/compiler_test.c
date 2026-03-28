@@ -632,10 +632,12 @@ static char* test_compile(void) {
         {
             .name = "compile an empty list",
             .src = "[]",
-            .expected_instructions = (uint8_t[]){
-                OP_LIST, 0,
-                OP_RETURN,
-            },
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_LIST,
+                    0,
+                    OP_RETURN,
+                },
             .expected_instruction_count = 3,
             .expected_constants = NULL,
             .expected_constant_size = 0,
@@ -643,11 +645,21 @@ static char* test_compile(void) {
         {
             .name = "compile a list with elements",
             .src = "[1 2 3]",
-            .expected_instructions = (uint8_t[]){
-                OP_CONSTANT, 0, 0, OP_CONSTANT, 0, 1, OP_CONSTANT, 0, 2,
-                OP_LIST, 3,
-                OP_RETURN,
-            },
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_CONSTANT,
+                    0,
+                    2,
+                    OP_LIST,
+                    3,
+                    OP_RETURN,
+                },
             .expected_instruction_count = 12,
             .expected_constants =
                 (ExpectedConstant[]){

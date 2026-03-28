@@ -63,7 +63,7 @@ char* sprintValue(Value value) {
             APPEND_TO_BUFFER("%s", AS_BOOL(value) ? "true" : "false");
             break;
         case VAL_NIL:
-            APPEND_TO_BUFFER("nil");
+            APPEND_TO_BUFFER("null");
             break;
         case VAL_INT: {
             APPEND_TO_BUFFER("%i", AS_INT(value));
@@ -97,14 +97,21 @@ char* sprintValue(Value value) {
                     ObjList* list = AS_LIST(value);
                     Value current = list->head;
                     for (uint32_t i = 0; i < list->len; i++) {
-                        char* elem_str = sprintValue(current);
+                        if (!IS_PAIR(current)) {
+                            APPEND_TO_BUFFER("<corrupt list>");
+                            break;
+                        }
+                        ObjPair* pair =
+                            AS_PAIR(current);  // Ensure it's a pair for proper
+                                               // list structure
+                        char* elem_str = sprintValue(pair->first);
                         APPEND_TO_BUFFER("%s", elem_str);
                         free(elem_str);
                         if (i < list->len - 1) {
                             APPEND_TO_BUFFER(" ");
                         }
                         if (IS_PAIR(current)) {
-                            current = AS_PAIR(current)->second;
+                            current = pair->second;
                         } else {
                             break;  // Not a proper list, stop here.
                         }

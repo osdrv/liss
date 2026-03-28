@@ -364,6 +364,10 @@ static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]) {
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)arg_cnt;
                 break;
             }
+            case OP_LIST:
+                uint8_t len = *bytecode++;
+                loaded_code[loaded_idx++] = (void*)(uintptr_t)len;
+                break;
             default:
                 break;  // No operands
         }
@@ -465,7 +469,7 @@ static InterpretResult run(VM* vm) {
         &&OP_GET_GLOBAL_IMPL,  &&OP_CALL_IMPL,          &&OP_GET_LOCAL_IMPL,
         &&OP_SET_LOCAL_IMPL,   &&OP_CLOSURE_IMPL,       &&OP_GET_UPVALUE_IMPL,
         &&OP_SET_UPVALUE_IMPL, &&OP_TAIL_CALL_IMPL,     &&OP_TRY_START_IMPL,
-        &&OP_TRY_END_IMPL,
+        &&OP_TRY_END_IMPL,     &&OP_LIST_IMPL,
     };
 
     InterpretResult result = INTERPRET_OK;
@@ -697,7 +701,7 @@ OP_CALL_IMPL: {
         if (vm->last_result != INTERPRET_OK) {
             goto RESCUE;
         }
-        push(vm, value);                 // Push the result of the native call
+        push(vm, value);  // Push the result of the native call
         DISPATCH();
     }
 
@@ -860,6 +864,24 @@ OP_TRY_END_IMPL: {
         goto RETURN;
     }
     vm->try_count--;
+    DISPATCH();
+}
+
+OP_LIST_IMPL: {
+    int len = (int)READ_ARG();
+    Value head = NIL_VAL;
+    push(vm, head);
+    for (int i = 0; i < len; i++) {
+        Value item = peek(vm, i + 1);
+        ObjPair* pair = newPair(vm, item, head);
+        head = OBJ_VAL(pair);
+        *(vm->stack_top - 1) =
+            head;  // Update the head on the stack for the next iteration
+    }
+    ObjList* list = newList(vm, len, head);
+    vm->stack_top -= len;  // Pop the list items
+    pop(vm);               // Pop the initial NIL_VAL
+    push(vm, OBJ_VAL(list));
     DISPATCH();
 }
 

@@ -13,6 +13,7 @@ typedef enum {
     EXPECT_INT,
     EXPECT_REAL,
     EXPECT_STRING,
+    EXPECT_LIST,
     EXPECT_ERROR,
 } ExpectedValueType;
 
@@ -83,6 +84,19 @@ static char* assert_bool(Value value, bool expected) {
 
 static char* assert_nil(Value value) {
     mu_assert("Value is not null.", IS_NIL(value));
+    return NULL;
+}
+
+static char* assert_list(Value value, const char* expected_str) {
+    mu_assert("Value is not an object.", IS_OBJ(value));
+    mu_assert("Object is not a list.", OBJ_TYPE(value) == OBJ_LIST);
+    ObjList* list = AS_LIST(value);
+
+    // Convert the list to a string representation for comparison
+    char* str = sprintValue(value);
+    mu_assert("List string representation does not match expected.",
+              strcmp(str, expected_str) == 0);
+    free(str);
     return NULL;
 }
 
@@ -520,6 +534,24 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_ERROR, .as.string = "oops"},
     },
+    {
+        .name = "empty list expression",
+        .src = "[]",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST, .as.string = "[]"},
+    },
+    {
+        .name = "list with ints",
+        .src = "[1 2 3]",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST, .as.string = "[1 2 3]"},
+    },
+    {
+        .name = "list with mixed types",
+        .src = "[1 true null \"hello\"]",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST, .as.string = "[1 true null \"hello\"]"},
+    },
 };
 
 static char* test_vm_interpret(void) {
@@ -559,6 +591,9 @@ static char* test_vm_interpret(void) {
                     break;
                 case EXPECT_STRING:
                     assert_msg = assert_string(actual, expected.as.string);
+                    break;
+                case EXPECT_LIST:
+                    assert_msg = assert_list(actual, expected.as.string);
                     break;
                 case EXPECT_ERROR:
                     assert_msg = assert_error(actual, expected.as.string);
