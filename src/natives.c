@@ -7,6 +7,14 @@
 #include "value.h"
 #include "vm.h"
 
+// Internal helper to create an error and set it as the current raise value
+static Value raise(VM* vm, const char* message) {
+    ObjError* error = newError(vm, message);
+    vm->raise_value = OBJ_VAL(error);
+    vm->last_result = INTERPRET_RUNTIME_ERROR;
+    return NIL_VAL;
+}
+
 static Value errNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         // TODO: raise! once we've implemented it
@@ -46,6 +54,34 @@ static Value raiseNative(VM* vm, int argc, Value* argv) {
     return NIL_VAL;  // This would be ignored
 }
 
+static Value lenNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raise(vm, "len expects exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (IS_STRING(arg)) {
+        return INT_VAL(AS_STRING(arg)->length);
+    } else if (IS_LIST(arg)) {
+        return INT_VAL(AS_LIST(arg)->len);
+    } else {
+        return raise(vm, "len expects a string or list argument");
+    }
+}
+
+static Value isEmptyNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raise(vm, "is_empty? expects exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (IS_STRING(arg)) {
+        return BOOL_VAL(AS_STRING(arg)->length == 0);
+    } else if (IS_LIST(arg)) {
+        return BOOL_VAL(AS_LIST(arg)->len == 0);
+    } else {
+        return raise(vm, "is_empty? expects a string or list argument");
+    }
+}
+
 void defineNative(VM* vm, const char* name, int arity, NativeFn function) {
     ObjString* str = copyString(vm, name, (int)strlen(name));
     push(vm, OBJ_VAL(str));
@@ -60,4 +96,6 @@ void registerCoreNatives(VM* vm) {
     defineNative(vm, "err!", 1, errNative);
     defineNative(vm, "is_err?", 1, isErrNative);
     defineNative(vm, "raise!", 1, raiseNative);
+    defineNative(vm, "len", 1, lenNative);
+    defineNative(vm, "is_empty?", 1, isEmptyNative);
 }
