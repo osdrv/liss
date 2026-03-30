@@ -39,8 +39,14 @@ static void runFile(const char* path) {
     buffer[bytes_read] = '\0';
     fclose(file);
 
-    // TODO: make the stack size configurable
-    VM* vm = newVM(256);
+    // TODO: implement flag parsing to allow customizing these options
+    VMOptions options = {
+        .stack_capacity = 256,
+        .gc_threshold = 1024 * 1024,  // 1MB
+        .heap_growth_factor = 2,
+        .stress_gc = false,
+    };
+    VM* vm = newVM(options);
     if (vm == NULL) {
         fprintf(stderr, "Could not create VM.\n");
         exit(74);
