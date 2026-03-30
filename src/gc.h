@@ -11,6 +11,6 @@ void markTable(VM* vm, Table* table);
 void markRoots(VM* vm);
 void markValue(VM* vm, Value value);
 void sweep(VM* vm);
-void freeObject(Obj* object);
+void freeObject(VM* vm, Obj* object);
 
 #endif

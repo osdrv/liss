@@ -67,7 +67,7 @@ static Chunk* currentChunk(Compiler* compiler) {
 }
 
 static void emitByte(Compiler* compiler, uint8_t byte) {
-    writeChunk(currentChunk(compiler), byte);
+    writeChunk(compiler->vm, currentChunk(compiler), byte);
 }
 
 static void emitBytes(Compiler* compiler, uint8_t byte1, uint8_t byte2) {
@@ -77,7 +77,7 @@ static void emitBytes(Compiler* compiler, uint8_t byte1, uint8_t byte2) {
 
 static void emitConstant(Compiler* compiler, Value value) {
     Chunk* chunk = currentChunk(compiler);
-    int constant = addConstant(chunk, value);
+    int constant = addConstant(compiler->vm, chunk, value);
     if (constant > UINT16_MAX) {
         compiler->parser->hadError = true;
         ERROR_LOG("[line %d] Error: Too many constants in one chunk",
@@ -314,7 +314,8 @@ static int resolveUpvalue(Compiler* compiler, Token name) {
 
 static int identifierConstant(Compiler* compiler, Token name) {
     ObjString* var_name = copyString(compiler->vm, name.start, name.length);
-    return addConstant(&compiler->function->chunk, OBJ_VAL(var_name));
+    return addConstant(compiler->vm, &compiler->function->chunk,
+                       OBJ_VAL(var_name));
 }
 
 static bool identifiersEqual(Token* a, Token* b) {
@@ -547,7 +548,8 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                     copyString(compiler->vm, fn_name.start, fn_name.length);
             }
 
-            int arg = addConstant(currentChunk(compiler), OBJ_VAL(func));
+            int arg = addConstant(compiler->vm, currentChunk(compiler),
+                                  OBJ_VAL(func));
             emitByte(compiler, OP_CLOSURE);
             emitBytes(compiler, (uint8_t)(arg >> 8), (uint8_t)(arg & 0xff));
             for (int i = 0; i < func->upvalue_cnt; i++) {

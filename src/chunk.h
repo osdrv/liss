@@ -24,6 +24,9 @@ typedef struct {
     // We can add a dynamic array for line numbers here later.
 } Chunk;
 
+typedef struct VM
+    VM;  // Forward declaration of VM for memory management functions.
+
 #define DEBUG_CHUNK(fmt, chunk)          \
     do {                                 \
         char* strc = sprintChunk(chunk); \
@@ -31,18 +34,18 @@ typedef struct {
         free(strc);                      \
     } while (0)
 
-void initValueArray(ValueArray* array);
-void writeValueArray(ValueArray* array, Value value);
-void freeValueArray(ValueArray* array);
+void initValueArray(VM* vm, ValueArray* array);
+void writeValueArray(VM* vm, ValueArray* array, Value value);
+void freeValueArray(VM* vm, ValueArray* array);
 
-void initChunk(Chunk* chunk);
-void freeChunk(Chunk* chunk);
+void initChunk(VM* vm, Chunk* chunk);
+void freeChunk(VM* vm, Chunk* chunk);
 
 // Appends a byte to the end of the chunk.
-void writeChunk(Chunk* chunk, uint8_t byte);
+void writeChunk(VM* vm, Chunk* chunk, uint8_t byte);
 
 // Adds a constant to the chunk's constant pool and returns its index.
-int addConstant(Chunk* chunk, Value value);
+int addConstant(VM* vm, Chunk* chunk, Value value);
 
 char* sprintChunk(const Chunk* chunk);
 

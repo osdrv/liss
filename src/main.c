@@ -13,10 +13,15 @@ void intHandler(int dummy) {
     exit(0);
 }
 
+static bool isFlag(const char* arg) { return arg[0] == '-' && arg[1] == '-'; }
+
 static VMOptions parseVMFlags(int argc, const char* argv[]) {
     VMOptions options = defaultVMOptions();
-    for (int i = 1; i < argc - 1; i++) {
-        if (strcmp(argv[i], "--stack-size") == 0) {
+    for (int i = 1; i < argc; i++) {
+        if (!isFlag(argv[i])) {
+            continue;
+        }
+        if (strcmp(argv[i], "--stack-capacity") == 0) {
             options.stack_capacity = (size_t)atoi(argv[++i]);
         } else if (strcmp(argv[i], "--gc-threshold") == 0) {
             options.gc_threshold = (size_t)atoi(argv[++i]);
@@ -74,14 +79,22 @@ static void runFile(const char* path, VMOptions options) {
 int main(int argc, const char* argv[]) {
     signal(SIGINT, intHandler);
 
+    char* file_name = NULL;
+    for (int i = 1; i < argc; i++) {
+        if (!isFlag(argv[i])) {
+            file_name = argv[i];
+            break;
+        }
+    }
+
     VMOptions options = parseVMFlags(argc, argv);
 
-    if (argc == 1) {
+    if (file_name == NULL) {
         // No file provided, run REPL
         runRepl(options);
-    } else if (argc == 2) {
+    } else if (argc > 1) {
         // Run file
-        runFile(argv[1], options);
+        runFile(file_name, options);
     } else {
         fprintf(stderr, "Usage: liss [script]\n");
         exit(64);

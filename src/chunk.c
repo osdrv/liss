@@ -7,66 +7,67 @@
 #include "object.h"
 #include "opcode.h"
 #include "value.h"
+#include "vm.h"
 
 // --- ValueArray ---
 
-void initValueArray(ValueArray* array) {
+void initValueArray(__attribute__((unused)) VM* vm, ValueArray* array) {
     array->values = NULL;
     array->capacity = 0;
     array->count = 0;
 }
 
-void writeValueArray(ValueArray* array, Value value) {
+void writeValueArray(VM* vm, ValueArray* array, Value value) {
     if (array->capacity < array->count + 1) {
         int oldCapacity = array->capacity;
         array->capacity = GROW_CAPACITY(oldCapacity);
         array->values =
-            GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
+            GROW_ARRAY(Value, vm, array->values, oldCapacity, array->capacity);
     }
 
     array->values[array->count] = value;
     array->count++;
 }
 
-void freeValueArray(ValueArray* array) {
-    FREE_ARRAY(Value, array->values, array->capacity);
-    initValueArray(array);
+void freeValueArray(VM* vm, ValueArray* array) {
+    FREE_ARRAY(Value, vm, array->values, array->capacity);
+    initValueArray(vm, array);
 }
 
 // --- Chunk ---
 
-void initChunk(Chunk* chunk) {
+void initChunk(VM* vm, Chunk* chunk) {
     chunk->count = 0;
     chunk->capacity = 0;
     chunk->code = NULL;
-    initValueArray(&chunk->constants);
+    initValueArray(vm, &chunk->constants);
 }
 
-void freeChunk(Chunk* chunk) {
-    FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
-    freeValueArray(&chunk->constants);
-    initChunk(chunk);
+void freeChunk(VM* vm, Chunk* chunk) {
+    FREE_ARRAY(uint8_t, vm, chunk->code, chunk->capacity);
+    freeValueArray(vm, &chunk->constants);
+    initChunk(vm, chunk);
 }
 
-void writeChunk(Chunk* chunk, uint8_t byte) {
+void writeChunk(VM* vm, Chunk* chunk, uint8_t byte) {
     if (chunk->capacity < chunk->count + 1) {
         int oldCapacity = chunk->capacity;
         chunk->capacity = GROW_CAPACITY(oldCapacity);
         chunk->code =
-            GROW_ARRAY(uint8_t, chunk->code, oldCapacity, chunk->capacity);
+            GROW_ARRAY(uint8_t, vm, chunk->code, oldCapacity, chunk->capacity);
     }
 
     chunk->code[chunk->count] = byte;
     chunk->count++;
 }
 
-int addConstant(Chunk* chunk, Value value) {
+int addConstant(VM* vm, Chunk* chunk, Value value) {
     for (int i = 0; i < chunk->constants.count; i++) {
         if (valuesEqual(chunk->constants.values[i], value)) {
             return i;  // Return existing index if constant already exists
         }
     }
-    writeValueArray(&chunk->constants, value);
+    writeValueArray(vm, &chunk->constants, value);
     // Return the index where the constant was appended.
     return chunk->constants.count - 1;
 }

@@ -116,60 +116,60 @@ void sweep(VM* vm) {
             } else {
                 vm->objects = object;
             }
-            freeObject(unreached);
+            freeObject(vm, unreached);
         }
     }
 }
 
-void freeObject(Obj* object) {
+void freeObject(VM* vm, Obj* object) {
     DEBUG_LOG("Freeing object %p type %d", (void*)object, object->type);
     switch (object->type) {
         case OBJ_FUNCTION: {
             ObjFunction* function = (ObjFunction*)object;
             if (function->loaded_code != NULL) {
-                FREE_ARRAY(void*, function->loaded_code,
+                FREE_ARRAY(void*, vm, function->loaded_code,
                            function->loaded_code_size);
             }
-            freeChunk(&function->chunk);
-            reallocate(function, sizeof(ObjFunction), 0);
+            freeChunk(vm, &function->chunk);
+            reallocate(vm, function, sizeof(ObjFunction), 0);
             break;
         }
         case OBJ_STRING: {
             ObjString* string = (ObjString*)object;
-            reallocate(string->chars, string->length + 1, 0);
-            reallocate(string, sizeof(ObjString), 0);
+            reallocate(vm, string->chars, string->length + 1, 0);
+            reallocate(vm, string, sizeof(ObjString), 0);
             break;
         }
         case OBJ_CLOSURE: {
             ObjClosure* closure = (ObjClosure*)object;
-            reallocate(closure->upvalues,
+            reallocate(vm, closure->upvalues,
                        sizeof(ObjUpvalue*) * closure->upvalue_cnt, 0);
-            reallocate(closure, sizeof(ObjClosure), 0);
+            reallocate(vm, closure, sizeof(ObjClosure), 0);
             break;
         }
         case OBJ_UPVALUE: {
             ObjUpvalue* upvalue = (ObjUpvalue*)object;
-            reallocate(upvalue, sizeof(ObjUpvalue), 0);
+            reallocate(vm, upvalue, sizeof(ObjUpvalue), 0);
             break;
         }
         case OBJ_ERROR: {
             ObjError* error = (ObjError*)object;
-            reallocate(error, sizeof(ObjError), 0);
+            reallocate(vm, error, sizeof(ObjError), 0);
             break;
         }
         case OBJ_NATIVE: {
             ObjNative* native = (ObjNative*)object;
-            reallocate(native, sizeof(ObjNative), 0);
+            reallocate(vm, native, sizeof(ObjNative), 0);
             break;
         }
         case OBJ_PAIR: {
             ObjPair* pair = (ObjPair*)object;
-            reallocate(pair, sizeof(ObjPair), 0);
+            reallocate(vm, pair, sizeof(ObjPair), 0);
             break;
         }
         case OBJ_LIST: {
             ObjList* list = (ObjList*)object;
-            reallocate(list, sizeof(ObjList), 0);
+            reallocate(vm, list, sizeof(ObjList), 0);
             break;
         }
     }

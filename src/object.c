@@ -13,8 +13,7 @@
 // A helper for allocating any object type.
 // It initializes the base Obj header and adds the new object to the VM's list.
 static Obj* allocateObject(VM* vm, size_t size, ObjType type) {
-    gc(vm);  // Trigger GC before allocation
-    Obj* object = (Obj*)reallocate(NULL, 0, size);
+    Obj* object = (Obj*)reallocate(vm, NULL, 0, size);
     if (object == NULL) {
         // In a real VM, this should trigger a GC cycle before failing.
         fprintf(stderr, "Memory allocation failed.\n");
@@ -48,7 +47,7 @@ ObjFunction* newFunction(VM* vm) {
     function->arity = 0;
     function->upvalue_cnt = 0;
     function->name = NULL;
-    initChunk(&function->chunk);
+    initChunk(vm, &function->chunk);
     function->loaded_code = NULL;
     function->loaded_code_size = 0;
     return function;
@@ -56,7 +55,7 @@ ObjFunction* newFunction(VM* vm) {
 
 ObjClosure* newClosure(VM* vm, ObjFunction* function) {
     ObjUpvalue** upvalues =
-        reallocate(NULL, 0, sizeof(ObjUpvalue*) * function->upvalue_cnt);
+        reallocate(vm, NULL, 0, sizeof(ObjUpvalue*) * function->upvalue_cnt);
     for (int i = 0; i < function->upvalue_cnt; i++) {
         upvalues[i] = NULL;
     }
@@ -135,7 +134,7 @@ ObjString* copyString(VM* vm, const char* chars, int length) {
         return interned;
     }
 
-    char* heap_chars = reallocate(NULL, 0, length + 1);
+    char* heap_chars = reallocate(vm, NULL, 0, length + 1);
     memcpy(heap_chars, chars, length);
     heap_chars[length] = '\0';
 

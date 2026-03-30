@@ -25,7 +25,7 @@ static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]);
 
 VM* newVM(VMOptions options) {
     VM* vm = (VM*)reallocate(
-        NULL, 0, sizeof(VM) + sizeof(Value) * options.stack_capacity);
+        NULL, NULL, 0, sizeof(VM) + sizeof(Value) * options.stack_capacity);
     vm->options = options;
     vm->bytes_allocated = 0;
     vm->next_gc = options.gc_threshold;
@@ -51,11 +51,12 @@ void destroyVM(VM* vm) {
     Obj* object = vm->objects;
     while (object != NULL) {
         Obj* next = object->next;
-        freeObject(object);
+        freeObject(vm, object);
         object = next;
     }
     // Correctly free the VM struct and its flexible array member
-    reallocate(vm, sizeof(VM) + sizeof(Value) * vm->options.stack_capacity, 0);
+    reallocate(NULL, vm,
+               sizeof(VM) + sizeof(Value) * vm->options.stack_capacity, 0);
 }
 
 // --- Public API ---
@@ -306,7 +307,7 @@ static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]) {
                     jumps_capacity =
                         jumps_capacity < 8 ? 8 : jumps_capacity * 2;
                     jumps_to_patch = (int*)reallocate(
-                        jumps_to_patch, sizeof(int) * old_capacity,
+                        NULL, jumps_to_patch, sizeof(int) * old_capacity,
                         sizeof(int) * jumps_capacity);
                     if (jumps_to_patch == NULL) {
                         ERROR_LOG("Memory error allocating jumps to patch");
@@ -375,7 +376,7 @@ static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]) {
                 break;  // No operands
         }
     }
-    loaded_code = reallocate(loaded_code, sizeof(void*) * chunk->count,
+    loaded_code = reallocate(NULL, loaded_code, sizeof(void*) * chunk->count,
                              sizeof(void*) * loaded_idx);
     if (loaded_code == NULL) {
         ERROR_LOG("Memory error resizing loaded code");
@@ -402,9 +403,9 @@ LOADER_CLEANUP:
     if (byte_to_slot_map != NULL) {
         free(byte_to_slot_map);
     }
-    reallocate(jumps_to_patch, sizeof(int) * jumps_capacity, 0);
+    reallocate(NULL, jumps_to_patch, sizeof(int) * jumps_capacity, 0);
     if (result != 0) {
-        reallocate(loaded_code, sizeof(void*) * loaded_idx, 0);
+        reallocate(NULL, loaded_code, sizeof(void*) * loaded_idx, 0);
         function->loaded_code = NULL;
     } else {
         function->loaded_code_size = loaded_idx;
