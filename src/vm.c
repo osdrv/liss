@@ -23,10 +23,12 @@ static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]);
 
 // --- VM Lifecycle ---
 
-VM* newVM(size_t stack_capacity) {
-    VM* vm =
-        (VM*)reallocate(NULL, 0, sizeof(VM) + sizeof(Value) * stack_capacity);
-    vm->stack_capacity = stack_capacity;
+VM* newVM(VMOptions options) {
+    VM* vm = (VM*)reallocate(
+        NULL, 0, sizeof(VM) + sizeof(Value) * options.stack_capacity);
+    vm->options = options;
+    vm->bytes_allocated = 0;
+    vm->next_gc = options.gc_threshold;
     vm->stack_top = vm->stack;
     vm->objects = NULL;
     vm->last_result = INTERPRET_OK;
@@ -37,7 +39,8 @@ VM* newVM(size_t stack_capacity) {
     vm->try_count = 0;
     vm->raise_value = NIL_VAL;
     vm->last_popped_value = NIL_VAL;
-    DEBUG_LOG("Initialized new VM with stack capacity %zu", stack_capacity);
+    DEBUG_LOG("Initialized new VM with stack capacity %zu",
+              options.stack_capacity);
     return vm;
 }
 
@@ -52,7 +55,7 @@ void destroyVM(VM* vm) {
         object = next;
     }
     // Correctly free the VM struct and its flexible array member
-    reallocate(vm, sizeof(VM) + sizeof(Value) * vm->stack_capacity, 0);
+    reallocate(vm, sizeof(VM) + sizeof(Value) * vm->options.stack_capacity, 0);
 }
 
 // --- Public API ---
@@ -82,7 +85,7 @@ InterpretResult interpret(VM* vm, const char* source) {
 // --- Stack Operations ---
 
 void push(VM* vm, Value value) {
-    if ((size_t)(vm->stack_top - vm->stack) >= vm->stack_capacity) {
+    if ((size_t)(vm->stack_top - vm->stack) >= vm->options.stack_capacity) {
         ERROR_LOG("Stack overflow");
         vm->last_result = INTERPRET_RUNTIME_ERROR;
         return;

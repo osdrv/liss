@@ -36,7 +36,13 @@ typedef struct {
 } VMTestCase;
 
 static char* test_vm_stack(void) {
-    VM* vm = newVM(16);  // Create a VM with a small stack for testing
+    VMOptions options = {
+        .stack_capacity = 16,
+        .gc_threshold = 1024,
+        .heap_growth_factor = 2,
+        .stress_gc = true,
+    };
+    VM* vm = newVM(options);  // Create a VM with a small stack for testing
     mu_assert("Failed to create VM", vm != NULL);
 
     // Test push and pop
@@ -559,7 +565,13 @@ static char* test_vm_interpret(void) {
          i++) {
         VMTestCase* test = &interpret_tests[i];
         DEBUG_LOG("Running vm test: %s", test->name);
-        VM* vm = newVM(256);
+        VMOptions options = {
+            .stack_capacity = 64,
+            .gc_threshold = 1024,
+            .heap_growth_factor = 2,
+            .stress_gc = true,
+        };
+        VM* vm = newVM(options);
         mu_assert("Failed to create VM", vm != NULL);
 
         if (test->is_failing) {

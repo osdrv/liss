@@ -30,11 +30,21 @@ typedef struct {
     Value* stack_top;   // Stack top at the time of entering the try block
 } TryBlock;
 
+typedef struct {
+    size_t stack_capacity;
+    size_t gc_threshold;
+    size_t heap_growth_factor;
+    bool stress_gc;  // If true, trigger GC on every allocation (for testing)
+} VMOptions;
+
 typedef struct VM {
+    VMOptions options;
+    size_t bytes_allocated;
+    size_t next_gc;
+
     CallFrame frames[FRAMES_MAX];
     int frame_count;
 
-    size_t stack_capacity;
     Value* stack_top;
     InterpretResult last_result;  // Store the last interpret result
 
@@ -55,8 +65,18 @@ typedef struct VM {
     Value stack[];
 } VM;
 
+static inline VMOptions defaultVMOptions() {
+    VMOptions options = {
+        .stack_capacity = 256,
+        .gc_threshold = 1024 * 1024,  // 1MB
+        .heap_growth_factor = 2,
+        .stress_gc = false,
+    };
+    return options;
+}
+
 // Creates and initializes a new VM with a given stack capacity.
-VM* newVM(size_t stack_capacity);
+VM* newVM(VMOptions options);
 
 // Destroys the VM and frees all associated memory.
 void destroyVM(VM* vm);

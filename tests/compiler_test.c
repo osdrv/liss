@@ -675,7 +675,13 @@ static char* test_compile(void) {
          i++) {
         CompilerTestCase* test = &compile_tests[i];
         DEBUG_LOG("Running test: %s", test->name);
-        VM* vm = newVM(256);
+        VMOptions options = {
+            .stack_capacity = 64,
+            .gc_threshold = 1024,
+            .heap_growth_factor = 2,
+            .stress_gc = true,
+        };
+        VM* vm = newVM(options);
 
         if (test->is_failing) {
             DEBUG_LOG("Set a breakpoint for a failing test");

@@ -10,7 +10,7 @@
 
 void runRepl() {
     // TODO: make the stack size configurable
-    VM* vm = newVM(256);
+    VM* vm = newVM(defaultVMOptions());
 
     char line[1024];
 
