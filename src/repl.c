@@ -8,10 +8,8 @@
 #include "value.h"
 #include "vm.h"
 
-void runRepl() {
-    // TODO: make the stack size configurable
-    VM* vm = newVM(defaultVMOptions());
-
+void runRepl(VMOptions options) {
+    VM* vm = newVM(options);
     char line[1024];
 
     PRINTF("LISS REPL. Type Ctrl+D (EOF) to exit.\n");

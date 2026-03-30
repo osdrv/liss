@@ -13,7 +13,26 @@ void intHandler(int dummy) {
     exit(0);
 }
 
-static void runFile(const char* path) {
+static VMOptions parseVMFlags(int argc, const char* argv[]) {
+    VMOptions options = defaultVMOptions();
+    for (int i = 1; i < argc - 1; i++) {
+        if (strcmp(argv[i], "--stack-size") == 0) {
+            options.stack_capacity = (size_t)atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--gc-threshold") == 0) {
+            options.gc_threshold = (size_t)atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--heap-growth-factor") == 0) {
+            options.heap_growth_factor = atof(argv[++i]);
+        } else if (strcmp(argv[i], "--stress-gc") == 0) {
+            options.stress_gc = true;
+        } else {
+            fprintf(stderr, "Unknown flag: %s\n", argv[i]);
+            exit(64);
+        }
+    }
+    return options;
+}
+
+static void runFile(const char* path, VMOptions options) {
     FILE* file = fopen(path, "rb");
     if (file == NULL) {
         fprintf(stderr, "Could not open file \"%s\".\n", path);
@@ -39,13 +58,6 @@ static void runFile(const char* path) {
     buffer[bytes_read] = '\0';
     fclose(file);
 
-    // TODO: implement flag parsing to allow customizing these options
-    VMOptions options = {
-        .stack_capacity = 256,
-        .gc_threshold = 1024 * 1024,  // 1MB
-        .heap_growth_factor = 2,
-        .stress_gc = false,
-    };
     VM* vm = newVM(options);
     if (vm == NULL) {
         fprintf(stderr, "Could not create VM.\n");
@@ -61,12 +73,15 @@ static void runFile(const char* path) {
 
 int main(int argc, const char* argv[]) {
     signal(SIGINT, intHandler);
+
+    VMOptions options = parseVMFlags(argc, argv);
+
     if (argc == 1) {
         // No file provided, run REPL
-        runRepl();
+        runRepl(options);
     } else if (argc == 2) {
         // Run file
-        runFile(argv[1]);
+        runFile(argv[1], options);
     } else {
         fprintf(stderr, "Usage: liss [script]\n");
         exit(64);
