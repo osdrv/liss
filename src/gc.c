@@ -22,6 +22,11 @@ void markRoots(VM* vm) {
     markTable(vm, &vm->strings);
     markValue(vm, vm->raise_value);
     markValue(vm, vm->empty_list);
+    // mark upvalues
+    for (ObjUpvalue* upvalue = vm->open_upvalues; upvalue != NULL;
+         upvalue = upvalue->next) {
+        markObject(vm, (Obj*)upvalue);
+    }
 }
 
 void markValue(VM* vm, Value value) {
