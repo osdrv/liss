@@ -6,6 +6,7 @@
 #include "chunk.h"
 #include "natives.h"
 #include "value.h"
+#include "table.h"
 
 // Forward declarations for structs used in object definitions.
 typedef struct ObjString ObjString;
@@ -22,6 +23,7 @@ typedef enum {
     OBJ_NATIVE,
     OBJ_PAIR,
     OBJ_LIST,
+    OBJ_MODULE,
 } ObjType;
 
 struct Obj {
@@ -95,6 +97,12 @@ typedef struct {
     Value head;
 } ObjList;
 
+typedef struct {
+    Obj obj;
+    ObjString* name;
+    Table imports;
+} ObjModule;
+
 // --- Helper Functions and Macros ---
 
 // Safely checks if a Value is an object of a given ObjType.
@@ -114,6 +122,7 @@ static inline bool isObjType(Value value, ObjType type) {
 #define IS_NATIVE(value) isObjType(value, OBJ_NATIVE)
 #define IS_PAIR(value) isObjType(value, OBJ_PAIR)
 #define IS_LIST(value) isObjType(value, OBJ_LIST)
+#define IS_MODULE(value) isObjType(value, OBJ_MODULE)
 
 // Macros for casting a Value to a specific object type pointer.
 #define AS_FUNCTION(value) ((ObjFunction*)AS_OBJ(value))
@@ -125,6 +134,7 @@ static inline bool isObjType(Value value, ObjType type) {
 #define AS_NATIVE(value) ((ObjNative*)AS_OBJ(value))
 #define AS_PAIR(value) ((ObjPair*)AS_OBJ(value))
 #define AS_LIST(value) ((ObjList*)AS_OBJ(value))
+#define AS_MODULE(value) ((ObjModule*)AS_OBJ(value))
 
 // Helper function to compute the hash of a string.
 uint32_t hashString(const char* key, int length);
@@ -139,6 +149,7 @@ ObjError* newError(VM* vm, const char* message);
 ObjNative* newNative(VM* vm, const char* name, int arity, NativeFn function);
 ObjPair* newPair(VM* vm, Value first, Value second);
 ObjList* newList(VM* vm, uint32_t len, Value head);
+ObjModule* newModule(VM* vm, const char* name);
 
 // Allocates an ObjString on the heap and returns a pointer to it.
 ObjString* takeString(VM* vm, char* chars, int length);

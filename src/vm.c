@@ -35,6 +35,7 @@ VM* newVM(VMOptions options) {
     vm->open_upvalues = NULL;
     initTable(&vm->strings);
     initTable(&vm->globals);
+    initTable(&vm->modules);
     registerCoreNatives(vm);
     vm->try_count = 0;
     vm->raise_value = NIL_VAL;
@@ -48,6 +49,7 @@ void destroyVM(VM* vm) {
     if (vm == NULL) return;
     freeTable(&vm->strings);
     freeTable(&vm->globals);
+    freeTable(&vm->modules);
     Obj* object = vm->objects;
     while (object != NULL) {
         Obj* next = object->next;

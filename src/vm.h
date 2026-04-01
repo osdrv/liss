@@ -51,6 +51,7 @@ typedef struct VM {
     Obj* objects;  // Linked list of all heap-allocated objects for GC
     Table strings;
     Table globals;
+    Table modules;
 
     Value last_popped_value;    // Store the last popped value
     ObjUpvalue* open_upvalues;  // Linked list of open upvalues

@@ -5,6 +5,7 @@
 
 #include "minunit.h"
 #include "value.h"
+#include "object.h"
 
 static char* test_table_initTable(void) {
     Table table;

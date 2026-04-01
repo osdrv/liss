@@ -4,8 +4,9 @@
 #include <stddef.h>
 
 #include "common.h"
-#include "object.h"
 #include "value.h"
+
+typedef struct ObjString ObjString;
 
 typedef struct TableEntry {
     Value key;

@@ -100,6 +100,17 @@ ObjList* newList(VM* vm, uint32_t len, Value head) {
     return list;
 }
 
+ObjModule* newModule(VM* vm, const char* name) {
+    ObjModule* module =
+        (ObjModule*)allocateObject(vm, sizeof(ObjModule), OBJ_MODULE);
+    ObjString* name_str = copyString(vm, name, (int)strlen(name));
+    push(vm, OBJ_VAL(name_str));
+    module->name = name;
+    initTable(&module->imports);
+    pop(vm);
+    return module;
+}
+
 // --- String ---
 
 uint32_t hashString(const char* key, int length) {

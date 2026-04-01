@@ -92,6 +92,12 @@ void markObject(VM* vm, Obj* object) {
             markValue(vm, list->head);
             break;
         }
+        case OBJ_MODULE: {
+            ObjModule* module = (ObjModule*)object;
+            markObject(vm, (Obj*)module->name);
+            markTable(vm, &module->imports);
+            break;
+        }
     }
 }
 
@@ -176,6 +182,11 @@ void freeObject(VM* vm, Obj* object) {
         case OBJ_LIST: {
             ObjList* list = (ObjList*)object;
             reallocate(vm, list, sizeof(ObjList), 0);
+            break;
+        }
+        case OBJ_MODULE: {
+            ObjModule* module = (ObjModule*)object;
+            reallocate(vm, module, sizeof(ObjModule), 0);
             break;
         }
     }
