@@ -11,6 +11,12 @@ void gc(VM* vm) {
     DEBUG_LOG("--- GC Begin ---");
     markRoots(vm);
     sweep(vm);
+    size_t new_threshold = vm->bytes_allocated * vm->options.heap_growth_factor;
+    vm->next_gc = (new_threshold < vm->options.gc_threshold)
+                      ? vm->options.gc_threshold
+                      : new_threshold;
+    DEBUG_LOG("GC collected. New heap size: %zu bytes. Next GC at: %zu bytes.",
+              vm->bytes_allocated, vm->next_gc);
     DEBUG_LOG("--- GC End ---");
 }
 
