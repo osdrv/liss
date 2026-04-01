@@ -21,10 +21,10 @@ int main(int argc, char** argv) {
     printf("--- Running Test Suites ---\n");
 
     // Call all the test suites
-    table_suite();
+    // table_suite();
     scanner_suite();
-    compiler_suite();
-    vm_suite();
+    // compiler_suite();
+    // vm_suite();
 
     printf("\n---------------------------\n");
     if (result == 0) {

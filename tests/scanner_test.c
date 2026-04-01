@@ -190,6 +190,24 @@ static char* test_scanner_unary_minus(void) {
     return NULL;
 }
 
+static char* test_scanner_identifier_with_namespace(void) {
+    const char* source = "list:sort m:do_stuff";
+    Scanner scanner;
+    initScanner(&scanner, source);
+
+    const char* expected_lexemes[] = {"list:sort", "m:do_stuff"};
+
+    for (size_t i = 0;
+         i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
+        Token token = scanToken(&scanner);
+        mu_assert("Expected TOKEN_IDENTIFIER", token.type == TOKEN_IDENTIFIER);
+        mu_assert("Unexpected lexeme",
+                  strncmp(token.start, expected_lexemes[i], token.length) == 0);
+    }
+
+    return NULL;
+}
+
 void scanner_suite(void) {
     printf("--- Scanner Suite ---\n");
     mu_run_test(test_scanner_whitespace);
@@ -201,5 +219,6 @@ void scanner_suite(void) {
     mu_run_test(test_scanner_string_literals);
     mu_run_test(test_scanner_nested_expression);
     mu_run_test(test_scanner_unary_minus);
+    mu_run_test(test_scanner_identifier_with_namespace);
     // TODO: add more tests below
 }

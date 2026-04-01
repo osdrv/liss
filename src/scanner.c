@@ -8,6 +8,7 @@
 #include "token.h"
 
 #define STRING_LITERAL_INIT_BUF_SIZE 16
+#define ASCII_SIZE 128
 
 // The implementation is inspired by Crafting Interpreters book by Bob Nystrom
 // https://craftinginterpreters.com/scanning-on-demand.html
@@ -46,6 +47,22 @@ static bool isAnyChar(Scanner* scanner, const char* options) {
     char c = peek(scanner);
     for (int i = 0; options[i] != '\0'; i++) {
         if (c == options[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// This function returns true if the current character is in the options string
+// and hasn't been seen before in the current token. It uses a boolean array
+// to track which characters have been seen.
+static bool isAnyCharOnce(Scanner* scanner, const char* options,
+                          unsigned char seen_chars[ASCII_SIZE]) {
+    char c = peek(scanner);
+    for (const char* opt = options; *opt != '\0'; ++opt) {
+        if (*opt == c && !(seen_chars[*opt] & 1)) {
+            // Set the flag for this character and return true.
+            seen_chars[*opt] |= 1;
             return true;
         }
     }
@@ -108,9 +125,10 @@ static TokenType identifierType(Scanner* scanner) {
 }
 
 static Token identifier(Scanner* scanner) {
-    while (
-        isAlpha(scanner) || isDigit(scanner) ||
-        ((scanner->current - scanner->start > 0) && isAnyChar(scanner, "?!")))
+    bool seen_chars[ASCII_SIZE] = {0};
+    while (isAlpha(scanner) || isDigit(scanner) ||
+           ((scanner->current - scanner->start > 0) &&
+            isAnyCharOnce(scanner, "?!:", seen_chars)))
         advance(scanner);
     TokenType type = identifierType(scanner);
     return mkToken(scanner, type);
