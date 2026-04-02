@@ -729,7 +729,37 @@ END_PARSE_GROUPING:
     consume(compiler, TOKEN_RPAREN, "expect ')' after expression");
 }
 
+// Returns the index of the first occurrence of ch in str, or -1 if not found.
+static int indexOf(const char* str, const size_t len, const char ch) {
+    for (int i = 0; i < len; i++) {
+        if (str[i] == ch) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 static void namedVariable(Compiler* compiler, Token name) {
+    // Check if the name contains ":". If it does, it is a module-qualified
+    // name.
+    int module_name_ix = indexOf(name.start, name.length, ':');
+    if (module_name_ix != -1) {
+        ObjString* module_name =
+            copyString(compiler->vm, name.start, module_name_ix);
+        ObjString* var_name =
+            copyString(compiler->vm, name.start + module_name_ix + 1,
+                       name.length - module_name_ix - 1);
+        int module_ix = addConstant(compiler->vm, currentChunk(compiler),
+                                    OBJ_VAL(module_name));
+        int var_ix = addConstant(compiler->vm, currentChunk(compiler),
+                                 OBJ_VAL(var_name));
+        emitByte(compiler, OP_GET_MODULE_GLOBAL);
+        emitBytes(compiler, (uint8_t)(module_ix >> 8),
+                  (uint8_t)(module_ix & 0xff));
+        emitBytes(compiler, (uint8_t)(var_ix >> 8), (uint8_t)(var_ix & 0xff));
+        return;
+    }
+
     // Try local lookup first
     int arg = resolveLocal(compiler, name);
     if (arg != -1) {

@@ -19,7 +19,7 @@
 
 // --- Forward Declarations ---
 static InterpretResult run(VM* vm);
-static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]);
+static int loadThreadedCode(VM* vm, ObjFunction* function, void* dispatch_table[]);
 
 // --- VM Lifecycle ---
 
@@ -237,7 +237,7 @@ void printConsts(Chunk* chunk) {
 
 // --- VM Execution (Direct Threading) ---
 
-static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]) {
+static int loadThreadedCode(VM* vm, ObjFunction* function, void* dispatch_table[]) {
     int result = 0;
     if (function->loaded_code != NULL) {
         return 0;  // Already loaded
@@ -374,6 +374,34 @@ static int loadThreadedCode(ObjFunction* function, void* dispatch_table[]) {
                 uint8_t len = *bytecode++;
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)len;
                 break;
+            case OP_GET_MODULE_GLOBAL: {
+                uint16_t mod_ix = (uint16_t)(bytecode[0] << 8) | bytecode[1];
+                uint16_t var_ix = (uint16_t)(bytecode[2] << 8) | bytecode[3];
+                bytecode += 4;
+
+                Value mod_name = chunk->constants.values[mod_ix];
+                Value var_name = chunk->constants.values[var_ix];
+
+                Value* mod_val = tableGet(&vm->modules, mod_name);
+                if (mod_val == NULL) {
+                    ERROR_LOG("Module '%s' not found.",
+                              AS_STRING(mod_name)->chars);
+                    result = -1;
+                    goto LOADER_CLEANUP;
+                }
+                ObjModule* module = (ObjModule*)AS_MODULE(*mod_val);
+
+                Value* global_ptr = tableGet(&module->imports, var_name);
+                if (global_ptr == NULL) {
+                    ERROR_LOG("Global variable '%s' not found in module '%s'.",
+                              AS_STRING(var_name)->chars,
+                              AS_STRING(mod_name)->chars);
+                    result = -1;
+                    goto LOADER_CLEANUP;
+                }
+                loaded_code[loaded_idx++] = (void*)global_ptr;
+                break;
+            }
             default:
                 break;  // No operands
         }
@@ -466,22 +494,27 @@ static InterpretResult run(VM* vm) {
 
     // The dispatch table: an array of opcode implementation addresses.
     static void* dispatch_table[] = {
-        &&OP_RETURN_IMPL,      &&OP_CONSTANT_IMPL,      &&OP_POP_IMPL,
-        &&OP_JUMP_IMPL,        &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
-        &&OP_SUBTRACT_IMPL,    &&OP_MULTIPLY_IMPL,      &&OP_DIVIDE_IMPL,
-        &&OP_NEGATE_IMPL,      &&OP_TRUE_IMPL,          &&OP_FALSE_IMPL,
-        &&OP_NULL_IMPL,        &&OP_NOT_IMPL,           &&OP_EQUAL_IMPL,
-        &&OP_GREATER_IMPL,     &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
-        &&OP_GET_GLOBAL_IMPL,  &&OP_CALL_IMPL,          &&OP_GET_LOCAL_IMPL,
-        &&OP_SET_LOCAL_IMPL,   &&OP_CLOSURE_IMPL,       &&OP_GET_UPVALUE_IMPL,
-        &&OP_SET_UPVALUE_IMPL, &&OP_TAIL_CALL_IMPL,     &&OP_TRY_START_IMPL,
-        &&OP_TRY_END_IMPL,     &&OP_LIST_IMPL,
+        &&OP_RETURN_IMPL,        &&OP_CONSTANT_IMPL,
+        &&OP_POP_IMPL,           &&OP_JUMP_IMPL,
+        &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
+        &&OP_SUBTRACT_IMPL,      &&OP_MULTIPLY_IMPL,
+        &&OP_DIVIDE_IMPL,        &&OP_NEGATE_IMPL,
+        &&OP_TRUE_IMPL,          &&OP_FALSE_IMPL,
+        &&OP_NULL_IMPL,          &&OP_NOT_IMPL,
+        &&OP_EQUAL_IMPL,         &&OP_GREATER_IMPL,
+        &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
+        &&OP_GET_GLOBAL_IMPL,    &&OP_CALL_IMPL,
+        &&OP_GET_LOCAL_IMPL,     &&OP_SET_LOCAL_IMPL,
+        &&OP_CLOSURE_IMPL,       &&OP_GET_UPVALUE_IMPL,
+        &&OP_SET_UPVALUE_IMPL,   &&OP_TAIL_CALL_IMPL,
+        &&OP_TRY_START_IMPL,     &&OP_TRY_END_IMPL,
+        &&OP_LIST_IMPL,          &&OP_GET_MODULE_GLOBAL_IMPL,
     };
 
     InterpretResult result = INTERPRET_OK;
     CallFrame* frame = &vm->frames[vm->frame_count - 1];
     if (frame->closure->function->loaded_code == NULL) {
-        if (loadThreadedCode(frame->closure->function, dispatch_table) != 0) {
+        if (loadThreadedCode(vm, frame->closure->function, dispatch_table) != 0) {
             result = INTERPRET_RUNTIME_ERROR;
             goto RETURN;
         }
@@ -735,7 +768,7 @@ OP_CALL_IMPL: {
     }
 
     if (closure->function->loaded_code == NULL) {
-        if (loadThreadedCode(closure->function, dispatch_table) != 0) {
+        if (loadThreadedCode(vm, closure->function, dispatch_table) != 0) {
             result = INTERPRET_RUNTIME_ERROR;
             goto RETURN;
         }
@@ -838,7 +871,7 @@ OP_TAIL_CALL_IMPL: {
 
     frame->closure = closure;
     if (closure->function->loaded_code == NULL) {
-        if (loadThreadedCode(closure->function, dispatch_table) != 0) {
+        if (loadThreadedCode(vm, closure->function, dispatch_table) != 0) {
             result = INTERPRET_RUNTIME_ERROR;
             goto RETURN;
         }
@@ -888,6 +921,12 @@ OP_LIST_IMPL: {
     vm->stack_top -= len;  // Pop the list items
     pop(vm);               // Pop the initial NIL_VAL
     push(vm, OBJ_VAL(list));
+    DISPATCH();
+}
+
+OP_GET_MODULE_GLOBAL_IMPL: {
+    Value* val_ptr = (Value*)*frame->ip++;
+    push(vm, *val_ptr);
     DISPATCH();
 }
 

@@ -5,8 +5,8 @@
 
 #include "chunk.h"
 #include "natives.h"
-#include "value.h"
 #include "table.h"
+#include "value.h"
 
 // Forward declarations for structs used in object definitions.
 typedef struct ObjString ObjString;

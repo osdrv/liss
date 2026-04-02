@@ -38,6 +38,7 @@ typedef enum {
     OP_TRY_END,
 
     OP_LIST,
+    OP_GET_MODULE_GLOBAL,
 } OpCode;
 
 #endif

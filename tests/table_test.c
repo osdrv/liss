@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include "minunit.h"
-#include "value.h"
 #include "object.h"
+#include "value.h"
 
 static char* test_table_initTable(void) {
     Table table;
