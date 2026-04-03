@@ -5,7 +5,7 @@ CC = clang
 # To enable, run: make DEBUG=1
 DEBUG_FLAGS =
 ifeq ($(DEBUG),1)
-	DEBUG_FLAGS = -DLISS_DEBUG_BUILD -g
+	DEBUG_FLAGS = -DLISS_DEBUG_BUILD -g -fsanitize=address
 endif
 
 CFLAGS = -std=c23 -Wall -Wextra -Wpedantic $(DEBUG_FLAGS)

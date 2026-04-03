@@ -842,7 +842,9 @@ static void parseExpression(Compiler* compiler, bool is_tail) {
 void markCompilerRoots(VM* vm) {
     Compiler* compiler = (Compiler*)vm->compiler;
     while (compiler != NULL) {
+        push(vm, OBJ_VAL(compiler->function));
         markObject(vm, (Obj*)compiler->function);
+        pop(vm);
         compiler = compiler->enclosing;
     }
 }

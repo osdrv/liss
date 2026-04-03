@@ -27,6 +27,7 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
 VM* newVM(VMOptions options) {
     VM* vm = (VM*)reallocate(
         NULL, NULL, 0, sizeof(VM) + sizeof(Value) * options.stack_capacity);
+    vm->compiler = NULL;
     vm->options = options;
     vm->bytes_allocated = 0;
     vm->next_gc = options.gc_threshold;
@@ -37,10 +38,10 @@ VM* newVM(VMOptions options) {
     initTable(&vm->strings);
     initTable(&vm->globals);
     initTable(&vm->modules);
-    registerCoreNatives(vm);
     vm->try_count = 0;
     vm->raise_value = NIL_VAL;
     vm->last_popped_value = NIL_VAL;
+    registerCoreNatives(vm);
     DEBUG_LOG("Initialized new VM with stack capacity %zu",
               options.stack_capacity);
     return vm;
@@ -924,7 +925,7 @@ OP_LIST_IMPL: {
         ObjPair* pair = newPair(vm, item, head);
         head = OBJ_VAL(pair);
         *(vm->stack_top - 1) = head;            // Update head on stack
-        
+
         // Remove the item we just used from the stack, but keep head on top.
         *(vm->stack_top - 2) = head;
         vm->stack_top--;
