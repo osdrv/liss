@@ -6,6 +6,7 @@
 
 #include "chunk.h"
 #include "common.h"
+#include "gc.h"
 #include "object.h"
 #include "opcode.h"
 #include "token.h"
@@ -838,6 +839,14 @@ static void parseExpression(Compiler* compiler, bool is_tail) {
     }
 }
 
+void markCompilerRoots(VM* vm) {
+    Compiler* compiler = (Compiler*)vm->compiler;
+    while (compiler != NULL) {
+        markObject(vm, (Obj*)compiler->function);
+        compiler = compiler->enclosing;
+    }
+}
+
 ObjFunction* compile(VM* vm, const char* source) {
     Parser parser;
     initParser(&parser);
@@ -847,6 +856,7 @@ ObjFunction* compile(VM* vm, const char* source) {
     compiler.vm = vm;
     compiler.parser = &parser;
     compiler.added_globals_cnt = 0;
+    vm->compiler = &compiler;
     initCompiler(&compiler, NULL);
     push(vm, OBJ_VAL(compiler.function));
 
@@ -868,11 +878,13 @@ ObjFunction* compile(VM* vm, const char* source) {
         for (int i = 0; i < compiler.added_globals_cnt; i++) {
             tableRemove(&vm->globals, compiler.added_globals[i]);
         }
+        vm->compiler = NULL;
         return NULL;
     }
 
     consume(&compiler, TOKEN_EOF, "expect the end of expression");
     ObjFunction* function = endCompiler(&compiler);
+    vm->compiler = NULL;
 
     return parser.hadError ? NULL : function;
 }

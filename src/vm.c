@@ -19,7 +19,8 @@
 
 // --- Forward Declarations ---
 static InterpretResult run(VM* vm);
-static int loadThreadedCode(VM* vm, ObjFunction* function, void* dispatch_table[]);
+static int loadThreadedCode(VM* vm, ObjFunction* function,
+                            void* dispatch_table[]);
 
 // --- VM Lifecycle ---
 
@@ -64,6 +65,8 @@ void destroyVM(VM* vm) {
 // --- Public API ---
 
 InterpretResult interpret(VM* vm, const char* source) {
+    vm->last_popped_value = NIL_VAL;
+    vm->stack_top = vm->stack; // Ensure stack is clean for compiler
     ObjFunction* function = compile(vm, source);
     if (function == NULL) {
         return INTERPRET_COMPILE_ERROR;
@@ -186,12 +189,13 @@ static bool duplicateString(VM* vm, Value a, Value b) {
             "Value error: Duplication count must be a non-negative integer");
         return false;
     } else if (count == 0) {
+        ObjString* res = copyString(vm, "", 0);
         pop(vm);
         pop(vm);
-        push(vm, OBJ_VAL(copyString(vm, "", 0)));
+        push(vm, OBJ_VAL(res));
         return true;
     } else if (count == 1) {
-        pop(vm);
+        pop(vm); // Pop count, keep string
         return true;  // No duplication needed
     }
 
@@ -210,8 +214,8 @@ static bool duplicateString(VM* vm, Value a, Value b) {
     chars[len] = '\0';
     ObjString* res = takeString(vm, chars, len);
 
-    pop(vm);
-    pop(vm);
+    pop(vm); // count
+    pop(vm); // string
     push(vm, OBJ_VAL(res));
     return true;
 }
@@ -237,7 +241,8 @@ void printConsts(Chunk* chunk) {
 
 // --- VM Execution (Direct Threading) ---
 
-static int loadThreadedCode(VM* vm, ObjFunction* function, void* dispatch_table[]) {
+static int loadThreadedCode(VM* vm, ObjFunction* function,
+                            void* dispatch_table[]) {
     int result = 0;
     if (function->loaded_code != NULL) {
         return 0;  // Already loaded
@@ -514,7 +519,8 @@ static InterpretResult run(VM* vm) {
     InterpretResult result = INTERPRET_OK;
     CallFrame* frame = &vm->frames[vm->frame_count - 1];
     if (frame->closure->function->loaded_code == NULL) {
-        if (loadThreadedCode(vm, frame->closure->function, dispatch_table) != 0) {
+        if (loadThreadedCode(vm, frame->closure->function, dispatch_table) !=
+            0) {
             result = INTERPRET_RUNTIME_ERROR;
             goto RETURN;
         }
@@ -561,6 +567,7 @@ OP_RETURN_IMPL: {
     }
     vm->stack_top = frame->slots;
     push(vm, res);
+    vm->last_popped_value = NIL_VAL;  // Clear it once pushed back
     frame = &vm->frames[vm->frame_count - 1];
 
     DISPATCH();
@@ -574,6 +581,7 @@ OP_CONSTANT_IMPL: {
 
 OP_POP_IMPL: {
     pop(vm);
+    vm->last_popped_value = NIL_VAL; // Clear it
     DISPATCH();
 }
 
@@ -741,6 +749,7 @@ OP_CALL_IMPL: {
             goto RESCUE;
         }
         push(vm, value);  // Push the result of the native call
+        vm->last_popped_value = NIL_VAL; // Clear stale value
         DISPATCH();
     }
 
@@ -909,17 +918,19 @@ OP_TRY_END_IMPL: {
 OP_LIST_IMPL: {
     int len = (int)READ_ARG();
     Value head = NIL_VAL;
-    push(vm, head);
+    push(vm, head);  // [..., item0, item1, ..., itemN-1, head]
     for (int i = 0; i < len; i++) {
-        Value item = peek(vm, i + 1);
+        Value item = peek(vm, 1);               // Get itemN-1-i
         ObjPair* pair = newPair(vm, item, head);
         head = OBJ_VAL(pair);
-        *(vm->stack_top - 1) =
-            head;  // Update the head on the stack for the next iteration
+        *(vm->stack_top - 1) = head;            // Update head on stack
+        
+        // Remove the item we just used from the stack, but keep head on top.
+        *(vm->stack_top - 2) = head;
+        vm->stack_top--;
     }
     ObjList* list = newList(vm, len, head);
-    vm->stack_top -= len;  // Pop the list items
-    pop(vm);               // Pop the initial NIL_VAL
+    pop(vm);  // Pop the head
     push(vm, OBJ_VAL(list));
     DISPATCH();
 }

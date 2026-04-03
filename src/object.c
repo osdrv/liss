@@ -54,6 +54,7 @@ ObjFunction* newFunction(VM* vm) {
 }
 
 ObjClosure* newClosure(VM* vm, ObjFunction* function) {
+    push(vm, OBJ_VAL(function));
     ObjUpvalue** upvalues =
         reallocate(vm, NULL, 0, sizeof(ObjUpvalue*) * function->upvalue_cnt);
     for (int i = 0; i < function->upvalue_cnt; i++) {
@@ -62,18 +63,20 @@ ObjClosure* newClosure(VM* vm, ObjFunction* function) {
 
     ObjClosure* closure =
         (ObjClosure*)allocateObject(vm, sizeof(ObjClosure), OBJ_CLOSURE);
-    closure->function = function;
+    closure->function = AS_FUNCTION(pop(vm));
     closure->upvalues = upvalues;
-    closure->upvalue_cnt = function->upvalue_cnt;
+    closure->upvalue_cnt = closure->function->upvalue_cnt;
     return closure;
 }
 
 ObjNative* newNative(VM* vm, const char* name, int arity, NativeFn function) {
+    ObjString* name_str = copyString(vm, name, (int)strlen(name));
+    push(vm, OBJ_VAL(name_str));
     ObjNative* native =
         (ObjNative*)allocateObject(vm, sizeof(ObjNative), OBJ_NATIVE);
+    native->name = AS_STRING(pop(vm));
     native->arity = arity;
     native->function = function;
-    native->name = copyString(vm, name, (int)strlen(name));
     return native;
 }
 
@@ -87,27 +90,29 @@ ObjUpvalue* newUpvalue(VM* vm, Value* slot) {
 }
 
 ObjPair* newPair(VM* vm, Value first, Value second) {
+    push(vm, first);
+    push(vm, second);
     ObjPair* pair = (ObjPair*)allocateObject(vm, sizeof(ObjPair), OBJ_PAIR);
-    pair->first = first;
-    pair->second = second;
+    pair->second = pop(vm);
+    pair->first = pop(vm);
     return pair;
 }
 
 ObjList* newList(VM* vm, uint32_t len, Value head) {
+    push(vm, head);
     ObjList* list = (ObjList*)allocateObject(vm, sizeof(ObjList), OBJ_LIST);
     list->len = len;
-    list->head = head;
+    list->head = pop(vm);
     return list;
 }
 
 ObjModule* newModule(VM* vm, const char* name) {
-    ObjModule* module =
-        (ObjModule*)allocateObject(vm, sizeof(ObjModule), OBJ_MODULE);
     ObjString* name_str = copyString(vm, name, (int)strlen(name));
     push(vm, OBJ_VAL(name_str));
-    module->name = name;
+    ObjModule* module =
+        (ObjModule*)allocateObject(vm, sizeof(ObjModule), OBJ_MODULE);
+    module->name = AS_STRING(pop(vm));
     initTable(&module->imports);
-    pop(vm);
     return module;
 }
 

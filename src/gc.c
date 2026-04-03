@@ -1,7 +1,9 @@
 #include "gc.h"
 
 #include <stdio.h>
+#include <string.h>
 
+#include "compiler.h"
 #include "memory.h"
 #include "object.h"
 #include "value.h"
@@ -24,15 +26,17 @@ void markRoots(VM* vm) {
     for (Value* value = vm->stack; value < vm->stack_top; value++) {
         markValue(vm, *value);
     }
+    markValue(vm, vm->last_popped_value);
     markTable(vm, &vm->globals);
     markTable(vm, &vm->strings);
     markValue(vm, vm->raise_value);
-    markValue(vm, vm->empty_list);
     // mark upvalues
     for (ObjUpvalue* upvalue = vm->open_upvalues; upvalue != NULL;
          upvalue = upvalue->next) {
         markObject(vm, (Obj*)upvalue);
     }
+
+    markCompilerRoots(vm);
 }
 
 void markValue(VM* vm, Value value) {
@@ -128,6 +132,13 @@ void sweep(VM* vm) {
             } else {
                 vm->objects = object;
             }
+
+            // Safety: if last_popped_value points to this object, clear it.
+            if (IS_OBJ(vm->last_popped_value) &&
+                AS_OBJ(vm->last_popped_value) == unreached) {
+                vm->last_popped_value = NIL_VAL;
+            }
+
             freeObject(vm, unreached);
         }
     }
@@ -135,6 +146,7 @@ void sweep(VM* vm) {
 
 void freeObject(VM* vm, Obj* object) {
     DEBUG_LOG("Freeing object %p type %d", (void*)object, object->type);
+    memset(object, 0xEF, sizeof(Obj));  // Fill with a recognizable pattern for debugging
     switch (object->type) {
         case OBJ_FUNCTION: {
             ObjFunction* function = (ObjFunction*)object;

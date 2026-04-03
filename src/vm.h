@@ -56,11 +56,11 @@ typedef struct VM {
     Value last_popped_value;    // Store the last popped value
     ObjUpvalue* open_upvalues;  // Linked list of open upvalues
 
+    void* compiler;  // Current compiler (if any) to help GC mark its roots
+
     TryBlock try_stack[TRY_MAX];
     int try_count;
     Value raise_value;
-
-    Value empty_list;  // A singleton empty list object for reuse.
 
     // (!!!) Flexible Array Member for the stack. Keep at the end.
     Value stack[];
