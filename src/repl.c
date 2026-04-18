@@ -20,7 +20,7 @@ void runRepl(VMOptions options) {
             PRINTF("\n");
             break;
         }
-        InterpretResult result = interpret(vm, line);
+        InterpretResult result = interpret(vm, line, NULL);
         if (result == INTERPRET_RUNTIME_ERROR) {
             // Print the last popped value if available
             if (vm->last_popped_value.type != VAL_NIL) {

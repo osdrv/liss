@@ -83,7 +83,7 @@ VM* newVM(VMOptions options);
 void destroyVM(VM* vm);
 
 // The main entry point for running source code.
-InterpretResult interpret(VM* vm, const char* source);
+InterpretResult interpret(VM* vm, const char* source, ObjModule* module);
 
 // Stack operations
 void push(VM* vm, Value value);

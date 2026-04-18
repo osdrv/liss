@@ -65,16 +65,55 @@ void destroyVM(VM* vm) {
 
 // --- Public API ---
 
-InterpretResult interpret(VM* vm, const char* source) {
+ObjModule* loadModule(VM* vm, ObjString* module_name) {
+    // Step 1: check cache
+    Value* cached = tableGet(&vm->modules, OBJ_VAL(module_name));
+    if (cached != NULL) {
+        return AS_MODULE(*cached);
+    }
+    // Step 2: check native modules
+    // TODO: implement me
+    // Step 3: check files
+    char* source = readLissFile(module_name->chars);
+    if (source == NULL) {
+        ERROR_LOG("Could not load module '%s'", module_name->chars);
+        return NULL;
+    }
+    ObjModule* module = newModule(vm, module_name->chars);
+    push(vm, OBJ_VAL(module));  // Push for GC safety during compilation
+
+    InterpretResult result = interpret(vm, source, module);
+    if (result != INTERPRET_OK) {
+        ERROR_LOG("Failed to load module '%s'", module_name->chars);
+        free(source);
+        pop(vm);  // Pop the module since it failed to load
+        return NULL;
+    }
+
+    // Cache it
+    tableInsert(&vm->modules, OBJ_VAL(module_name), OBJ_VAL(module));
+    pop(vm);
+
+    return module;
+}
+
+InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
     vm->last_popped_value = NIL_VAL;
-    vm->stack_top = vm->stack; // Ensure stack is clean for compiler
-    ObjFunction* function = compile(vm, source);
+    vm->stack_top = vm->stack;  // Ensure stack is clean for compiler
+
+    if (module == NULL) {
+        module = newModule(vm, "main");
+        push(vm, OBJ_VAL(module));  // Push for GC safety during compilation
+    }
+
+    ObjFunction* function = compile(vm, source, module);
     if (function == NULL) {
         return INTERPRET_COMPILE_ERROR;
     }
     push(vm, OBJ_VAL(function));  // Push the function for GC safety
     ObjClosure* closure = newClosure(vm, function);
     pop(vm);  // Pop the function after creating the closure
+    pop(vm);  // Pop the main module after compilation
 
     vm->stack_top = vm->stack;  // Reset stack top for new execution
     push(vm, OBJ_VAL(closure));
@@ -187,7 +226,8 @@ static bool duplicateString(VM* vm, Value a, Value b) {
 
     if (count < 0) {
         ERROR_LOG(
-            "Value error: Duplication count must be a non-negative integer");
+            "Value error: Duplication count must be a non-negative "
+            "integer");
         return false;
     } else if (count == 0) {
         ObjString* res = copyString(vm, "", 0);
@@ -196,7 +236,7 @@ static bool duplicateString(VM* vm, Value a, Value b) {
         push(vm, OBJ_VAL(res));
         return true;
     } else if (count == 1) {
-        pop(vm); // Pop count, keep string
+        pop(vm);      // Pop count, keep string
         return true;  // No duplication needed
     }
 
@@ -215,8 +255,8 @@ static bool duplicateString(VM* vm, Value a, Value b) {
     chars[len] = '\0';
     ObjString* res = takeString(vm, chars, len);
 
-    pop(vm); // count
-    pop(vm); // string
+    pop(vm);  // count
+    pop(vm);  // string
     push(vm, OBJ_VAL(res));
     return true;
 }
@@ -251,7 +291,8 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
     Chunk* chunk = &function->chunk;
 
     DEBUG_LOG(
-        "Loading function '%s' with %d bytecode instructions and %d constants",
+        "Loading function '%s' with %d bytecode instructions and %d "
+        "constants",
         function->name ? function->name->chars : "<unnamed>", chunk->count,
         chunk->constants.count);
     DEBUG_CHUNK("\n%s", chunk);
@@ -305,7 +346,8 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
                 // Read the relative offset from the original bytecode
                 uint16_t relative_byte_offset =
                     (uint16_t)(bytecode[0] << 8) | bytecode[1];
-                // The offset is relative to the byte after the jump operands
+                // The offset is relative to the byte after the jump
+                // operands
                 int target_byte_addr =
                     (bytecode - chunk->code) + 2 + relative_byte_offset;
 
@@ -582,7 +624,7 @@ OP_CONSTANT_IMPL: {
 
 OP_POP_IMPL: {
     pop(vm);
-    vm->last_popped_value = NIL_VAL; // Clear it
+    vm->last_popped_value = NIL_VAL;  // Clear it
     DISPATCH();
 }
 
@@ -749,8 +791,8 @@ OP_CALL_IMPL: {
         if (vm->last_result != INTERPRET_OK) {
             goto RESCUE;
         }
-        push(vm, value);  // Push the result of the native call
-        vm->last_popped_value = NIL_VAL; // Clear stale value
+        push(vm, value);                  // Push the result of the native call
+        vm->last_popped_value = NIL_VAL;  // Clear stale value
         DISPATCH();
     }
 
@@ -921,12 +963,13 @@ OP_LIST_IMPL: {
     Value head = NIL_VAL;
     push(vm, head);  // [..., item0, item1, ..., itemN-1, head]
     for (int i = 0; i < len; i++) {
-        Value item = peek(vm, 1);               // Get itemN-1-i
+        Value item = peek(vm, 1);  // Get itemN-1-i
         ObjPair* pair = newPair(vm, item, head);
         head = OBJ_VAL(pair);
-        *(vm->stack_top - 1) = head;            // Update head on stack
+        *(vm->stack_top - 1) = head;  // Update head on stack
 
-        // Remove the item we just used from the stack, but keep head on top.
+        // Remove the item we just used from the stack, but keep head on
+        // top.
         *(vm->stack_top - 2) = head;
         vm->stack_top--;
     }
@@ -955,8 +998,8 @@ RESCUE: {
 
     push(vm, vm->raise_value);
 
-    vm->last_result =
-        INTERPRET_OK;  // Reset the last result to allow execution to continue
+    vm->last_result = INTERPRET_OK;  // Reset the last result to allow
+                                     // execution to continue
     vm->raise_value =
         NIL_VAL;  // Clear the raise value after handling the exception
 

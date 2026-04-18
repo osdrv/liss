@@ -3,13 +3,20 @@ CC = clang
 
 # By default, compile without debug flags.
 # To enable, run: make DEBUG=1
+# To enable Sanitizer, run: make DEBUG=1 SANITIZE=1
 DEBUG_FLAGS =
 ifeq ($(DEBUG),1)
-	DEBUG_FLAGS = -DLISS_DEBUG_BUILD -g -fsanitize=address
+	DEBUG_FLAGS = -DLISS_DEBUG_BUILD -g
+	ifeq ($(SANITIZE),1)
+		DEBUG_FLAGS += -fsanitize=address
+	endif
 endif
 
 CFLAGS = -std=c23 -Wall -Wextra -Wpedantic $(DEBUG_FLAGS)
 LDFLAGS =
+ifeq ($(SANITIZE),1)
+	LDFLAGS += -fsanitize=address
+endif
 
 # Project structure
 SRCDIR = src
@@ -18,7 +25,7 @@ BINDIR = bin
 TESTDIR = tests
 
 # Source files and object files
-SRCS = $(wildcard $(SRCDIR)/*.c) $(SRCDIR)/object.c $(SRCDIR)/chunk.c $(SRCDIR)/memory.c $(SRCDIR)/token.c $(SRCDIR)/scanner.c $(SRCDIR)/compiler.c
+SRCS = $(wildcard $(SRCDIR)/*.c) $(SRCDIR)/object.c $(SRCDIR)/common.c $(SRCDIR)/chunk.c $(SRCDIR)/memory.c $(SRCDIR)/token.c $(SRCDIR)/scanner.c $(SRCDIR)/compiler.c
 OBJS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
 # Application objects excluding main, for linking into tests
 OBJS_NO_MAIN = $(filter-out $(OBJDIR)/main.o, $(OBJS))

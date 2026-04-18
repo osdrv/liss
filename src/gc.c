@@ -146,7 +146,8 @@ void sweep(VM* vm) {
 
 void freeObject(VM* vm, Obj* object) {
     DEBUG_LOG("Freeing object %p type %d", (void*)object, object->type);
-    memset(object, 0xEF, sizeof(Obj));  // Fill with a recognizable pattern for debugging
+    memset(object, 0xEF,
+           sizeof(Obj));  // Fill with a recognizable pattern for debugging
     switch (object->type) {
         case OBJ_FUNCTION: {
             ObjFunction* function = (ObjFunction*)object;

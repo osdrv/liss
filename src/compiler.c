@@ -63,6 +63,24 @@ static Token consume(Compiler* compiler, TokenType type, const char* message) {
     return token;
 }
 
+static Token consumeAnyOf(Compiler* compiler, size_t count, TokenType types[],
+                          const char* message) {
+    Parser* parser = compiler->parser;
+    for (size_t i = 0; i < count; i++) {
+        if (parser->current.type == types[i]) {
+            Token token = parser->current;
+            advance(compiler);
+            return token;
+        }
+    }
+
+    parser->hadError = true;
+    ERROR_LOG("[line %d] Error: %s", parser->current.line, message);
+    (void)message;  // Suppress unused parameter warning
+
+    return parser->current;
+}
+
 static Chunk* currentChunk(Compiler* compiler) {
     return &compiler->function->chunk;
 }
@@ -118,10 +136,12 @@ static void maybePatchTailCall(Compiler* compiler) {
     }
 }
 
-static void initCompiler(Compiler* compiler, Compiler* enclosing) {
+static void initCompiler(Compiler* compiler, Compiler* enclosing,
+                         ObjModule* module) {
     compiler->enclosing = enclosing;
     compiler->local_count = 0;
     compiler->scope_depth = 0;
+    compiler->module = module;
 
     if (enclosing != NULL) {
         compiler->parser = enclosing->parser;
@@ -135,6 +155,7 @@ static void initCompiler(Compiler* compiler, Compiler* enclosing) {
     local->name.length = 0;
 
     compiler->upvalue_cnt = 0;
+    initTable(&compiler->aliases);
 }
 
 static ObjFunction* endCompiler(Compiler* compiler) {
@@ -401,7 +422,7 @@ static void parseCond(Compiler* compiler, bool is_tail) {
 }
 
 static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
-    initCompiler(fn_compiler, compiler);
+    initCompiler(fn_compiler, compiler, compiler->module);
 
     push(compiler->vm, OBJ_VAL(fn_compiler->function));
 
@@ -507,6 +528,79 @@ static void parseList(Compiler* compiler) {
     consume(compiler, TOKEN_RBRAKET, "expect ']' after list literal");
     if (compiler->parser->hadError) return;
     emitBytes(compiler, OP_LIST, (uint8_t)(len & 0xff));
+}
+
+// Idk: looks clumsy, but useful.
+static Token readStringOrIdentifier(Compiler* compiler, const char* error) {
+    consumeAnyOf(compiler, 2, (TokenType[]){TOKEN_STRING, TOKEN_IDENTIFIER},
+                 error);
+    return compiler->parser->previous;
+}
+
+// There are 6 variations of import syntax:
+// 1) (import "module_name")
+// 2) (import module_name) -- equivalent to the one above, we keep the previous
+// one for backward compatibility 3) (import module_name as alias) 4) (import
+// "module_name" as alias) 5) (import module_name [foo bar baz]) 6) (import
+// "module_name" ["foo" "bar" "baz"])
+static void parseImport(Compiler* compiler) {
+    Token module_name_token = readStringOrIdentifier(
+        compiler, "expect module name as string or identifier");
+    if (compiler->parser->hadError) {
+        ERROR_LOG("[line %d] Error: expect module name as string or identifier",
+                  compiler->parser->current.line);
+        return;
+    }
+    ObjString* module_name_obj = copyString(
+        compiler->vm, module_name_token.start, module_name_token.length);
+
+    ObjString* alias_obj = NULL;
+    if (compiler->parser->current.type == TOKEN_AS_KW) {
+        advance(compiler);
+        Token alias_token = readStringOrIdentifier(
+            compiler, "expect alias as string or identifier");
+        if (compiler->parser->hadError) {
+            ERROR_LOG("[line %d] Error: expect alias as string or identifier",
+                      compiler->parser->current.line);
+            return;
+        }
+        alias_obj =
+            copyString(compiler->vm, alias_token.start, alias_token.length);
+    } else {
+        alias_obj = copyString(compiler->vm, module_name_token.start,
+                               module_name_token.length);
+    }
+    // Insert alias -> module name mapping into the compiler's alias table.
+    // If there is no alias, we insert module name -> module name mapping, so we
+    // can resolve imports the same way.
+    tableInsert(&compiler->aliases, OBJ_VAL(alias_obj),
+                OBJ_VAL(module_name_obj));
+
+    if (compiler->parser->current.type == TOKEN_LBRAKET) {
+        advance(compiler);
+        Value* module_val =
+            tableGet(&compiler->vm->modules, OBJ_VAL(module_name_obj));
+        if (module_val == NULL) {
+            compiler->parser->hadError = true;
+            ERROR_LOG("[line %d] Error: module '%.*s' not found",
+                      module_name_token.line, module_name_token.length,
+                      module_name_token.start);
+            return;
+        }
+        ObjModule* module = (ObjModule*)AS_MODULE(*module_val);
+        while (compiler->parser->current.type != TOKEN_RBRAKET) {
+            Token symbol_token = readStringOrIdentifier(
+                compiler,
+                "expect symbol name as string or identifier in import list");
+            if (compiler->parser->hadError) {
+                ERROR_LOG(
+                    "[line %d] Error: expect symbol name as string or "
+                    "identifier in import list",
+                    compiler->parser->current.line);
+                return;
+            }
+        }
+    }
 }
 
 static void parseGrouping(Compiler* compiler, bool is_tail) {
@@ -745,8 +839,20 @@ static void namedVariable(Compiler* compiler, Token name) {
     // name.
     int module_name_ix = indexOf(name.start, name.length, ':');
     if (module_name_ix != -1) {
-        ObjString* module_name =
+        ObjString* raw_name =
             copyString(compiler->vm, name.start, module_name_ix);
+        Compiler* current = compiler;
+        Value* actual_name = NULL;
+        while (current != NULL) {
+            actual_name = tableGet(&current->aliases, OBJ_VAL(raw_name));
+            if (actual_name != NULL) break;
+            current = current->enclosing;
+        }
+        ObjString* module_name =
+            (actual_name != NULL) ? AS_STRING(*actual_name) : raw_name;
+
+        // ObjString* module_name =
+        //     copyString(compiler->vm, name.start, module_name_ix);
         ObjString* var_name =
             copyString(compiler->vm, name.start + module_name_ix + 1,
                        name.length - module_name_ix - 1);
@@ -844,12 +950,13 @@ void markCompilerRoots(VM* vm) {
     while (compiler != NULL) {
         push(vm, OBJ_VAL(compiler->function));
         markObject(vm, (Obj*)compiler->function);
+        markTable(vm, &compiler->aliases);
         pop(vm);
         compiler = compiler->enclosing;
     }
 }
 
-ObjFunction* compile(VM* vm, const char* source) {
+ObjFunction* compile(VM* vm, const char* source, ObjModule* module) {
     Parser parser;
     initParser(&parser);
     initScanner(&parser.scanner, source);
@@ -859,7 +966,7 @@ ObjFunction* compile(VM* vm, const char* source) {
     compiler.parser = &parser;
     compiler.added_globals_cnt = 0;
     vm->compiler = &compiler;
-    initCompiler(&compiler, NULL);
+    initCompiler(&compiler, NULL, module);
     push(vm, OBJ_VAL(compiler.function));
 
     advance(&compiler);

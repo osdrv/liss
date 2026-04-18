@@ -35,6 +35,9 @@ struct Compiler {
     Parser* parser;
     ObjFunction* function;
     VM* vm;
+    ObjModule* module;
+
+    Table aliases;  // Maps module aliases to module objects
 
     Local locals[MAX_LOCALS];
     int local_count;
@@ -47,7 +50,7 @@ struct Compiler {
     Value added_globals[MAX_GLOBALS];
 };
 
-ObjFunction* compile(VM* vm, const char* source);
+ObjFunction* compile(VM* vm, const char* source, ObjModule* module);
 void markCompilerRoots(VM* vm);
 
 #endif

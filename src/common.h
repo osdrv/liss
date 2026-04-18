@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+#define LISS_FILE_EXT ".liss"
+
 // Define a macro for debug logging that can be compiled out.
 // To enable, compile with the -DLISS_DEBUG_BUILD flag.
 #ifdef LISS_DEBUG_BUILD
@@ -22,6 +24,8 @@
     } while (0)
 #endif
 
-#endif
-
 #define PRINTF(format, ...) fprintf(stdout, format, ##__VA_ARGS__)
+
+char* readLissFile(const char* path);
+
+#endif
