@@ -68,7 +68,7 @@ static void runFile(const char* path, VMOptions options) {
         fprintf(stderr, "Could not create VM.\n");
         exit(74);
     }
-    InterpretResult result = interpret(vm, buffer);
+    InterpretResult result = interpret(vm, buffer, NULL);
     free(buffer);
     destroyVM(vm);
 

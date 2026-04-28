@@ -35,13 +35,20 @@ VM* newVM(VMOptions options) {
     vm->objects = NULL;
     vm->last_result = INTERPRET_OK;
     vm->open_upvalues = NULL;
+
+    vm->core_module = newModule(vm, "core");
+    push(vm, OBJ_VAL(vm->core_module));  // Push core module for GC safety
+                                         // during natives registration
+    registerCoreNatives(vm, vm->core_module);
+    pop(vm);  // Pop core module after registration
+
     initTable(&vm->strings);
     initTable(&vm->globals);
     initTable(&vm->modules);
     vm->try_count = 0;
     vm->raise_value = NIL_VAL;
     vm->last_popped_value = NIL_VAL;
-    registerCoreNatives(vm);
+
     DEBUG_LOG("Initialized new VM with stack capacity %zu",
               options.stack_capacity);
     return vm;
@@ -370,12 +377,45 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
                 loaded_idx++;
                 break;
             }
-            case OP_GET_GLOBAL:
             case OP_SET_GLOBAL: {
                 uint16_t const_index =
                     (uint16_t)(bytecode[0] << 8) | bytecode[1];
                 bytecode += 2;
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)const_index;
+                break;
+            }
+            case OP_GET_GLOBAL: {
+                // 1. Get the symbol_name from the function's constants using
+                // the 16-bit index.
+                // 2. Search internal symbols:
+                // tableGet(&function->module->symbols, symbol_name).
+                // 3. Search internal imports: If not found in symbols,
+                //    tableGet(&function->module->imports, symbol_name).
+                // 4. Search vm->core_module->symbols (Implicit built-ins).
+                // 5. Resolve:
+                //     * If found in either, store the Value* in loaded_code.
+                //     * If NOT found, this is a Linking Error (Undefined
+                //     variable).
+                uint16_t const_index =
+                    (uint16_t)(bytecode[0] << 8) | bytecode[1];
+                bytecode += 2;
+                Value symbol_name = chunk->constants.values[const_index];
+                Value* symbol =
+                    tableGet(&function->module->symbols, symbol_name);
+                if (symbol == NULL) {
+                    symbol = tableGet(&function->module->imports, symbol_name);
+                }
+                if (symbol == NULL) {
+                    symbol = tableGet(&vm->core_module->symbols, symbol_name);
+                }
+                if (symbol == NULL) {
+                    ERROR_LOG("Undefined variable '%.*s'",
+                              AS_STRING(symbol_name)->length,
+                              AS_STRING(symbol_name)->chars);
+                    result = -1;
+                    goto LOADER_CLEANUP;
+                }
+                loaded_code[loaded_idx++] = (void*)symbol;
                 break;
             }
             case OP_CALL: {
@@ -423,12 +463,27 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)len;
                 break;
             case OP_GET_MODULE_GLOBAL: {
+                // 1. Get module_name and symbol_name from constants.
+                // 2. Find the module: tableGet(&vm->modules, module_name).
+                // 3. Enforce Visibility:
+                //     * If symbol_name->chars[0] == '_', throw a "Private
+                //     Access" error and fail the load.
+                // 4. Search ONLY module->symbols: We don't allow accessing
+                // another module's imports.
+                // 5. Resolve: Store the Value* in loaded_code.
                 uint16_t mod_ix = (uint16_t)(bytecode[0] << 8) | bytecode[1];
                 uint16_t var_ix = (uint16_t)(bytecode[2] << 8) | bytecode[3];
                 bytecode += 4;
 
                 Value mod_name = chunk->constants.values[mod_ix];
                 Value var_name = chunk->constants.values[var_ix];
+
+                if (AS_STRING(var_name)->chars[0] == '_') {
+                    ERROR_LOG(
+                        "Visibility error: symbol `%s` is private to module "
+                        "`%s`.",
+                        AS_STRING(var_name)->chars, AS_STRING(mod_name)->chars);
+                }
 
                 Value* mod_val = tableGet(&vm->modules, mod_name);
                 if (mod_val == NULL) {
@@ -439,7 +494,7 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
                 }
                 ObjModule* module = (ObjModule*)AS_MODULE(*mod_val);
 
-                Value* global_ptr = tableGet(&module->imports, var_name);
+                Value* global_ptr = tableGet(&module->symbols, var_name);
                 if (global_ptr == NULL) {
                     ERROR_LOG("Global variable '%s' not found in module '%s'.",
                               AS_STRING(var_name)->chars,
@@ -749,23 +804,29 @@ OP_LESS_IMPL: {
 OP_SET_GLOBAL_IMPL: {
     uint16_t const_ix = (uint16_t)READ_ARG();
     Value name = frame->closure->function->chunk.constants.values[const_ix];
-    tableInsert(&vm->globals, name, peek(vm, 0));
+    tableInsert(&frame->closure->function->module->symbols, name, peek(vm, 0));
     DISPATCH();
 }
 
 OP_GET_GLOBAL_IMPL: {
-    uint16_t const_ix = (uint16_t)READ_ARG();
-    Value name = frame->closure->function->chunk.constants.values[const_ix];
-    Value* value = tableGet(&vm->globals, name);
-    if (value == NULL) {
-        ERROR_LOG("Undefined variable '%.*s'", AS_STRING(name)->length,
-                  AS_STRING(name)->chars);
-        result = INTERPRET_RUNTIME_ERROR;
-        goto RETURN;
-    }
-    push(vm, *value);
+    Value* val_ptr = (Value*)*frame->ip++;
+    push(vm, *val_ptr);
     DISPATCH();
 }
+
+    // OP_GET_GLOBAL_IMPL: {
+    //     uint16_t const_ix = (uint16_t)READ_ARG();
+    //     Value name =
+    //     frame->closure->function->chunk.constants.values[const_ix]; Value*
+    //     value = tableGet(&vm->globals, name); if (value == NULL) {
+    //         ERROR_LOG("Undefined variable '%.*s'", AS_STRING(name)->length,
+    //                   AS_STRING(name)->chars);
+    //         result = INTERPRET_RUNTIME_ERROR;
+    //         goto RETURN;
+    //     }
+    //     push(vm, *value);
+    //     DISPATCH();
+    // }
 
 OP_CALL_IMPL: {
     int arg_count = (int)READ_ARG();

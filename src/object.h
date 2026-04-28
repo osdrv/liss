@@ -10,6 +10,7 @@
 
 // Forward declarations for structs used in object definitions.
 typedef struct ObjString ObjString;
+typedef struct ObjModule ObjModule;
 typedef struct VM VM;
 
 // --- Base Object ---
@@ -41,6 +42,8 @@ typedef struct {
     int upvalue_cnt;
     Chunk chunk;
     ObjString* name;
+    ObjModule*
+        module;  // The module this function belongs to (for error reporting)
     void** loaded_code;
     size_t loaded_code_size;
 } ObjFunction;
@@ -63,7 +66,7 @@ typedef struct ObjUpvalue {
     struct ObjUpvalue* next;  // For linking upvalues in a list (e.g., for GC)
 } ObjUpvalue;
 
-typedef struct {
+typedef struct ObjClosure {
     Obj obj;
     ObjFunction* function;  // The function this closure wraps
     ObjUpvalue**
@@ -71,12 +74,12 @@ typedef struct {
     int upvalue_cnt;
 } ObjClosure;
 
-typedef struct {
+typedef struct ObjError {
     Obj obj;
     ObjString* message;
 } ObjError;
 
-typedef struct {
+typedef struct ObjNative {
     Obj obj;
     // Function pointer for the native function implementation. It takes a VM
     // pointer and an array of arguments, and returns a Value.
@@ -85,21 +88,22 @@ typedef struct {
     NativeFn function;
 } ObjNative;
 
-typedef struct {
+typedef struct ObjPair {
     Obj obj;
     Value first;
     Value second;
 } ObjPair;
 
-typedef struct {
+typedef struct ObjList {
     Obj obj;
     uint32_t len;
     Value head;
 } ObjList;
 
-typedef struct {
+typedef struct ObjModule {
     Obj obj;
     ObjString* name;
+    Table symbols;
     Table imports;
 } ObjModule;
 
@@ -141,8 +145,7 @@ uint32_t hashString(const char* key, int length);
 
 // --- Function Prototypes ---
 
-ObjFunction* newFunction(VM* vm);
-
+ObjFunction* newFunction(VM* vm, ObjModule* module);
 ObjClosure* newClosure(VM* vm, ObjFunction* function);
 ObjUpvalue* newUpvalue(VM* vm, Value* slot);
 ObjError* newError(VM* vm, const char* message);

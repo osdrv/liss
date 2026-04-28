@@ -41,7 +41,7 @@ ObjError* newError(VM* vm, const char* message) {
 
 // --- Function ---
 
-ObjFunction* newFunction(VM* vm) {
+ObjFunction* newFunction(VM* vm, ObjModule* module) {
     ObjFunction* function =
         (ObjFunction*)allocateObject(vm, sizeof(ObjFunction), OBJ_FUNCTION);
     function->arity = 0;
@@ -50,6 +50,7 @@ ObjFunction* newFunction(VM* vm) {
     initChunk(vm, &function->chunk);
     function->loaded_code = NULL;
     function->loaded_code_size = 0;
+    function->module = module;
     return function;
 }
 
@@ -112,6 +113,10 @@ ObjModule* newModule(VM* vm, const char* name) {
     ObjModule* module =
         (ObjModule*)allocateObject(vm, sizeof(ObjModule), OBJ_MODULE);
     module->name = AS_STRING(pop(vm));
+    // TODO: we should initialize these tables with an extended capacity
+    // to avoid rehashing during compilation.
+    // Another option is to implement initTableNoRehash and use that here.
+    initTable(&module->symbols);
     initTable(&module->imports);
     return module;
 }

@@ -1,9 +1,8 @@
+#include "common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "common.h"
-
 
 char* readLissFile(const char* path) {
     char buf[1024];

@@ -138,6 +138,12 @@ static void maybePatchTailCall(Compiler* compiler) {
 
 static void initCompiler(Compiler* compiler, Compiler* enclosing,
                          ObjModule* module) {
+    // Enforce that the module is not NULL. Unconditionally.
+    if (module == NULL) {
+        ERROR_LOG("Internal error: Compiler requires a non-NULL module.");
+        exit(1);
+    }
+
     compiler->enclosing = enclosing;
     compiler->local_count = 0;
     compiler->scope_depth = 0;
@@ -147,7 +153,7 @@ static void initCompiler(Compiler* compiler, Compiler* enclosing,
         compiler->parser = enclosing->parser;
         compiler->vm = enclosing->vm;
     }
-    compiler->function = newFunction(compiler->vm);
+    compiler->function = newFunction(compiler->vm, compiler->module);
 
     Local* local = &compiler->locals[compiler->local_count++];
     local->depth = 0;
@@ -356,7 +362,7 @@ static void parseLet(Compiler* compiler) {
         // Global variable declaration
         int var_index = identifierConstant(compiler, identifier);
         Value name = currentChunk(compiler)->constants.values[var_index];
-        if (tableGet(&compiler->vm->globals, name) != NULL) {
+        if (tableGet(&compiler->module->symbols, name) != NULL) {
             compiler->parser->hadError = true;
             ERROR_LOG(
                 "[line %d] Error: Cannot redeclare global variable '%.*s'",
@@ -371,7 +377,7 @@ static void parseLet(Compiler* compiler) {
                 identifier.line);
             return;
         }
-        tableInsert(&compiler->vm->globals, name, NIL_VAL);
+        tableInsert(&compiler->module->symbols, name, NIL_VAL);
         compiler->added_globals[compiler->added_globals_cnt++] = name;
         emitByte(compiler, OP_SET_GLOBAL);
         emitBytes(compiler, (uint8_t)(var_index >> 8),
@@ -599,6 +605,21 @@ static void parseImport(Compiler* compiler) {
                     compiler->parser->current.line);
                 return;
             }
+            ObjString* symbol_obj = copyString(compiler->vm, symbol_token.start,
+                                               symbol_token.length);
+
+            Value* remote_ptr = tableGet(&module->symbols, OBJ_VAL(symbol_obj));
+            if (remote_ptr == NULL) {
+                compiler->parser->hadError = true;
+                ERROR_LOG(
+                    "[line %d] Error: symbol '%.*s' not found in module '%.*s'",
+                    symbol_token.line, symbol_token.length, symbol_token.start,
+                    module_name_token.line, module_name_token.length,
+                    module_name_token.start);
+                return;
+            }
+            tableInsert(&compiler->module->imports, OBJ_VAL(symbol_obj),
+                        OBJ_VAL(remote_ptr));
         }
     }
 }
@@ -669,6 +690,9 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                     emitBytes(compiler, OP_SET_LOCAL, (uint8_t)local_slot);
                 } else {
                     int var_name_ix = identifierConstant(compiler, fn_name);
+                    Value name =
+                        currentChunk(compiler)->constants.values[var_name_ix];
+                    tableInsert(&compiler->module->symbols, name, NIL_VAL);
                     emitByte(compiler, OP_SET_GLOBAL);
                     emitBytes(compiler, (uint8_t)(var_name_ix >> 8),
                               (uint8_t)(var_name_ix & 0xff));
@@ -851,8 +875,6 @@ static void namedVariable(Compiler* compiler, Token name) {
         ObjString* module_name =
             (actual_name != NULL) ? AS_STRING(*actual_name) : raw_name;
 
-        // ObjString* module_name =
-        //     copyString(compiler->vm, name.start, module_name_ix);
         ObjString* var_name =
             copyString(compiler->vm, name.start + module_name_ix + 1,
                        name.length - module_name_ix - 1);
@@ -985,7 +1007,8 @@ ObjFunction* compile(VM* vm, const char* source, ObjModule* module) {
 
     if (compiler.parser->hadError) {
         for (int i = 0; i < compiler.added_globals_cnt; i++) {
-            tableRemove(&vm->globals, compiler.added_globals[i]);
+            tableRemove(&compiler.function->module->symbols,
+                        compiler.added_globals[i]);
         }
         vm->compiler = NULL;
         return NULL;

@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "minunit.h"
 #include "value.h"
-#include "common.h"
 
 typedef enum {
     EXPECT_BOOL,
@@ -579,7 +579,6 @@ static char* test_vm_interpret(void) {
             DEBUG_LOG("Set a breakpoint for a failing test");
             __builtin_debugtrap();
         }
-
 
         InterpretResult result = interpret(vm, test->src, NULL);
         mu_assert("Interpretation result mismatch",

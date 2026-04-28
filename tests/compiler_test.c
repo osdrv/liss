@@ -688,7 +688,8 @@ static char* test_compile(void) {
             __builtin_debugtrap();
         }
 
-        ObjFunction* function = compile(vm, test->src, NULL);
+        ObjModule* test_module = newModule(vm, "test_module");
+        ObjFunction* function = compile(vm, test->src, test_module);
         mu_assert("Compiler should not fail.", function != NULL);
 
         Chunk* chunk = &function->chunk;

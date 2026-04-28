@@ -30,7 +30,9 @@ void markRoots(VM* vm) {
     markTable(vm, &vm->globals);
     markTable(vm, &vm->strings);
     markValue(vm, vm->raise_value);
-    // mark upvalues
+    markValue(vm, OBJ_VAL(vm->core_module));
+    // markTable(vm, &vm->modules);
+    //  mark upvalues
     for (ObjUpvalue* upvalue = vm->open_upvalues; upvalue != NULL;
          upvalue = upvalue->next) {
         markObject(vm, (Obj*)upvalue);
@@ -99,6 +101,7 @@ void markObject(VM* vm, Obj* object) {
         case OBJ_MODULE: {
             ObjModule* module = (ObjModule*)object;
             markObject(vm, (Obj*)module->name);
+            markTable(vm, &module->symbols);
             markTable(vm, &module->imports);
             break;
         }
