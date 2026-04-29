@@ -82,21 +82,21 @@ static Value isEmptyNative(VM* vm, int argc, Value* argv) {
     }
 }
 
-void defineNative(VM* vm, Table* registry, const char* name, int arity,
+void defineNative(VM* vm, ObjModule* module, const char* name, int arity,
                   NativeFn function) {
     ObjString* str = copyString(vm, name, (int)strlen(name));
     push(vm, OBJ_VAL(str));
     ObjNative* native = newNative(vm, name, arity, function);
     push(vm, OBJ_VAL(native));
-    tableInsert(registry, OBJ_VAL(str), OBJ_VAL(native));
+    tableInsert(&module->symbols, OBJ_VAL(str), OBJ_VAL(native));
     pop(vm);
     pop(vm);
 }
 
 void registerCoreNatives(VM* vm, ObjModule* module) {
-    defineNative(vm, &module->symbols, "err!", 1, errNative);
-    defineNative(vm, &module->symbols, "is_err?", 1, isErrNative);
-    defineNative(vm, &module->symbols, "raise!", 1, raiseNative);
-    defineNative(vm, &module->symbols, "len", 1, lenNative);
-    defineNative(vm, &module->symbols, "is_empty?", 1, isEmptyNative);
+    defineNative(vm, module, "err!", 1, errNative);
+    defineNative(vm, module, "is_err?", 1, isErrNative);
+    defineNative(vm, module, "raise!", 1, raiseNative);
+    defineNative(vm, module, "len", 1, lenNative);
+    defineNative(vm, module, "is_empty?", 1, isEmptyNative);
 }

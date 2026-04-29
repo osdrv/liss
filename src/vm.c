@@ -36,15 +36,16 @@ VM* newVM(VMOptions options) {
     vm->last_result = INTERPRET_OK;
     vm->open_upvalues = NULL;
 
+    initTableWithCapacity(&vm->modules, MAX_MODULES);
     vm->core_module = newModule(vm, "core");
     push(vm, OBJ_VAL(vm->core_module));  // Push core module for GC safety
                                          // during natives registration
     registerCoreNatives(vm, vm->core_module);
+    tableInsert(&vm->modules, OBJ_VAL(vm->core_module->name),
+               OBJ_VAL(vm->core_module));  // Cache core module in modules table
     pop(vm);  // Pop core module after registration
 
     initTable(&vm->strings);
-    initTable(&vm->globals);
-    initTable(&vm->modules);
     vm->try_count = 0;
     vm->raise_value = NIL_VAL;
     vm->last_popped_value = NIL_VAL;
@@ -57,7 +58,6 @@ VM* newVM(VMOptions options) {
 void destroyVM(VM* vm) {
     if (vm == NULL) return;
     freeTable(&vm->strings);
-    freeTable(&vm->globals);
     freeTable(&vm->modules);
     Obj* object = vm->objects;
     while (object != NULL) {
@@ -111,6 +111,8 @@ InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
     if (module == NULL) {
         module = newModule(vm, "main");
         push(vm, OBJ_VAL(module));  // Push for GC safety during compilation
+        tableInsert(&vm->modules, OBJ_VAL(module->name),
+                   OBJ_VAL(module));  // Cache main module in modules table
     }
 
     ObjFunction* function = compile(vm, source, module);
@@ -813,20 +815,6 @@ OP_GET_GLOBAL_IMPL: {
     push(vm, *val_ptr);
     DISPATCH();
 }
-
-    // OP_GET_GLOBAL_IMPL: {
-    //     uint16_t const_ix = (uint16_t)READ_ARG();
-    //     Value name =
-    //     frame->closure->function->chunk.constants.values[const_ix]; Value*
-    //     value = tableGet(&vm->globals, name); if (value == NULL) {
-    //         ERROR_LOG("Undefined variable '%.*s'", AS_STRING(name)->length,
-    //                   AS_STRING(name)->chars);
-    //         result = INTERPRET_RUNTIME_ERROR;
-    //         goto RETURN;
-    //     }
-    //     push(vm, *value);
-    //     DISPATCH();
-    // }
 
 OP_CALL_IMPL: {
     int arg_count = (int)READ_ARG();

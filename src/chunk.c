@@ -227,6 +227,15 @@ char* sprintChunk(const Chunk* chunk) {
                 APPEND_TO_BUFFER("OP_LIST %d\n", item_count);
                 break;
             }
+            case OP_GET_MODULE_GLOBAL: {
+                uint16_t module_const_ix =
+                    (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
+                uint16_t const_ix =
+                    (uint16_t)(chunk->code[i + 3] << 8) | chunk->code[i + 4];
+                APPEND_TO_BUFFER("OP_GET_MODULE_GLOBAL %d %d\n", module_const_ix, const_ix);
+                i += 4;  // Skip the operand bytes
+                break;
+            }
             default:
                 APPEND_TO_BUFFER("Unknown opcode %d\n", opcode);
                 break;

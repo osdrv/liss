@@ -113,11 +113,8 @@ ObjModule* newModule(VM* vm, const char* name) {
     ObjModule* module =
         (ObjModule*)allocateObject(vm, sizeof(ObjModule), OBJ_MODULE);
     module->name = AS_STRING(pop(vm));
-    // TODO: we should initialize these tables with an extended capacity
-    // to avoid rehashing during compilation.
-    // Another option is to implement initTableNoRehash and use that here.
-    initTable(&module->symbols);
-    initTable(&module->imports);
+    initTableWithCapacity(&module->symbols, MAX_MODULE_SYMBOLS);
+    initTableWithCapacity(&module->imports, 64);
     return module;
 }
 

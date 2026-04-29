@@ -50,6 +50,19 @@ void initTable(Table* table) {
     table->size = 0;
 }
 
+void initTableWithCapacity(Table* table, size_t capacity) {
+    size_t bucket_count = TABLE_INITIAL_BUCKET_COUNT;
+    while (bucket_count < capacity / TABLE_MAX_LOAD) {
+        bucket_count *= TABLE_GROWTH_FACTOR;
+    }
+    table->buckets = (TableEntry**)malloc(sizeof(TableEntry*) * bucket_count);
+    for (size_t i = 0; i < bucket_count; i++) {
+        table->buckets[i] = NULL;
+    }
+    table->bucket_count = bucket_count;
+    table->size = 0;
+}
+
 static void growTable(Table* table) {
     size_t old_bucket_count = table->bucket_count;
     TableEntry** old_buckets = table->buckets;

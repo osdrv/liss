@@ -22,6 +22,7 @@ typedef struct {
 } Table;
 
 void initTable(Table* table);
+void initTableWithCapacity(Table* table, size_t capacity);
 void freeTable(Table* table);
 
 void tableInsert(Table* table, Value key, Value value);

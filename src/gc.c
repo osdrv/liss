@@ -27,11 +27,10 @@ void markRoots(VM* vm) {
         markValue(vm, *value);
     }
     markValue(vm, vm->last_popped_value);
-    markTable(vm, &vm->globals);
+    markTable(vm, &vm->modules);
     markTable(vm, &vm->strings);
     markValue(vm, vm->raise_value);
     markValue(vm, OBJ_VAL(vm->core_module));
-    // markTable(vm, &vm->modules);
     //  mark upvalues
     for (ObjUpvalue* upvalue = vm->open_upvalues; upvalue != NULL;
          upvalue = upvalue->next) {

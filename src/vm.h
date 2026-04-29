@@ -10,6 +10,8 @@
 #define STACK_MAX 256
 #define FRAMES_MAX 16  // TODO: make this configurable
 #define TRY_MAX 64
+#define MAX_MODULES 256
+#define MAX_MODULE_SYMBOLS 128 // We need to limit this to avoid module table rehashing
 
 typedef enum {
     INTERPRET_OK,
@@ -50,7 +52,6 @@ typedef struct VM {
 
     Obj* objects;  // Linked list of all heap-allocated objects for GC
     Table strings;
-    Table globals;
     Table modules;
     ObjModule* core_module;  // The core module containing built-in functions
                              // and constants
