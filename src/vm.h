@@ -11,7 +11,8 @@
 #define FRAMES_MAX 16  // TODO: make this configurable
 #define TRY_MAX 64
 #define MAX_MODULES 256
-#define MAX_MODULE_SYMBOLS 128 // We need to limit this to avoid module table rehashing
+#define MAX_MODULE_SYMBOLS \
+    128  // We need to limit this to avoid module table rehashing
 
 typedef enum {
     INTERPRET_OK,

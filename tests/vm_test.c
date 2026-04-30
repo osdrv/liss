@@ -559,6 +559,12 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_LIST, .as.string = "[1 true null \"hello\"]"},
     },
+    {
+        .name = "native fn call",
+        .src = "(err! \"test error\")",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_ERROR, .as.string = "test error"},
+    },
 };
 
 static char* test_vm_interpret(void) {

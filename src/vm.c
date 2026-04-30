@@ -41,9 +41,10 @@ VM* newVM(VMOptions options) {
     push(vm, OBJ_VAL(vm->core_module));  // Push core module for GC safety
                                          // during natives registration
     registerCoreNatives(vm, vm->core_module);
-    tableInsert(&vm->modules, OBJ_VAL(vm->core_module->name),
-               OBJ_VAL(vm->core_module));  // Cache core module in modules table
-    pop(vm);  // Pop core module after registration
+    tableInsert(
+        &vm->modules, OBJ_VAL(vm->core_module->name),
+        OBJ_VAL(vm->core_module));  // Cache core module in modules table
+    pop(vm);                        // Pop core module after registration
 
     initTable(&vm->strings);
     vm->try_count = 0;
@@ -112,7 +113,7 @@ InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
         module = newModule(vm, "main");
         push(vm, OBJ_VAL(module));  // Push for GC safety during compilation
         tableInsert(&vm->modules, OBJ_VAL(module->name),
-                   OBJ_VAL(module));  // Cache main module in modules table
+                    OBJ_VAL(module));  // Cache main module in modules table
     }
 
     ObjFunction* function = compile(vm, source, module);

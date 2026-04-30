@@ -211,7 +211,7 @@ static void parseNumber(Compiler* compiler) {
             compiler->parser->hadError = true;
             ERROR_LOG("[line %d] Error: Integer literal out of range",
                       compiler->parser->previous.line);
-            goto PARSE_NUMBER_CLEANUP;
+            goto END_PARSE_NUMBER;
         }
         emitConstant(compiler, INT_VAL(value));
     } else {
@@ -220,11 +220,11 @@ static void parseNumber(Compiler* compiler) {
             compiler->parser->hadError = true;
             ERROR_LOG("[line %d] Error: Real number literal out of range",
                       compiler->parser->previous.line);
-            goto PARSE_NUMBER_CLEANUP;
+            goto END_PARSE_NUMBER;
         }
         emitConstant(compiler, REAL_VAL(value));
     }
-PARSE_NUMBER_CLEANUP:
+END_PARSE_NUMBER:
     free(buf);
 }
 
@@ -619,7 +619,7 @@ static void parseImport(Compiler* compiler) {
                 return;
             }
             tableInsert(&compiler->module->imports, OBJ_VAL(symbol_obj),
-                        OBJ_VAL(remote_ptr));
+                        *remote_ptr);
         }
     }
 }
@@ -987,6 +987,7 @@ ObjFunction* compile(VM* vm, const char* source, ObjModule* module) {
     compiler.vm = vm;
     compiler.parser = &parser;
     compiler.added_globals_cnt = 0;
+    void* prev_compiler = vm->compiler;
     vm->compiler = &compiler;
     initCompiler(&compiler, NULL, module);
     push(vm, OBJ_VAL(compiler.function));
@@ -1010,13 +1011,13 @@ ObjFunction* compile(VM* vm, const char* source, ObjModule* module) {
             tableRemove(&compiler.function->module->symbols,
                         compiler.added_globals[i]);
         }
-        vm->compiler = NULL;
-        return NULL;
+        goto END_COMPILE;
     }
 
     consume(&compiler, TOKEN_EOF, "expect the end of expression");
     ObjFunction* function = endCompiler(&compiler);
-    vm->compiler = NULL;
 
+END_COMPILE:
+    vm->compiler = prev_compiler;
     return parser.hadError ? NULL : function;
 }

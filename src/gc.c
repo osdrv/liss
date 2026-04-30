@@ -27,9 +27,10 @@ void markRoots(VM* vm) {
         markValue(vm, *value);
     }
     markValue(vm, vm->last_popped_value);
-    markTable(vm, &vm->modules);
+    // TODO: Implement weak references for string interning
     markTable(vm, &vm->strings);
     markValue(vm, vm->raise_value);
+    markTable(vm, &vm->modules);
     markValue(vm, OBJ_VAL(vm->core_module));
     //  mark upvalues
     for (ObjUpvalue* upvalue = vm->open_upvalues; upvalue != NULL;

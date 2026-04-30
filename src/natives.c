@@ -20,9 +20,15 @@ static Value errNative(VM* vm, int argc, Value* argv) {
         // TODO: raise! once we've implemented it
         return NIL_VAL;
     }
-    char* str = sprintValue(argv[0]);
-    ObjError* error = newError(vm, str);
-    free(str);
+    ObjError* error;
+    // If it's already a string, we can create the error directly from it.
+    if (IS_STRING(argv[0])) {
+        error = newError(vm, AS_CSTRING(argv[0]));
+    } else {
+        char* str = sprintValue(argv[0]);
+        error = newError(vm, str);
+        free(str);
+    }
 
     return OBJ_VAL(error);
 }
