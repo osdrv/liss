@@ -1,18 +1,8 @@
-#include "natives.h"
-
-#include <stdlib.h>
-#include <string.h>
+#include "core.h"
 
 #include "object.h"
 #include "value.h"
 #include "vm.h"
-
-Value raiseErr(VM* vm, const char* message) {
-    ObjError* error = newError(vm, message);
-    vm->raise_value = OBJ_VAL(error);
-    vm->last_result = INTERPRET_RUNTIME_ERROR;
-    return NIL_VAL;
-}
 
 static Value errNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
@@ -85,17 +75,6 @@ static Value isEmptyNative(VM* vm, int argc, Value* argv) {
     } else {
         return raiseErr(vm, "is_empty? takes a string or list argument");
     }
-}
-
-void defineNative(VM* vm, ObjModule* module, const char* name, int arity,
-                  NativeFn function) {
-    ObjString* str = copyString(vm, name, (int)strlen(name));
-    push(vm, OBJ_VAL(str));
-    ObjNative* native = newNative(vm, name, arity, function);
-    push(vm, OBJ_VAL(native));
-    tableInsert(&module->symbols, OBJ_VAL(str), OBJ_VAL(native));
-    pop(vm);
-    pop(vm);
 }
 
 void registerCoreNatives(VM* vm, ObjModule* module) {

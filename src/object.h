@@ -4,7 +4,6 @@
 #include <stdint.h>
 
 #include "chunk.h"
-#include "natives.h"
 #include "table.h"
 #include "value.h"
 
@@ -12,6 +11,9 @@
 typedef struct ObjString ObjString;
 typedef struct ObjModule ObjModule;
 typedef struct VM VM;
+
+// The signature for all native functions
+typedef Value (*NativeFn)(VM* vm, int arg_count, Value* args);
 
 // --- Base Object ---
 
@@ -159,5 +161,12 @@ ObjString* takeString(VM* vm, char* chars, int length);
 
 // Allocates a new ObjString by copying the given characters.
 ObjString* copyString(VM* vm, const char* chars, int length);
+
+// Registers a native function with the VM
+void defineNative(VM* vm, ObjModule* module, const char* name, int arity,
+                  NativeFn function);
+
+// A helper to create an error and set it as the current raise value
+Value raiseErr(VM* vm, const char* message);
 
 #endif

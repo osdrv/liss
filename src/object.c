@@ -164,3 +164,21 @@ ObjString* copyString(VM* vm, const char* chars, int length) {
 
     return string;
 }
+
+Value raiseErr(VM* vm, const char* message) {
+    ObjError* error = newError(vm, message);
+    vm->raise_value = OBJ_VAL(error);
+    vm->last_result = INTERPRET_RUNTIME_ERROR;
+    return NIL_VAL;
+}
+
+void defineNative(VM* vm, ObjModule* module, const char* name, int arity,
+                  NativeFn function) {
+    ObjString* str = copyString(vm, name, (int)strlen(name));
+    push(vm, OBJ_VAL(str));
+    ObjNative* native = newNative(vm, name, arity, function);
+    push(vm, OBJ_VAL(native));
+    tableInsert(&module->symbols, OBJ_VAL(str), OBJ_VAL(native));
+    pop(vm);
+    pop(vm);
+}

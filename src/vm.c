@@ -12,7 +12,6 @@
 #include "gc.h"
 #include "memory.h"
 #include "modules/modules.h"
-#include "natives.h"
 #include "object.h"
 #include "opcode.h"
 #include "table.h"
@@ -40,14 +39,19 @@ VM* newVM(VMOptions options) {
     vm->open_upvalues = NULL;
 
     initTableWithCapacity(&vm->modules, MAX_MODULES);
-    vm->core_module = newModule(vm, "core");
-    push(vm, OBJ_VAL(vm->core_module));  // Push core module for GC safety
-                                         // during natives registration
-    registerCoreNatives(vm, vm->core_module);
-    tableInsert(
-        &vm->modules, OBJ_VAL(vm->core_module->name),
-        OBJ_VAL(vm->core_module));  // Cache core module in modules table
-    pop(vm);                        // Pop core module after registration
+    ObjString* core_name = copyString(vm, "core", 4);
+    push(vm, OBJ_VAL(core_name));
+    vm->core_module = loadModule(vm, core_name);
+    pop(vm);
+
+    // vm->core_module = newModule(vm, "core");
+    // push(vm, OBJ_VAL(vm->core_module));  // Push core module for GC safety
+    //                                      // during natives registration
+    // registerCoreNatives(vm, vm->core_module);
+    // tableInsert(
+    //     &vm->modules, OBJ_VAL(vm->core_module->name),
+    //     OBJ_VAL(vm->core_module));  // Cache core module in modules table
+    // pop(vm);                        // Pop core module after registration
 
     initTable(&vm->strings);
     vm->try_count = 0;

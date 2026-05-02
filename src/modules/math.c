@@ -1,9 +1,15 @@
 #include <math.h>
 
-#include "natives.h"
 #include "object.h"
 #include "vm.h"
 
+/**
+ * Returns the largest integer value less than or equal to the argument.
+ *
+ * Arguments: 1
+ * Argument types: Int or Real
+ * Return type: Real
+ */
 static Value floorNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "floor takes exactly 1 argument");
@@ -17,6 +23,13 @@ static Value floorNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the smallest integer value greater than or equal to the argument.
+ *
+ * Arguments: 1
+ * Argument types: Int or Real
+ * Return type: Real
+ */
 static Value ceilNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "ceil takes exactly 1 argument");
@@ -30,6 +43,13 @@ static Value ceilNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the value rounded to the nearest integer.
+ *
+ * Arguments: 1
+ * Argument types: Int or Real
+ * Return type: Real
+ */
 static Value roundNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "round takes exactly 1 argument");
@@ -43,6 +63,13 @@ static Value roundNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the absolute value of the argument.
+ *
+ * Arguments: 1
+ * Argument types: Int or Real
+ * Return type: Real
+ */
 static Value absNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "abs takes exactly 1 argument");
@@ -56,6 +83,13 @@ static Value absNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the square root of the argument.
+ *
+ * Arguments: 1
+ * Argument types: Int or Real (must be non-negative)
+ * Return type: Real
+ */
 static Value sqrtNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "sqrt takes exactly 1 argument");
@@ -72,6 +106,13 @@ static Value sqrtNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the base raised to the power of the exponent.
+ *
+ * Arguments: 2
+ * Argument types: [Base: Int or Real, Exponent: Int or Real]
+ * Return type: Real
+ */
 static Value powNative(VM* vm, int argc, Value* argv) {
     if (argc != 2) {
         return raiseErr(vm, "pow takes exactly 2 arguments");
@@ -87,6 +128,14 @@ static Value powNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the remainder of the floating-point division of the first argument by
+ * the second.
+ *
+ * Arguments: 2
+ * Argument types: [Dividend: Int or Real, Divisor: Int or Real]
+ * Return type: Real
+ */
 static Value fmodNative(VM* vm, int argc, Value* argv) {
     if (argc != 2) {
         return raiseErr(vm, "fmod takes exactly 2 arguments");
@@ -102,6 +151,13 @@ static Value fmodNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the natural logarithm (base-e) of the argument.
+ *
+ * Arguments: 1
+ * Argument types: Int or Real (must be greater than zero)
+ * Return type: Real
+ */
 static Value logNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "log takes exactly 1 argument");
@@ -118,6 +174,13 @@ static Value logNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the base-2 logarithm of the argument.
+ *
+ * Arguments: 1
+ * Argument types: Int or Real (must be greater than zero)
+ * Return type: Real
+ */
 static Value log2Native(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "log2 takes exactly 1 argument");
@@ -134,6 +197,13 @@ static Value log2Native(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the value of e (Euler's number) raised to the power of the argument.
+ *
+ * Arguments: 1
+ * Argument types: Int or Real
+ * Return type: Real
+ */
 static Value expNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "exp takes exactly 1 argument");
@@ -147,6 +217,13 @@ static Value expNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the sine of the argument (expected in radians).
+ *
+ * Arguments: 1
+ * Argument types: Int or Real
+ * Return type: Real
+ */
 static Value sinNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "sin takes exactly 1 argument");
@@ -160,6 +237,13 @@ static Value sinNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the cosine of the argument (expected in radians).
+ *
+ * Arguments: 1
+ * Argument types: Int or Real
+ * Return type: Real
+ */
 static Value cosNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "cos takes exactly 1 argument");
@@ -173,6 +257,13 @@ static Value cosNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the tangent of the argument (expected in radians).
+ *
+ * Arguments: 1
+ * Argument types: Int or Real
+ * Return type: Real
+ */
 static Value tanNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
         return raiseErr(vm, "tan takes exactly 1 argument");
@@ -186,14 +277,21 @@ static Value tanNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+/**
+ * Returns the arc tangent of y/x, using the signs of the arguments to determine
+ * the quadrant.
+ *
+ * Arguments: 2
+ * Argument types: [y: Int or Real, x: Int or Real]
+ * Return type: Real
+ */
 static Value atan2Native(VM* vm, int argc, Value* argv) {
     if (argc != 2) {
         return raiseErr(vm, "atan2 takes exactly 2 arguments");
     }
     Value arg1 = argv[0];
     Value arg2 = argv[1];
-    if (!(IS_INT(arg1) || IS_REAL(arg1)) ||
-        !(IS_INT(arg2) || IS_REAL(arg2))) {
+    if (!(IS_INT(arg1) || IS_REAL(arg1)) || !(IS_INT(arg2) || IS_REAL(arg2))) {
         return raiseErr(vm, "atan2 takes int or real arguments");
     }
     double val1 = (IS_INT(arg1) ? (double)AS_INT(arg1) : AS_REAL(arg1));
@@ -211,7 +309,7 @@ void registerMathNatives(VM* vm, ObjModule* module) {
     defineNative(vm, module, "pow", 2, powNative);
     defineNative(vm, module, "fmod", 2, fmodNative);
     defineNative(vm, module, "log", 1, logNative);
-    defineNative(vm, module, "log", 1, log2Native);
+    defineNative(vm, module, "log2", 1, log2Native);
     defineNative(vm, module, "exp", 1, expNative);
     defineNative(vm, module, "sin", 1, sinNative);
     defineNative(vm, module, "cos", 1, cosNative);
