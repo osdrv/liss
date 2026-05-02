@@ -17,6 +17,7 @@ LDFLAGS =
 ifeq ($(SANITIZE),1)
 	LDFLAGS += -fsanitize=address
 endif
+LIBS = -lm
 
 # Project structure
 SRCDIR = src
@@ -60,11 +61,11 @@ test-debug: $(TEST_RUNNER)
 
 # Main executable target
 $(TARGET): $(OBJS) | $(BINDIR)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 # Test runner target
 $(TEST_RUNNER): $(OBJS_NO_MAIN) $(TEST_OBJS) | $(BINDIR)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -I$(SRCDIR)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -I$(SRCDIR)
 
 # Rule to compile source files into object files
 $(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
