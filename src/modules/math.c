@@ -17,7 +17,206 @@ static Value floorNative(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+static Value ceilNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "ceil takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "ceil takes int or real argument");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    double res = ceil(val);
+    return REAL_VAL(res);
+}
+
+static Value roundNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "round takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "round takes int or real argument");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    double res = round(val);
+    return REAL_VAL(res);
+}
+
+static Value absNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "abs takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "abs takes int or real argument");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    double res = fabs(val);
+    return REAL_VAL(res);
+}
+
+static Value sqrtNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "sqrt takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "sqrt takes int or real argument");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    if (val < 0) {
+        return raiseErr(vm, "sqrt of negative number is not defined");
+    }
+    double res = sqrt(val);
+    return REAL_VAL(res);
+}
+
+static Value powNative(VM* vm, int argc, Value* argv) {
+    if (argc != 2) {
+        return raiseErr(vm, "pow takes exactly 2 arguments");
+    }
+    Value base = argv[0];
+    Value exp = argv[1];
+    if (!(IS_INT(base) || IS_REAL(base) || IS_INT(exp) || IS_REAL(exp))) {
+        return raiseErr(vm, "pow takes int or real arguments");
+    }
+    double baseVal = (IS_INT(base) ? (double)AS_INT(base) : AS_REAL(base));
+    double expVal = (IS_INT(exp) ? (double)AS_INT(exp) : AS_REAL(exp));
+    double res = pow(baseVal, expVal);
+    return REAL_VAL(res);
+}
+
+static Value fmodNative(VM* vm, int argc, Value* argv) {
+    if (argc != 2) {
+        return raiseErr(vm, "fmod takes exactly 2 arguments");
+    }
+    Value arg1 = argv[0];
+    Value arg2 = argv[1];
+    if (!(IS_INT(arg1) || IS_REAL(arg1) || IS_INT(arg2) || IS_REAL(arg2))) {
+        return raiseErr(vm, "fmod takes int or real arguments");
+    }
+    double val1 = (IS_INT(arg1) ? (double)AS_INT(arg1) : AS_REAL(arg1));
+    double val2 = (IS_INT(arg2) ? (double)AS_INT(arg2) : AS_REAL(arg2));
+    double res = fmod(val1, val2);
+    return REAL_VAL(res);
+}
+
+static Value logNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "log takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "log takes int or real arguments");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    if (val <= 0) {
+        return raiseErr(vm, "log argument must be greater than zero");
+    }
+    double res = log(val);
+    return REAL_VAL(res);
+}
+
+static Value log2Native(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "log2 takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "log2 takes int or real arguments");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    if (val <= 0) {
+        return raiseErr(vm, "log2 argument must be greater than zero");
+    }
+    double res = log2(val);
+    return REAL_VAL(res);
+}
+
+static Value expNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "exp takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "exp takes int or real arguments");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    double res = exp(val);
+    return REAL_VAL(res);
+}
+
+static Value sinNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "sin takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "sin takes int or real arguments");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    double res = sin(val);
+    return REAL_VAL(res);
+}
+
+static Value cosNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "cos takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "cos takes int or real arguments");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    double res = cos(val);
+    return REAL_VAL(res);
+}
+
+static Value tanNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "tan takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "tan takes int or real arguments");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    double res = tan(val);
+    return REAL_VAL(res);
+}
+
+static Value atan2Native(VM* vm, int argc, Value* argv) {
+    if (argc != 2) {
+        return raiseErr(vm, "atan2 takes exactly 2 arguments");
+    }
+    Value arg1 = argv[0];
+    Value arg2 = argv[1];
+    if (!(IS_INT(arg1) || IS_REAL(arg1)) ||
+        !(IS_INT(arg2) || IS_REAL(arg2))) {
+        return raiseErr(vm, "atan2 takes int or real arguments");
+    }
+    double val1 = (IS_INT(arg1) ? (double)AS_INT(arg1) : AS_REAL(arg1));
+    double val2 = (IS_INT(arg2) ? (double)AS_INT(arg2) : AS_REAL(arg2));
+    double res = atan2(val1, val2);
+    return REAL_VAL(res);
+}
+
 void registerMathNatives(VM* vm, ObjModule* module) {
     defineNative(vm, module, "floor", 1, floorNative);
+    defineNative(vm, module, "ceil", 1, ceilNative);
+    defineNative(vm, module, "round", 1, roundNative);
+    defineNative(vm, module, "abs", 1, absNative);
+    defineNative(vm, module, "sqrt", 1, sqrtNative);
+    defineNative(vm, module, "pow", 2, powNative);
+    defineNative(vm, module, "fmod", 2, fmodNative);
+    defineNative(vm, module, "log", 1, logNative);
+    defineNative(vm, module, "log", 1, log2Native);
+    defineNative(vm, module, "exp", 1, expNative);
+    defineNative(vm, module, "sin", 1, sinNative);
+    defineNative(vm, module, "cos", 1, cosNative);
+    defineNative(vm, module, "tan", 1, tanNative);
+    defineNative(vm, module, "atan2", 2, atan2Native);
+
     // TODO: add more functions
 }
