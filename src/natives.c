@@ -7,8 +7,7 @@
 #include "value.h"
 #include "vm.h"
 
-// Internal helper to create an error and set it as the current raise value
-static Value raise(VM* vm, const char* message) {
+Value raiseErr(VM* vm, const char* message) {
     ObjError* error = newError(vm, message);
     vm->raise_value = OBJ_VAL(error);
     vm->last_result = INTERPRET_RUNTIME_ERROR;
@@ -62,7 +61,7 @@ static Value raiseNative(VM* vm, int argc, Value* argv) {
 
 static Value lenNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
-        return raise(vm, "len expects exactly 1 argument");
+        return raiseErr(vm, "len takes exactly 1 argument");
     }
     Value arg = argv[0];
     if (IS_STRING(arg)) {
@@ -70,13 +69,13 @@ static Value lenNative(VM* vm, int argc, Value* argv) {
     } else if (IS_LIST(arg)) {
         return INT_VAL(AS_LIST(arg)->len);
     } else {
-        return raise(vm, "len expects a string or list argument");
+        return raiseErr(vm, "len takes a string or list argument");
     }
 }
 
 static Value isEmptyNative(VM* vm, int argc, Value* argv) {
     if (argc != 1) {
-        return raise(vm, "is_empty? expects exactly 1 argument");
+        return raiseErr(vm, "is_empty? takes exactly 1 argument");
     }
     Value arg = argv[0];
     if (IS_STRING(arg)) {
@@ -84,7 +83,7 @@ static Value isEmptyNative(VM* vm, int argc, Value* argv) {
     } else if (IS_LIST(arg)) {
         return BOOL_VAL(AS_LIST(arg)->len == 0);
     } else {
-        return raise(vm, "is_empty? expects a string or list argument");
+        return raiseErr(vm, "is_empty? takes a string or list argument");
     }
 }
 

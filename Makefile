@@ -25,7 +25,7 @@ BINDIR = bin
 TESTDIR = tests
 
 # Source files and object files
-SRCS = $(wildcard $(SRCDIR)/*.c) $(SRCDIR)/object.c $(SRCDIR)/common.c $(SRCDIR)/chunk.c $(SRCDIR)/memory.c $(SRCDIR)/token.c $(SRCDIR)/scanner.c $(SRCDIR)/compiler.c
+SRCS = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/modules/*.c)
 OBJS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
 # Application objects excluding main, for linking into tests
 OBJS_NO_MAIN = $(filter-out $(OBJDIR)/main.o, $(OBJS))
@@ -68,10 +68,12 @@ $(TEST_RUNNER): $(OBJS_NO_MAIN) $(TEST_OBJS) | $(BINDIR)
 
 # Rule to compile source files into object files
 $(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -I$(SRCDIR) -c -o $@ $<
 
 # Rule to compile test files into object files
 $(OBJDIR)/%.o: $(TESTDIR)/%.c | $(OBJDIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -I$(SRCDIR) -c -o $@ $<
 
 # Create directories if they don't exist
@@ -82,7 +84,7 @@ clean:
 	rm -rf $(OBJDIR) $(BINDIR)
 
 format:
-	clang-format -i -style=file $(SRCDIR)/*.c $(SRCDIR)/*.h $(TESTDIR)/*.c
+	clang-format -i -style=file $(SRCDIR)/*.c $(SRCDIR)/*.h $(SRCDIR)/modules/*.c $(SRCDIR)/modules/*.h $(TESTDIR)/*.c
 
 lint:
-	clang-tidy $(SRCDIR)/*.c $(TESTDIR)/*.c -- -I$(SRCDIR)
+	clang-tidy $(SRCDIR)/*.c $(SRCDIR)/modules/*.c $(TESTDIR)/*.c -- -I$(SRCDIR)

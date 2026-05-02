@@ -11,11 +11,14 @@
 #include "compiler.h"
 #include "gc.h"
 #include "memory.h"
+#include "modules/modules.h"
 #include "natives.h"
 #include "object.h"
 #include "opcode.h"
 #include "table.h"
 #include "value.h"
+
+typedef void (*NativeModuleLoader)(VM* vm, ObjModule* module);
 
 // --- Forward Declarations ---
 static InterpretResult run(VM* vm);
@@ -79,8 +82,19 @@ ObjModule* loadModule(VM* vm, ObjString* module_name) {
     if (cached != NULL) {
         return AS_MODULE(*cached);
     }
+
     // Step 2: check native modules
-    // TODO: implement me
+    for (int i = 0; native_module_registry[i].name != NULL; i++) {
+        if (strcmp(module_name->chars, native_module_registry[i].name) == 0) {
+            ObjModule* module = newModule(vm, native_module_registry[i].name);
+            push(vm, OBJ_VAL(module));
+            tableInsert(&vm->modules, OBJ_VAL(module_name), OBJ_VAL(module));
+            native_module_registry[i].loader(vm, module);
+            pop(vm);
+            return module;
+        }
+    }
+
     // Step 3: check files
     char* source = readLissFile(module_name->chars);
     if (source == NULL) {
@@ -90,6 +104,9 @@ ObjModule* loadModule(VM* vm, ObjString* module_name) {
     ObjModule* module = newModule(vm, module_name->chars);
     push(vm, OBJ_VAL(module));  // Push for GC safety during compilation
 
+    // Cache it to avoid circular import infinite loop.
+    tableInsert(&vm->modules, OBJ_VAL(module_name), OBJ_VAL(module));
+
     InterpretResult result = interpret(vm, source, module);
     if (result != INTERPRET_OK) {
         ERROR_LOG("Failed to load module '%s'", module_name->chars);
@@ -98,8 +115,6 @@ ObjModule* loadModule(VM* vm, ObjString* module_name) {
         return NULL;
     }
 
-    // Cache it
-    tableInsert(&vm->modules, OBJ_VAL(module_name), OBJ_VAL(module));
     pop(vm);
 
     return module;

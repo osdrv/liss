@@ -560,7 +560,12 @@ static void parseImport(Compiler* compiler) {
     ObjString* module_name_obj = copyString(
         compiler->vm, module_name_token.start, module_name_token.length);
 
-    ObjString* alias_obj = NULL;
+    ObjModule* module = loadModule(compiler->vm, module_name_obj);
+    if (module == NULL) {
+        ERROR_LOG("[line %d] Error: could not load module %s",
+                  compiler->parser->current.line, module_name_obj->chars);
+    }
+
     if (compiler->parser->current.type == TOKEN_AS_KW) {
         advance(compiler);
         Token alias_token = readStringOrIdentifier(
@@ -570,17 +575,17 @@ static void parseImport(Compiler* compiler) {
                       compiler->parser->current.line);
             return;
         }
-        alias_obj =
+        ObjString* alias_obj =
             copyString(compiler->vm, alias_token.start, alias_token.length);
+        // Insert alias -> module name mapping into the compiler's alias table.
+        tableInsert(&compiler->aliases, OBJ_VAL(alias_obj),
+                    OBJ_VAL(module_name_obj));
     } else {
-        alias_obj = copyString(compiler->vm, module_name_token.start,
-                               module_name_token.length);
+        // If there is no alias, we insert module name -> module name mapping,
+        // so we can resolve imports the same way.
+        tableInsert(&compiler->aliases, OBJ_VAL(module_name_obj),
+                    OBJ_VAL(module_name_obj));
     }
-    // Insert alias -> module name mapping into the compiler's alias table.
-    // If there is no alias, we insert module name -> module name mapping, so we
-    // can resolve imports the same way.
-    tableInsert(&compiler->aliases, OBJ_VAL(alias_obj),
-                OBJ_VAL(module_name_obj));
 
     if (compiler->parser->current.type == TOKEN_LBRAKET) {
         advance(compiler);
@@ -618,10 +623,20 @@ static void parseImport(Compiler* compiler) {
                     module_name_token.start);
                 return;
             }
+            // NOTE: if I ever end up debugging expired module symbol pointers,
+            // this place is the starting point. We are pointing at a location
+            // in a hash map bucket, which could be reallocated and moved if
+            // the table exceeded the "ought to be enogh for everyon" size.
             tableInsert(&compiler->module->imports, OBJ_VAL(symbol_obj),
                         *remote_ptr);
         }
+        consume(compiler, TOKEN_RBRAKET, "expect `]` after the symbol list");
     }
+    // Emit dangling NULL because each expression should return something
+    // TODO: if I ever want to make modules first-level primitives (e.g. for
+    // reflect) This would be the place to change: I would need to add a public
+    // API for modules and return it as an object.
+    emitByte(compiler, OP_NULL);
 }
 
 static void parseGrouping(Compiler* compiler, bool is_tail) {
@@ -702,6 +717,10 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
         case TOKEN_TRY_KW:
             advance(compiler);
             parseTry(compiler);
+            break;
+        case TOKEN_IMPORT_KW:
+            advance(compiler);
+            parseImport(compiler);
             break;
         case TOKEN_NOT_OP:
         case TOKEN_NOT_KW:

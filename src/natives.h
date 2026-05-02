@@ -14,6 +14,9 @@ typedef Value (*NativeFn)(VM* vm, int arg_count, Value* args);
 void defineNative(VM* vm, ObjModule* module, const char* name, int arity,
                   NativeFn function);
 
+// A helper to create an error and set it as the current raise value
+Value raiseErr(VM* vm, const char* message);
+
 // Registers all core native functions with the VM
 void registerCoreNatives(VM* vm, ObjModule* module);
 

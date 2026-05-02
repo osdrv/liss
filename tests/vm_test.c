@@ -565,6 +565,66 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_ERROR, .as.string = "test error"},
     },
+    {
+        .name = "native fn call with a core-prefixed FQN",
+        .src = "(core:err! \"test error\")",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_ERROR, .as.string = "test error"},
+    },
+    {
+        .name = "plain import as identifier",
+        .src = "(import core)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NIL},
+    },
+    {
+        .name = "plain import as stringified name",
+        .src = "(import \"core\")",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NIL},
+    },
+    {
+        .name = "aliased import",
+        .src = "(import core as c)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NIL},
+    },
+    {
+        .name = "import with empty symbol list",
+        .src = "(import core [])",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NIL},
+    },
+    {
+        .name = "import with non-empty symbol list",
+        .src = "(import core [\"err!\"])",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NIL},
+    },
+    {
+        .name = "aliased import with non-empty symbol list",
+        .src = "(import core as c [\"err!\"])",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NIL},
+    },
+    {
+        .name = "native fn call with an imported core-prefixed FQN",
+        .src = "(import core) (core:err! \"test error\")",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_ERROR, .as.string = "test error"},
+    },
+    {
+        .name = "native fn call with an aliased imported core-prefixed FQN",
+        .src = "(import core as c) (c:err! \"test error\")",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_ERROR, .as.string = "test error"},
+    },
+    {
+        .name = "import optional module and call a function",
+        .src = "(import math)(math:floor 1.23)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_REAL, .as.real = 1.0},
+    },
 };
 
 static char* test_vm_interpret(void) {

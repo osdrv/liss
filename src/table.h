@@ -19,6 +19,7 @@ typedef struct {
     size_t bucket_count;
     size_t old_bucket_count;
     size_t size;
+    bool no_rehash;
 } Table;
 
 void initTable(Table* table);
@@ -30,5 +31,7 @@ void tableRemove(Table* table, Value key);
 Value* tableGet(Table* table, Value key);
 ObjString* tableFindString(Table* table, const char* chars, int length,
                            uint32_t hash);
+
+void tableNoRehash(Table* table);
 
 #endif

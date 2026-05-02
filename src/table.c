@@ -109,7 +109,9 @@ void freeTable(Table* table) {
 
 void tableInsert(Table* table, Value key, Value value) {
     if ((table->size + 1) > TABLE_MAX_LOAD * table->bucket_count) {
-        growTable(table);
+        if (!table->no_rehash) {
+            growTable(table);
+        }
     }
 
     size_t hash = hashValue(key);
@@ -200,3 +202,5 @@ ObjString* tableFindString(Table* table, const char* chars, int length,
 
     return NULL;  // String not found
 }
+
+void tableNoRehash(Table* table) { table->no_rehash = true; }
