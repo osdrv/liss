@@ -300,21 +300,17 @@ static Value atan2Native(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
-void registerMathNatives(VM* vm, ObjModule* module) {
-    defineNative(vm, module, "floor", 1, floorNative);
-    defineNative(vm, module, "ceil", 1, ceilNative);
-    defineNative(vm, module, "round", 1, roundNative);
-    defineNative(vm, module, "abs", 1, absNative);
-    defineNative(vm, module, "sqrt", 1, sqrtNative);
-    defineNative(vm, module, "pow", 2, powNative);
-    defineNative(vm, module, "fmod", 2, fmodNative);
-    defineNative(vm, module, "log", 1, logNative);
-    defineNative(vm, module, "log2", 1, log2Native);
-    defineNative(vm, module, "exp", 1, expNative);
-    defineNative(vm, module, "sin", 1, sinNative);
-    defineNative(vm, module, "cos", 1, cosNative);
-    defineNative(vm, module, "tan", 1, tanNative);
-    defineNative(vm, module, "atan2", 2, atan2Native);
+static const NativeReg math_functions[] = {
+    {"floor", 1, floorNative}, {"ceil", 1, ceilNative},
+    {"round", 1, roundNative}, {"abs", 1, absNative},
+    {"sqrt", 1, sqrtNative},   {"pow", 2, powNative},
+    {"fmod", 2, fmodNative},   {"log", 1, logNative},
+    {"log2", 1, log2Native},   {"exp", 1, expNative},
+    {"sin", 1, sinNative},     {"cos", 1, cosNative},
+    {"tan", 1, tanNative},     {"atan2", 2, atan2Native},
+    {NULL, 0, NULL},  // Sentinel value
+};
 
-    // TODO: add more functions
-}
+void registerMathNatives(VM* vm, ObjModule* module) {
+    defineNatives(vm, module, math_functions);
+};

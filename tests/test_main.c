@@ -13,6 +13,7 @@ void table_suite(void);
 void scanner_suite(void);
 void compiler_suite(void);
 void vm_suite(void);
+void module_suite(void);
 
 int main(int argc, char** argv) {
     (void)argc;
@@ -25,6 +26,7 @@ int main(int argc, char** argv) {
     scanner_suite();
     compiler_suite();
     vm_suite();
+    module_suite();
 
     printf("\n---------------------------\n");
     if (result == 0) {

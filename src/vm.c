@@ -107,53 +107,61 @@ ObjModule* loadModule(VM* vm, ObjString* module_name) {
     }
     ObjModule* module = newModule(vm, module_name->chars);
     push(vm, OBJ_VAL(module));  // Push for GC safety during compilation
-
     // Cache it to avoid circular import infinite loop.
     tableInsert(&vm->modules, OBJ_VAL(module_name), OBJ_VAL(module));
+    pop(vm);  // pop the module from the stack
 
     InterpretResult result = interpret(vm, source, module);
     if (result != INTERPRET_OK) {
         ERROR_LOG("Failed to load module '%s'", module_name->chars);
         free(source);
-        pop(vm);  // Pop the module since it failed to load
         return NULL;
     }
-
-    pop(vm);
 
     return module;
 }
 
 InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
     vm->last_popped_value = NIL_VAL;
-    vm->stack_top = vm->stack;  // Ensure stack is clean for compiler
 
     if (module == NULL) {
         module = newModule(vm, "main");
         push(vm, OBJ_VAL(module));  // Push for GC safety during compilation
         tableInsert(&vm->modules, OBJ_VAL(module->name),
                     OBJ_VAL(module));  // Cache main module in modules table
+    } else {
+        push(vm, OBJ_VAL(module));
     }
 
     ObjFunction* function = compile(vm, source, module);
     if (function == NULL) {
         return INTERPRET_COMPILE_ERROR;
     }
+
     push(vm, OBJ_VAL(function));  // Push the function for GC safety
     ObjClosure* closure = newClosure(vm, function);
     pop(vm);  // Pop the function after creating the closure
     pop(vm);  // Pop the main module after compilation
 
-    vm->stack_top = vm->stack;  // Reset stack top for new execution
-    push(vm, OBJ_VAL(closure));
+    Value* old_stack_top = vm->stack_top;
+    int old_frame_count = vm->frame_count;
 
-    vm->frame_count = 1;
-    CallFrame* frame = &vm->frames[0];
+    push(vm, OBJ_VAL(closure));
+    if (vm->frame_count >= FRAMES_MAX) {
+        ERROR_LOG("Call stack overflow");
+        return INTERPRET_RUNTIME_ERROR;
+    }
+
+    CallFrame* frame = &vm->frames[vm->frame_count++];
     frame->closure = closure;
-    frame->slots = vm->stack;
+    frame->slots = vm->stack_top - 1;  // point at the closure we've just pushed
     frame->ip = NULL;
 
     InterpretResult result = run(vm);
+
+    vm->stack_top = old_stack_top;
+    vm->frame_count = old_frame_count;
+
     return result;
 }
 
@@ -636,6 +644,7 @@ static InterpretResult run(VM* vm) {
         &&OP_LIST_IMPL,          &&OP_GET_MODULE_GLOBAL_IMPL,
     };
 
+    int sentinel_frame_count = vm->frame_count - 1;
     InterpretResult result = INTERPRET_OK;
     CallFrame* frame = &vm->frames[vm->frame_count - 1];
     if (frame->closure->function->loaded_code == NULL) {
@@ -679,17 +688,18 @@ OP_RETURN_IMPL: {
         vm->frame_count, res.type);
     DEBUG_VALUE("%s", res);
     closeUpvalue(vm, frame->slots);
-    vm->last_popped_value = res;
     vm->frame_count--;
-    if (vm->frame_count == 0) {
+
+    if (vm->frame_count == sentinel_frame_count) {
+        vm->last_popped_value = res;
         pop(vm);  // Pop the initial function object to allow GC
         goto RETURN;
     }
+
     vm->stack_top = frame->slots;
     push(vm, res);
     vm->last_popped_value = NIL_VAL;  // Clear it once pushed back
     frame = &vm->frames[vm->frame_count - 1];
-
     DISPATCH();
 }
 

@@ -109,6 +109,12 @@ typedef struct ObjModule {
     Table imports;
 } ObjModule;
 
+typedef struct {
+    const char* name;
+    int arity;
+    NativeFn fn;
+} NativeReg;
+
 // --- Helper Functions and Macros ---
 
 // Safely checks if a Value is an object of a given ObjType.
@@ -165,6 +171,8 @@ ObjString* copyString(VM* vm, const char* chars, int length);
 // Registers a native function with the VM
 void defineNative(VM* vm, ObjModule* module, const char* name, int arity,
                   NativeFn function);
+
+void defineNatives(VM* vm, ObjModule* module, const NativeReg* registry);
 
 // A helper to create an error and set it as the current raise value
 Value raiseErr(VM* vm, const char* message);

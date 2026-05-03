@@ -153,7 +153,8 @@ static void initCompiler(Compiler* compiler, Compiler* enclosing,
         compiler->parser = enclosing->parser;
         compiler->vm = enclosing->vm;
     }
-    compiler->function = newFunction(compiler->vm, compiler->module);
+    compiler->function = NULL;
+    initTable(&compiler->aliases);
 
     Local* local = &compiler->locals[compiler->local_count++];
     local->depth = 0;
@@ -161,7 +162,7 @@ static void initCompiler(Compiler* compiler, Compiler* enclosing,
     local->name.length = 0;
 
     compiler->upvalue_cnt = 0;
-    initTable(&compiler->aliases);
+    compiler->function = newFunction(compiler->vm, compiler->module);
 }
 
 static ObjFunction* endCompiler(Compiler* compiler) {
@@ -1037,6 +1038,7 @@ ObjFunction* compile(VM* vm, const char* source, ObjModule* module) {
     ObjFunction* function = endCompiler(&compiler);
 
 END_COMPILE:
+    pop(vm);  // pop the compiler.function
     vm->compiler = prev_compiler;
     return parser.hadError ? NULL : function;
 }

@@ -182,3 +182,10 @@ void defineNative(VM* vm, ObjModule* module, const char* name, int arity,
     pop(vm);
     pop(vm);
 }
+
+void defineNatives(VM* vm, ObjModule* module, const NativeReg* registry) {
+    for (int i = 0; registry[i].name != NULL; i++) {
+        defineNative(vm, module, registry[i].name, registry[i].arity,
+                     registry[i].fn);
+    }
+}

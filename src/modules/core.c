@@ -77,10 +77,12 @@ static Value isEmptyNative(VM* vm, int argc, Value* argv) {
     }
 }
 
+static const NativeReg core_functions[] = {
+    {"err!", 1, errNative},          {"is_err?", 1, isErrNative},
+    {"raise!", 1, raiseNative},      {"len", 1, lenNative},
+    {"is_empty?", 1, isEmptyNative}, {NULL, 0, NULL},  // Sentinel value
+};
+
 void registerCoreNatives(VM* vm, ObjModule* module) {
-    defineNative(vm, module, "err!", 1, errNative);
-    defineNative(vm, module, "is_err?", 1, isErrNative);
-    defineNative(vm, module, "raise!", 1, raiseNative);
-    defineNative(vm, module, "len", 1, lenNative);
-    defineNative(vm, module, "is_empty?", 1, isEmptyNative);
+    defineNatives(vm, module, core_functions);
 }
