@@ -44,14 +44,10 @@ static size_t hashValue(Value value) {
     }
 }
 
-void initTable(Table* table) {
-    table->buckets = NULL;
-    table->bucket_count = 0;
-    table->size = 0;
-    table->no_rehash = false;
-}
+void initTable(Table* table) { memset(table, 0, sizeof(Table)); }
 
 void initTableWithCapacity(Table* table, size_t capacity) {
+    memset(table, 0, sizeof(Table));
     size_t bucket_count = TABLE_INITIAL_BUCKET_COUNT;
     while (bucket_count < capacity / TABLE_MAX_LOAD) {
         bucket_count *= TABLE_GROWTH_FACTOR;
@@ -61,8 +57,6 @@ void initTableWithCapacity(Table* table, size_t capacity) {
         table->buckets[i] = NULL;
     }
     table->bucket_count = bucket_count;
-    table->size = 0;
-    table->no_rehash = false;
 }
 
 static void growTable(Table* table) {

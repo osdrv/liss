@@ -8,12 +8,15 @@
 // Define a macro for debug logging that can be compiled out.
 // To enable, compile with the -DLISS_DEBUG_BUILD flag.
 #ifdef LISS_DEBUG_BUILD
-#define DEBUG_LOG(format, ...)                                         \
-    fprintf(stdout, "[DEBUG] %s:%d: " format "\n", __FILE__, __LINE__, \
-            ##__VA_ARGS__)
-#define ERROR_LOG(format, ...)                                         \
-    fprintf(stderr, "[ERROR] %s:%d: " format "\n", __FILE__, __LINE__, \
-            ##__VA_ARGS__)
+
+#define DEBUG_LOG(format, ...)                               \
+    fprintf(stdout, "[DEBUG] %s:%d: " format "\n", __FILE__, \
+            __LINE__ __VA_OPT__(, ) __VA_ARGS__)
+
+#define ERROR_LOG(format, ...)                               \
+    fprintf(stdout, "[ERROR] %s:%d: " format "\n", __FILE__, \
+            __LINE__ __VA_OPT__(, ) __VA_ARGS__)
+
 #else
 // In a release build, this macro does nothing.
 #define DEBUG_LOG(format, ...) \
