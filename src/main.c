@@ -79,7 +79,7 @@ static void runFile(const char* path, VMOptions options) {
 int main(int argc, const char* argv[]) {
     signal(SIGINT, intHandler);
 
-    char* file_name = NULL;
+    const char* file_name = NULL;
     for (int i = 1; i < argc; i++) {
         if (!isFlag(argv[i])) {
             file_name = argv[i];

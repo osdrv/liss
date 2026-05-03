@@ -48,6 +48,7 @@ void initTable(Table* table) {
     table->buckets = NULL;
     table->bucket_count = 0;
     table->size = 0;
+    table->no_rehash = false;
 }
 
 void initTableWithCapacity(Table* table, size_t capacity) {
@@ -61,6 +62,7 @@ void initTableWithCapacity(Table* table, size_t capacity) {
     }
     table->bucket_count = bucket_count;
     table->size = 0;
+    table->no_rehash = false;
 }
 
 static void growTable(Table* table) {
