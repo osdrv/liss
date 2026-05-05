@@ -68,6 +68,7 @@ static char* test_modules(void) {
             .gc_threshold = 1024,
             .heap_growth_factor = 2,
             .stress_gc = true,
+            .frames_max = 32,
         };
         VM* vm = newVM(options);
         mu_assert("Failed to create VM", vm != NULL);
@@ -120,8 +121,8 @@ static char* test_modules(void) {
         }
 
         destroyVM(vm);
-        return NULL;
     }
+    return NULL;
 }
 
 // --- Suite ---

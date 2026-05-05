@@ -23,6 +23,7 @@ static char* test_vm_stack(void) {
         .gc_threshold = 1024,
         .heap_growth_factor = 2,
         .stress_gc = true,
+        .frames_max = 32,
     };
     VM* vm = newVM(options);  // Create a VM with a small stack for testing
     mu_assert("Failed to create VM", vm != NULL);
@@ -558,6 +559,7 @@ static char* test_vm_interpret(void) {
             .gc_threshold = 1024,
             .heap_growth_factor = 2,
             .stress_gc = true,
+            .frames_max = 32,
         };
         VM* vm = newVM(options);
         mu_assert("Failed to create VM", vm != NULL);

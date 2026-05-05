@@ -37,6 +37,9 @@ VM* newVM(VMOptions options) {
     vm->objects = NULL;
     vm->last_result = INTERPRET_OK;
     vm->open_upvalues = NULL;
+    vm->frame_cnt = 0;
+    vm->frame_cap = 8;
+    vm->frames = reallocate(NULL, NULL, 0, sizeof(CallFrame) * vm->frame_cap);
 
     initTableWithCapacity(&vm->modules, MAX_MODULES);
     ObjString* core_name = copyString(vm, "core", 4);
@@ -44,17 +47,8 @@ VM* newVM(VMOptions options) {
     vm->core_module = loadModule(vm, core_name);
     pop(vm);
 
-    // vm->core_module = newModule(vm, "core");
-    // push(vm, OBJ_VAL(vm->core_module));  // Push core module for GC safety
-    //                                      // during natives registration
-    // registerCoreNatives(vm, vm->core_module);
-    // tableInsert(
-    //     &vm->modules, OBJ_VAL(vm->core_module->name),
-    //     OBJ_VAL(vm->core_module));  // Cache core module in modules table
-    // pop(vm);                        // Pop core module after registration
-
     initTable(&vm->strings);
-    vm->try_count = 0;
+    vm->try_cnt = 0;
     vm->raise_value = NIL_VAL;
     vm->last_popped_value = NIL_VAL;
 
@@ -73,6 +67,7 @@ void destroyVM(VM* vm) {
         freeObject(vm, object);
         object = next;
     }
+    reallocate(vm, vm->frames, sizeof(CallFrame) * vm->frame_cap, 0);
     // Correctly free the VM struct and its flexible array member
     reallocate(NULL, vm,
                sizeof(VM) + sizeof(Value) * vm->options.stack_capacity, 0);
@@ -144,15 +139,15 @@ InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
     pop(vm);  // Pop the main module after compilation
 
     Value* old_stack_top = vm->stack_top;
-    int old_frame_count = vm->frame_count;
+    int old_frame_cnt = vm->frame_cnt;
 
     push(vm, OBJ_VAL(closure));
-    if (vm->frame_count >= FRAMES_MAX) {
+    if (vm->frame_cnt >= vm->options.frames_max) {
         ERROR_LOG("Call stack overflow");
         return INTERPRET_RUNTIME_ERROR;
     }
 
-    CallFrame* frame = &vm->frames[vm->frame_count++];
+    CallFrame* frame = &vm->frames[vm->frame_cnt++];
     frame->closure = closure;
     frame->slots = vm->stack_top - 1;  // point at the closure we've just pushed
     frame->ip = NULL;
@@ -160,7 +155,7 @@ InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
     InterpretResult result = run(vm);
 
     vm->stack_top = old_stack_top;
-    vm->frame_count = old_frame_count;
+    vm->frame_cnt = old_frame_cnt;
 
     return result;
 }
@@ -315,6 +310,18 @@ void printConsts(Chunk* chunk) {
         DEBUG_LOG("  %04d: %s", i, str);
         free(str);
     }
+}
+
+static void ensureFrameCap(VM* vm) {
+    if (vm->frame_cnt + 1 <= vm->frame_cap) return;
+    int new_cap = vm->frame_cap * 2;
+    if (new_cap > vm->options.frames_max) {
+        new_cap = vm->options.frames_max;
+    }
+    int old_cap = vm->frame_cap;
+    vm->frame_cap = new_cap;
+    vm->frames = reallocate(vm, vm->frames, sizeof(CallFrame) * old_cap,
+                            sizeof(CallFrame) * vm->frame_cap);
 }
 
 // --- VM Execution (Direct Threading) ---
@@ -644,9 +651,9 @@ static InterpretResult run(VM* vm) {
         &&OP_LIST_IMPL,          &&OP_GET_MODULE_GLOBAL_IMPL,
     };
 
-    int sentinel_frame_count = vm->frame_count - 1;
+    int sentinel_frame_cnt = vm->frame_cnt - 1;
     InterpretResult result = INTERPRET_OK;
-    CallFrame* frame = &vm->frames[vm->frame_count - 1];
+    CallFrame* frame = &vm->frames[vm->frame_cnt - 1];
     if (frame->closure->function->loaded_code == NULL) {
         if (loadThreadedCode(vm, frame->closure->function, dispatch_table) !=
             0) {
@@ -661,7 +668,7 @@ static InterpretResult run(VM* vm) {
 #define DISPATCH()                             \
     do {                                       \
         if (vm->last_result != INTERPRET_OK) { \
-            if (vm->try_count > 0) {           \
+            if (vm->try_cnt > 0) {           \
                 goto RESCUE;                   \
             }                                  \
             result = vm->last_result;          \
@@ -685,12 +692,12 @@ OP_RETURN_IMPL: {
     Value res = pop(vm);
     DEBUG_LOG(
         "OP_RETURN: FrameCount=%d (before decr), ret_val_type=%d ret_val=",
-        vm->frame_count, res.type);
+        vm->frame_cnt, res.type);
     DEBUG_VALUE("%s", res);
     closeUpvalue(vm, frame->slots);
-    vm->frame_count--;
+    vm->frame_cnt--;
 
-    if (vm->frame_count == sentinel_frame_count) {
+    if (vm->frame_cnt == sentinel_frame_cnt) {
         vm->last_popped_value = res;
         pop(vm);  // Pop the initial function object to allow GC
         goto RETURN;
@@ -699,7 +706,7 @@ OP_RETURN_IMPL: {
     vm->stack_top = frame->slots;
     push(vm, res);
     vm->last_popped_value = NIL_VAL;  // Clear it once pushed back
-    frame = &vm->frames[vm->frame_count - 1];
+    frame = &vm->frames[vm->frame_cnt - 1];
     DISPATCH();
 }
 
@@ -852,7 +859,7 @@ OP_CALL_IMPL: {
     DEBUG_LOG(
         "[DEBUG] OP_CALL: FrameCount=%d, arg_count=%d, callee_type=%d, "
         "callee_value=",
-        vm->frame_count, arg_count, callee.type);
+        vm->frame_cnt, arg_count, callee.type);
     DEBUG_VALUE("%s", callee);
 
     if (IS_OBJ(callee) && OBJ_TYPE(callee) == OBJ_NATIVE) {
@@ -892,11 +899,15 @@ OP_CALL_IMPL: {
         goto RETURN;
     }
 
-    if (vm->frame_count == FRAMES_MAX) {
+    if (vm->frame_cnt >= vm->options.frames_max) {
         ERROR_LOG("Runtime error: stack overflow (too many call frames)");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
+    ensureFrameCap(vm);
+    // Refresh the pointer because ensureFrameCap might have reallocated the
+    // memory
+    frame = &vm->frames[vm->frame_cnt - 1];
 
     if (closure->function->loaded_code == NULL) {
         if (loadThreadedCode(vm, closure->function, dispatch_table) != 0) {
@@ -904,13 +915,10 @@ OP_CALL_IMPL: {
             goto RETURN;
         }
     }
-    frame = &vm->frames[vm->frame_count++];
+    frame = &vm->frames[vm->frame_cnt++];
     frame->closure = closure;
     frame->slots = vm->stack_top - arg_count - 1;
     frame->ip = closure->function->loaded_code;
-
-    // NOTE: LLDB frame code inspect: memory read -f dec -t uint8_t -c 9
-    // frame->function->chunk.code
 
     DISPATCH();
 }
@@ -1013,27 +1021,27 @@ OP_TAIL_CALL_IMPL: {
 
 OP_TRY_START_IMPL: {
     uint16_t offset = (uint16_t)READ_ARG();
-    if (vm->try_count > TRY_MAX) {
+    if (vm->try_cnt > TRY_MAX) {
         ERROR_LOG("Runtime error: too many nested try blocks");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
 
-    TryBlock* try_block = &vm->try_stack[vm->try_count++];
+    TryBlock* try_block = &vm->try_stack[vm->try_cnt++];
     try_block->handler_ip = frame->ip + offset;
-    try_block->frame_count = vm->frame_count;
+    try_block->frame_cnt = vm->frame_cnt;
     try_block->stack_top = vm->stack_top;
 
     DISPATCH();
 }
 
 OP_TRY_END_IMPL: {
-    if (vm->try_count == 0) {
+    if (vm->try_cnt == 0) {
         ERROR_LOG("Runtime error: OP_TRY_END without matching OP_TRY_START");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
-    vm->try_count--;
+    vm->try_cnt--;
     DISPATCH();
 }
 
@@ -1065,14 +1073,14 @@ OP_GET_MODULE_GLOBAL_IMPL: {
 }
 
 RESCUE: {
-    TryBlock try_block = vm->try_stack[--vm->try_count];
-    while (vm->frame_count > try_block.frame_count) {
-        closeUpvalue(vm, vm->frames[vm->frame_count - 1].slots);
-        vm->frame_count--;
+    TryBlock try_block = vm->try_stack[--vm->try_cnt];
+    while (vm->frame_cnt > try_block.frame_cnt) {
+        closeUpvalue(vm, vm->frames[vm->frame_cnt - 1].slots);
+        vm->frame_cnt--;
     }
 
     vm->stack_top = try_block.stack_top;
-    frame = &vm->frames[vm->frame_count - 1];
+    frame = &vm->frames[vm->frame_cnt - 1];
     frame->ip = try_block.handler_ip;
 
     push(vm, vm->raise_value);
