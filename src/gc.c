@@ -105,6 +105,9 @@ void markObject(VM* vm, Obj* object) {
             markTable(vm, &module->imports);
             break;
         }
+        case OBJ_FILE: {
+            break;
+        }
     }
 }
 
@@ -203,6 +206,14 @@ void freeObject(VM* vm, Obj* object) {
         case OBJ_MODULE: {
             ObjModule* module = (ObjModule*)object;
             reallocate(vm, module, sizeof(ObjModule), 0);
+            break;
+        }
+        case OBJ_FILE: {
+            ObjFile* file = (ObjModule*)object;
+            if (!file->is_closed && file->file != NULL) {
+                fclose(file->file);
+            }
+            reallocate(vm, file, sizeof(ObjFile), 0);
             break;
         }
     }

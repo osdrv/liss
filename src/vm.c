@@ -668,7 +668,7 @@ static InterpretResult run(VM* vm) {
 #define DISPATCH()                             \
     do {                                       \
         if (vm->last_result != INTERPRET_OK) { \
-            if (vm->try_cnt > 0) {           \
+            if (vm->try_cnt > 0) {             \
                 goto RESCUE;                   \
             }                                  \
             result = vm->last_result;          \

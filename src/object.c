@@ -118,6 +118,13 @@ ObjModule* newModule(VM* vm, const char* name) {
     return module;
 }
 
+ObjFile* newFile(VM* vm, FILE* file) {
+    ObjFile* file_obj = (ObjFile*)allocateObject(vm, sizeof(ObjFile), OBJ_FILE);
+    file_obj->file = file;
+    file_obj->is_closed = false;
+    return file_obj;
+}
+
 // --- String ---
 
 uint32_t hashString(const char* key, int length) {

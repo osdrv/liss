@@ -27,6 +27,7 @@ typedef enum {
     OBJ_PAIR,
     OBJ_LIST,
     OBJ_MODULE,
+    OBJ_FILE,
 } ObjType;
 
 struct Obj {
@@ -115,6 +116,12 @@ typedef struct {
     NativeFn fn;
 } NativeReg;
 
+typedef struct {
+    Obj obj;
+    FILE* file;
+    bool is_closed;
+} ObjFile;
+
 // --- Helper Functions and Macros ---
 
 // Safely checks if a Value is an object of a given ObjType.
@@ -135,6 +142,7 @@ static inline bool isObjType(Value value, ObjType type) {
 #define IS_PAIR(value) isObjType(value, OBJ_PAIR)
 #define IS_LIST(value) isObjType(value, OBJ_LIST)
 #define IS_MODULE(value) isObjType(value, OBJ_MODULE)
+#define IS_FILE(value) isObjType(value, OBJ_FILE)
 
 // Macros for casting a Value to a specific object type pointer.
 #define AS_FUNCTION(value) ((ObjFunction*)AS_OBJ(value))
@@ -147,6 +155,7 @@ static inline bool isObjType(Value value, ObjType type) {
 #define AS_PAIR(value) ((ObjPair*)AS_OBJ(value))
 #define AS_LIST(value) ((ObjList*)AS_OBJ(value))
 #define AS_MODULE(value) ((ObjModule*)AS_OBJ(value))
+#define AS_FILE(value) ((ObjFile*)AS_OBJ(value))
 
 // Helper function to compute the hash of a string.
 uint32_t hashString(const char* key, int length);
@@ -161,6 +170,7 @@ ObjNative* newNative(VM* vm, const char* name, int arity, NativeFn function);
 ObjPair* newPair(VM* vm, Value first, Value second);
 ObjList* newList(VM* vm, uint32_t len, Value head);
 ObjModule* newModule(VM* vm, const char* name);
+ObjFile* newFile(VM* vm, FILE* file);
 
 // Allocates an ObjString on the heap and returns a pointer to it.
 ObjString* takeString(VM* vm, char* chars, int length);
