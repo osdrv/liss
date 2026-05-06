@@ -3,6 +3,14 @@
 #include "object.h"
 #include "vm.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#ifndef M_E
+#define M_E 2.71828182845904523536
+#endif
+
 /**
  * Returns the largest integer value less than or equal to the argument.
  *
@@ -313,4 +321,9 @@ static const NativeReg math_functions[] = {
 
 void registerMathNatives(VM* vm, ObjModule* module) {
     defineNatives(vm, module, math_functions);
+
+    defineConst(vm, module, "PI", REAL_VAL(M_PI));
+    defineConst(vm, module, "E", REAL_VAL(M_E));
+    defineConst(vm, module, "TAU", REAL_VAL(2.0 * M_PI));
+    defineConst(vm, module, "SQRT2", REAL_VAL(1.41421356237309504880));
 };
