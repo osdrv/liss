@@ -196,3 +196,12 @@ void defineNatives(VM* vm, ObjModule* module, const NativeReg* registry) {
                      registry[i].fn);
     }
 }
+
+void defineConst(VM* vm, ObjModule* module, const char* name, Value value) {
+    ObjString* name_obj = copyString(vm, name, (int)strlen(name));
+    push(vm, OBJ_VAL(name_obj));
+    push(vm, value);
+    tableInsert(&module->symbols, OBJ_VAL(name_obj), value);
+    pop(vm);  // pop value
+    pop(vm);  // pop name_obj
+}

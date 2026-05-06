@@ -3,6 +3,7 @@
 
 #include "core.h"
 #include "math.h"
+#include "io.h"
 #include "object.h"
 #include "vm.h"
 
@@ -16,6 +17,7 @@ typedef struct {
 static const NativeModuleEntry native_module_registry[] = {
     {"core", registerCoreNatives},
     {"math", registerMathNatives},
+    {"io", registerIONatives},
     {NULL, NULL},
 };
 

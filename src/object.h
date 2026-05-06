@@ -184,6 +184,8 @@ void defineNative(VM* vm, ObjModule* module, const char* name, int arity,
 
 void defineNatives(VM* vm, ObjModule* module, const NativeReg* registry);
 
+void defineConst(VM* vm, ObjModule* module, const char* name, Value value);
+
 // A helper to create an error and set it as the current raise value
 Value raiseErr(VM* vm, const char* message);
 
