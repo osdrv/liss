@@ -154,7 +154,7 @@ static Value readLineNative(VM* vm, int argc, Value* argv) {
 
     char* line = NULL;
     size_t cap = 0;
-    ssize_t len = getline(&line, &cap, file->file);
+    size_t len = getline(&line, &cap, file->file);
 
     if (len == -1) {
         free(line);
