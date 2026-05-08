@@ -77,10 +77,23 @@ static Value isEmptyNative(VM* vm, int argc, Value* argv) {
     }
 }
 
+static Value pairNative(VM* vm, int argc, Value* argv) {
+    if (argc != 2) {
+        return raiseErr(vm, "pair takes exactly 2 arguments");
+    }
+    Value first = argv[0];
+    Value second = argv[1];
+    return OBJ_VAL(newPair(vm, first, second));
+}
+
 static const NativeReg core_functions[] = {
-    {"err!", 1, errNative},          {"is_err?", 1, isErrNative},
-    {"raise!", 1, raiseNative},      {"len", 1, lenNative},
-    {"is_empty?", 1, isEmptyNative}, {NULL, 0, NULL},  // Sentinel value
+    {"err!", 1, errNative},
+    {"is_err?", 1, isErrNative},
+    {"raise!", 1, raiseNative},
+    {"len", 1, lenNative},
+    {"is_empty?", 1, isEmptyNative},
+    {"pair", 2, pairNative},
+    {NULL, 0, NULL},  // Sentinel value
 };
 
 void registerCoreNatives(VM* vm, ObjModule* module) {

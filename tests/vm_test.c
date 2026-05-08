@@ -482,6 +482,12 @@ static VMTestCase interpret_tests[] = {
         .expected_value = {EXPECT_LIST, .as.string = "[1 true null \"hello\"]"},
     },
     {
+        .name = "pair with mixed types",
+        .src = "(\"foo\" . 42)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_PAIR, .as.string = "(\"foo\" . 42)"},
+    },
+    {
         .name = "native fn call",
         .src = "(err! \"test error\")",
         .expected_result = INTERPRET_OK,
@@ -596,6 +602,9 @@ static char* test_vm_interpret(void) {
                     break;
                 case EXPECT_LIST:
                     assert_msg = assert_list(actual, expected.as.string);
+                    break;
+                case EXPECT_PAIR:
+                    assert_msg = assert_pair(actual, expected.as.string);
                     break;
                 case EXPECT_ERROR:
                     assert_msg = assert_error(actual, expected.as.string);

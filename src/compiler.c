@@ -497,11 +497,20 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
     return function;
 }
 
-static void parseBlock(Compiler* compiler, bool is_tail) {
+static void parsePairOrBlock(Compiler* compiler, bool is_tail) {
     beginScope(compiler);
+    bool first_expr = true;
     while (compiler->parser->current.type != TOKEN_RPAREN) {
         parseExpression(compiler, false);
         if (compiler->parser->hadError) return;
+        if (first_expr && compiler->parser->current.type == TOKEN_DOT) {
+            consume(compiler, TOKEN_DOT, "expect `.` when initializing a pair");
+            parseExpression(compiler, false);
+            if (compiler->parser->hadError) return;
+            emitByte(compiler, OP_PAIR);
+            break;
+        }
+        first_expr = false;
         if (compiler->parser->current.type != TOKEN_RPAREN) {
             emitByte(compiler, OP_POP);
         } else if (is_tail) {
@@ -814,21 +823,18 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
             break;
         }
         default: {
+            // A grouping is either:
+            //   - a function call, like: (foo 1 2 3), or (fn sq [n] (* n n) 10)
+            //   - a pair: ("key" . "value")
+            //   - a block of 1+ expressions
             // A grouping is either a function call or a block of 1+
             // expressions. The disambiguation strategy is the following:
             // 1. If the next token is an identifier, it is a function call.
             // 2. If the next token is an open parenthesis and the next after is
             // a FN keyword,
             //   it is a function call with an anonymous function as the callee.
-            // 3. Otherwise, it's a block.
-            // if (compiler->parser->current.type == TOKEN_IDENTIFIER) {
-            //    parseFunctionCall(compiler);
-            //} else {
-            //    parseBlock(compiler);
-            //}
-            // if (compiler->parser->hadError) return;
-            // break;
-
+            // 3. If the second token is TOKEN_DOT, it is a pair
+            // 4. Otherwise, it's a block of expressions.
             switch (compiler->parser->current.type) {
                 case TOKEN_IDENTIFIER:
                     break;  // It's a function call, we will parse it below
@@ -839,7 +845,7 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                     }
                     // Otherwise, it's a block
                 default:
-                    parseBlock(compiler, false);
+                    parsePairOrBlock(compiler, false);
                     goto END_PARSE_GROUPING;
             }
 

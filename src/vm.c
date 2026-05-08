@@ -634,21 +634,37 @@ static InterpretResult run(VM* vm) {
 
     // The dispatch table: an array of opcode implementation addresses.
     static void* dispatch_table[] = {
-        &&OP_RETURN_IMPL,        &&OP_CONSTANT_IMPL,
-        &&OP_POP_IMPL,           &&OP_JUMP_IMPL,
-        &&OP_JUMP_IF_FALSE_IMPL, &&OP_ADD_IMPL,
-        &&OP_SUBTRACT_IMPL,      &&OP_MULTIPLY_IMPL,
-        &&OP_DIVIDE_IMPL,        &&OP_NEGATE_IMPL,
-        &&OP_TRUE_IMPL,          &&OP_FALSE_IMPL,
-        &&OP_NULL_IMPL,          &&OP_NOT_IMPL,
-        &&OP_EQUAL_IMPL,         &&OP_GREATER_IMPL,
-        &&OP_LESS_IMPL,          &&OP_SET_GLOBAL_IMPL,
-        &&OP_GET_GLOBAL_IMPL,    &&OP_CALL_IMPL,
-        &&OP_GET_LOCAL_IMPL,     &&OP_SET_LOCAL_IMPL,
-        &&OP_CLOSURE_IMPL,       &&OP_GET_UPVALUE_IMPL,
-        &&OP_SET_UPVALUE_IMPL,   &&OP_TAIL_CALL_IMPL,
-        &&OP_TRY_START_IMPL,     &&OP_TRY_END_IMPL,
-        &&OP_LIST_IMPL,          &&OP_GET_MODULE_GLOBAL_IMPL,
+        &&OP_RETURN_IMPL,
+        &&OP_CONSTANT_IMPL,
+        &&OP_POP_IMPL,
+        &&OP_JUMP_IMPL,
+        &&OP_JUMP_IF_FALSE_IMPL,
+        &&OP_ADD_IMPL,
+        &&OP_SUBTRACT_IMPL,
+        &&OP_MULTIPLY_IMPL,
+        &&OP_DIVIDE_IMPL,
+        &&OP_NEGATE_IMPL,
+        &&OP_TRUE_IMPL,
+        &&OP_FALSE_IMPL,
+        &&OP_NULL_IMPL,
+        &&OP_NOT_IMPL,
+        &&OP_EQUAL_IMPL,
+        &&OP_GREATER_IMPL,
+        &&OP_LESS_IMPL,
+        &&OP_SET_GLOBAL_IMPL,
+        &&OP_GET_GLOBAL_IMPL,
+        &&OP_CALL_IMPL,
+        &&OP_GET_LOCAL_IMPL,
+        &&OP_SET_LOCAL_IMPL,
+        &&OP_CLOSURE_IMPL,
+        &&OP_GET_UPVALUE_IMPL,
+        &&OP_SET_UPVALUE_IMPL,
+        &&OP_TAIL_CALL_IMPL,
+        &&OP_TRY_START_IMPL,
+        &&OP_TRY_END_IMPL,
+        &&OP_LIST_IMPL,
+        &&OP_PAIR_IMPL,
+        &&OP_GET_MODULE_GLOBAL_IMPL,
     };
 
     int sentinel_frame_cnt = vm->frame_cnt - 1;
@@ -1063,6 +1079,14 @@ OP_LIST_IMPL: {
     ObjList* list = newList(vm, len, head);
     pop(vm);  // Pop the head
     push(vm, OBJ_VAL(list));
+    DISPATCH();
+}
+
+OP_PAIR_IMPL: {
+    Value second = pop(vm);
+    Value first = pop(vm);
+    ObjPair* pair = newPair(vm, first, second);
+    push(vm, OBJ_VAL(pair));
     DISPATCH();
 }
 

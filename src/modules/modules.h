@@ -2,8 +2,8 @@
 #define liss_modules_modules_h
 
 #include "core.h"
-#include "math.h"
 #include "io.h"
+#include "math.h"
 #include "object.h"
 #include "vm.h"
 

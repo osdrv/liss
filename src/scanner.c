@@ -239,6 +239,8 @@ Token scanToken(Scanner* scanner) {
             return mkToken(scanner, TOKEN_LBRAKET);
         case ']':
             return mkToken(scanner, TOKEN_RBRAKET);
+        case '.':
+            return mkToken(scanner, TOKEN_DOT);
         case '+':
             return mkToken(scanner, TOKEN_PLUS_OP);
         case '-':

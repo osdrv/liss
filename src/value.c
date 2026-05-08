@@ -119,6 +119,15 @@ char* sprintValue(Value value) {
                     APPEND_TO_BUFFER("]");
                     break;
                 }
+                case OBJ_PAIR: {
+                    ObjPair* pair = AS_PAIR(value);
+                    char* first_str = sprintValue(pair->first);
+                    char* second_str = sprintValue(pair->second);
+                    APPEND_TO_BUFFER("(%s . %s)", first_str, second_str);
+                    free(first_str);
+                    free(second_str);
+                    break;
+                }
                 default:
                     APPEND_TO_BUFFER("<object>");
             }

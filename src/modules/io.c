@@ -30,7 +30,11 @@ static Value printNative(VM* vm, int argc, Value* args) {
     }
 
     for (int i = start_ix; i < argc; i++) {
-        char* str = sprintValue(args[i]);
+        // We print strings as-is and stringify everything else. A stringified
+        // string would be quoted (so to make sprintValue-produced output
+        // unmarshallable) we don't want a quoted string in the output.
+        char* str =
+            IS_STRING(args[i]) ? AS_CSTRING(args[i]) : sprintValue(args[i]);
         fprintf(out, "%s", str);
         free(str);
     }
@@ -98,7 +102,8 @@ static Value closeNative(VM* vm, int argc, Value* argv) {
  */
 static Value readNative(VM* vm, int argc, Value* argv) {
     if (argc < 1 || argc > 2 || !IS_FILE(argv[0])) {
-        return raiseErr(vm, "io:read: expect file handle and optional byte_size");
+        return raiseErr(vm,
+                        "io:read: expect file handle and optional byte_size");
     }
     ObjFile* file = AS_FILE(argv[0]);
     if (file->is_closed) {
@@ -184,8 +189,10 @@ static Value readLineNative(VM* vm, int argc, Value* argv) {
  * Return type: Nil
  */
 static Value seekNative(VM* vm, int argc, Value* argv) {
-    if (argc != 3 || !IS_FILE(argv[0]) || !IS_INT(argv[1]) || !IS_INT(argv[2])) {
-        return raiseErr(vm, "io:seek: expect handle, offset (int), and whence (int)");
+    if (argc != 3 || !IS_FILE(argv[0]) || !IS_INT(argv[1]) ||
+        !IS_INT(argv[2])) {
+        return raiseErr(
+            vm, "io:seek: expect handle, offset (int), and whence (int)");
     }
     ObjFile* file = AS_FILE(argv[0]);
     if (file->is_closed) return raiseErr(vm, "io:seek: seek on closed file");

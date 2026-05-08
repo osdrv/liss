@@ -1,5 +1,7 @@
+(import io ["println"])
+
 (fn fib [n]
     (cond (< n 2) n (+ (fib (- n 1)) (fib (- n 2))))
 )
 
-(print (fib 10))
+(println (fib 10))

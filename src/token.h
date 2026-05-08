@@ -13,6 +13,7 @@ typedef enum {
     TOKEN_RPAREN,
     TOKEN_LBRAKET,
     TOKEN_RBRAKET,
+    TOKEN_DOT,
 
     TOKEN_PLUS_OP,
     TOKEN_PLUS_KW,

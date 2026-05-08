@@ -584,6 +584,28 @@ static char* test_compile(void) {
             .expected_constant_size = 3,
         },
         {
+            .name = "parse valid pair",
+            .src = "(\"foo\" . 42)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_PAIR,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_STRING, .as.obj_string = "foo"},
+                    {EXPECT_INT, .as.integer = 42},
+                },
+            .expected_constant_size = 2,
+        },
+        {
             .name = "parse block of expressions",
             .src = "(1 2 3 4 5)",
             .expected_instructions =
