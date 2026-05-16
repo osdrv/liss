@@ -47,16 +47,20 @@ static size_t hashValue(Value value) {
 void initTable(Table* table) { memset(table, 0, sizeof(Table)); }
 
 void initTableWithCapacity(Table* table, size_t capacity) {
-    memset(table, 0, sizeof(Table));
-    size_t bucket_count = TABLE_INITIAL_BUCKET_COUNT;
-    while (bucket_count < capacity / TABLE_MAX_LOAD) {
-        bucket_count *= TABLE_GROWTH_FACTOR;
+    initTable(table);
+
+    if (capacity == 0) return;
+
+    size_t bucket_cnt = TABLE_INITIAL_BUCKET_COUNT;
+    while (bucket_cnt < (size_t)(capacity / TABLE_MAX_LOAD)) {
+        bucket_cnt *= TABLE_GROWTH_FACTOR;
     }
-    table->buckets = (TableEntry**)malloc(sizeof(TableEntry*) * bucket_count);
-    for (size_t i = 0; i < bucket_count; i++) {
+
+    table->buckets = table->buckets = (TableEntry**)malloc(sizeof(TableEntry*) * bucket_cnt);
+    for (size_t i = 0; i < bucket_cnt; i++) {
         table->buckets[i] = NULL;
     }
-    table->bucket_count = bucket_count;
+    table->bucket_count = bucket_cnt;
 }
 
 static void growTable(Table* table) {

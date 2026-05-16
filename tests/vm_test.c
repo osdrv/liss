@@ -553,6 +553,25 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_REAL, .as.real = 1.0},
     },
+    {
+        .name = "empty dict",
+        .src = "(dict)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_DICT, .as.string = "(dict)"},
+    },
+    {
+        .name = "a dict with string keys",
+        .src = "(dict (\"foo\" . 1) (\"bar\" . 2) (\"boo\" . 3))",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_DICT, .as.string = "(dict (\"bar\" . 2) (\"boo\" . 3) (\"foo\" . 1))"},
+    },
+    {
+        .name = "a dict with various keys",
+        .src = "(dict (1 . 2) (3.14 . 15.16) (true . false) (\"foo\" . \"bar\"))",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_DICT, .as.string = "(dict (true . false) (1 . 2) (3.14 . 15.16) (\"foo\" . \"bar\"))"},
+        //.is_failing = true,
+    },
 };
 
 static char* test_vm_interpret(void) {
@@ -605,6 +624,9 @@ static char* test_vm_interpret(void) {
                     break;
                 case EXPECT_PAIR:
                     assert_msg = assert_pair(actual, expected.as.string);
+                    break;
+                case EXPECT_DICT:
+                    assert_msg = assert_dict(actual, expected.as.string);
                     break;
                 case EXPECT_ERROR:
                     assert_msg = assert_error(actual, expected.as.string);

@@ -86,6 +86,18 @@ static Value pairNative(VM* vm, int argc, Value* argv) {
     return OBJ_VAL(newPair(vm, first, second));
 }
 
+static Value dictNative(VM* vm, int argc, Value* argv) {
+    ObjDict* dict = newDict(vm);
+    for (int i = 0; i < argc; i++) {
+        if (!IS_PAIR(argv[i])) {
+            return raiseErr(vm, "dict only accepts a list of pairs");
+        }
+        ObjPair* pair = AS_PAIR(argv[i]);
+        tableInsert(&dict->table, pair->first, pair->second);
+    }
+    return OBJ_VAL(dict);
+}
+
 static const NativeReg core_functions[] = {
     {"err!", 1, errNative},
     {"is_err?", 1, isErrNative},
@@ -93,6 +105,7 @@ static const NativeReg core_functions[] = {
     {"len", 1, lenNative},
     {"is_empty?", 1, isEmptyNative},
     {"pair", 2, pairNative},
+    {"dict", -1, dictNative},
     {NULL, 0, NULL},  // Sentinel value
 };
 

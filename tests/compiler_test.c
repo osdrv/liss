@@ -584,8 +584,8 @@ static char* test_compile(void) {
             .expected_constant_size = 3,
         },
         {
-            .name = "parse valid pair",
-            .src = "(\"foo\" . 42)",
+            .name = "parse pair with string KV",
+            .src = "(\"foo\" . \"bar\")",
             .expected_instructions =
                 (uint8_t[]){
                     OP_CONSTANT,
@@ -601,7 +601,52 @@ static char* test_compile(void) {
             .expected_constants =
                 (ExpectedConstant[]){
                     {EXPECT_OBJ_STRING, .as.obj_string = "foo"},
-                    {EXPECT_INT, .as.integer = 42},
+                    {EXPECT_OBJ_STRING, .as.obj_string = "bar"},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "parse pair with int KV",
+            .src = "(123 . 456)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_PAIR,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 123},
+                    {EXPECT_INT, .as.integer = 456},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "parse pair with negative int KV",
+            .src = "(123 . -456)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_NEGATE,
+                    OP_PAIR,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 9,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 123},
+                    {EXPECT_INT, .as.integer = 456},
                 },
             .expected_constant_size = 2,
         },
@@ -691,6 +736,22 @@ static char* test_compile(void) {
                 },
             .expected_constant_size = 3,
         },
+        {
+            .name = "compile an empty dict",
+            .src = "(dict)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_GET_GLOBAL, 0, 0,
+                    OP_TAIL_CALL, 0,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 6,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_OBJ_STRING, .as.obj_string = "dict"},
+                },
+            .expected_constant_size = 1,
+        },
     };
 
     for (size_t i = 0; i < sizeof(compile_tests) / sizeof(compile_tests[0]);
@@ -730,7 +791,7 @@ static char* test_compile(void) {
             assert_instructions(chunk, test->expected_instructions,
                                 test->expected_instruction_count) == NULL);
 
-        mu_assert("%s: Constant count should match expected size.",
+        mu_assert("Constant count should match expected size.",
                   chunk->constants.count == (int)test->expected_constant_size);
         if (test->expected_constant_size > 0) {
             const char* err = assert_constants(chunk, test->expected_constants,

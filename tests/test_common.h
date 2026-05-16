@@ -13,6 +13,7 @@ typedef enum {
     EXPECT_STRING,
     EXPECT_LIST,
     EXPECT_PAIR,
+    EXPECT_DICT,
     EXPECT_ERROR,
 } ExpectedValueType;
 
@@ -83,6 +84,18 @@ static char* assert_pair(Value value, const char* expected_str) {
 
     char* str = sprintValue(value);
     mu_assert("Pair string representation does not match expected.",
+        strcmp(str, expected_str) ==  0);
+    free(str);
+    return NULL;
+}
+
+static char* assert_dict(Value value, const char* expected_str) {
+    mu_assert("Value is not an object.", IS_OBJ(value));
+    mu_assert("Object is not a dict.", OBJ_TYPE(value) == OBJ_DICT);
+    ObjDict* dict = AS_DICT(value);
+
+    char* str = sprintValue(value);
+    mu_assert("Dict string representation does not match expected.",
         strcmp(str, expected_str) ==  0);
     free(str);
     return NULL;

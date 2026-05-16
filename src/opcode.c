@@ -57,6 +57,8 @@ const char* opcodeToString(OpCode opcode) {
             return "OP_TAIL_CALL";
         case OP_LIST:
             return "OP_LIST";
+        case OP_PAIR:
+            return "OP_PAIR";
         case OP_GET_MODULE_GLOBAL:
             return "OP_GET_MODULE_GLOBAL";
         default:

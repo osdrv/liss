@@ -51,7 +51,7 @@ void markObject(VM* vm, Obj* object) {
     if (object == NULL || object->isMarked) return;
 
     object->isMarked = true;
-    DEBUG_LOG("Marked object %p", (void*)object);
+    //DEBUG_LOG("Marked object %p", (void*)object);
 
     switch (object->type) {
         case OBJ_FUNCTION: {
@@ -96,6 +96,11 @@ void markObject(VM* vm, Obj* object) {
         case OBJ_LIST: {
             ObjList* list = (ObjList*)object;
             markValue(vm, list->head);
+            break;
+        }
+        case OBJ_DICT: {
+            ObjDict* dict = (ObjDict*)object;
+            markTable(vm, &dict->table);
             break;
         }
         case OBJ_MODULE: {
@@ -201,6 +206,12 @@ void freeObject(VM* vm, Obj* object) {
         case OBJ_LIST: {
             ObjList* list = (ObjList*)object;
             reallocate(vm, list, sizeof(ObjList), 0);
+            break;
+        }
+        case OBJ_DICT: {
+            ObjDict* dict = (ObjDict*)object;
+            freeTable(&dict->table);
+            reallocate(vm, dict, sizeof(ObjDict), 0);
             break;
         }
         case OBJ_MODULE: {

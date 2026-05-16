@@ -25,6 +25,7 @@ typedef enum {
     OBJ_ERROR,
     OBJ_NATIVE,
     OBJ_PAIR,
+    OBJ_DICT,
     OBJ_LIST,
     OBJ_MODULE,
     OBJ_FILE,
@@ -97,6 +98,11 @@ typedef struct ObjPair {
     Value second;
 } ObjPair;
 
+typedef struct ObjDict {
+    Obj obj;
+    Table table;
+} ObjDict;
+
 typedef struct ObjList {
     Obj obj;
     uint32_t len;
@@ -139,8 +145,9 @@ static inline bool isObjType(Value value, ObjType type) {
 #define IS_UPVALUE(value) isObjType(value, OBJ_UPVALUE)
 #define IS_ERROR(value) isObjType(value, OBJ_ERROR)
 #define IS_NATIVE(value) isObjType(value, OBJ_NATIVE)
-#define IS_PAIR(value) isObjType(value, OBJ_PAIR)
 #define IS_LIST(value) isObjType(value, OBJ_LIST)
+#define IS_PAIR(value) isObjType(value, OBJ_PAIR)
+#define IS_DICT(value) isObjType(value, OBJ_DICT)
 #define IS_MODULE(value) isObjType(value, OBJ_MODULE)
 #define IS_FILE(value) isObjType(value, OBJ_FILE)
 
@@ -152,8 +159,9 @@ static inline bool isObjType(Value value, ObjType type) {
 #define AS_UPVALUE(value) ((ObjUpvalue*)AS_OBJ(value))
 #define AS_ERROR(value) ((ObjError*)AS_OBJ(value))
 #define AS_NATIVE(value) ((ObjNative*)AS_OBJ(value))
-#define AS_PAIR(value) ((ObjPair*)AS_OBJ(value))
 #define AS_LIST(value) ((ObjList*)AS_OBJ(value))
+#define AS_PAIR(value) ((ObjPair*)AS_OBJ(value))
+#define AS_DICT(value) ((ObjDict*)AS_OBJ(value))
 #define AS_MODULE(value) ((ObjModule*)AS_OBJ(value))
 #define AS_FILE(value) ((ObjFile*)AS_OBJ(value))
 
@@ -167,8 +175,9 @@ ObjClosure* newClosure(VM* vm, ObjFunction* function);
 ObjUpvalue* newUpvalue(VM* vm, Value* slot);
 ObjError* newError(VM* vm, const char* message);
 ObjNative* newNative(VM* vm, const char* name, int arity, NativeFn function);
-ObjPair* newPair(VM* vm, Value first, Value second);
 ObjList* newList(VM* vm, uint32_t len, Value head);
+ObjPair* newPair(VM* vm, Value first, Value second);
+ObjDict* newDict(VM* vm);
 ObjModule* newModule(VM* vm, const char* name);
 ObjFile* newFile(VM* vm, FILE* file);
 

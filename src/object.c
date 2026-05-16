@@ -90,6 +90,14 @@ ObjUpvalue* newUpvalue(VM* vm, Value* slot) {
     return upvalue;
 }
 
+ObjList* newList(VM* vm, uint32_t len, Value head) {
+    push(vm, head);
+    ObjList* list = (ObjList*)allocateObject(vm, sizeof(ObjList), OBJ_LIST);
+    list->len = len;
+    list->head = pop(vm);
+    return list;
+}
+
 ObjPair* newPair(VM* vm, Value first, Value second) {
     push(vm, first);
     push(vm, second);
@@ -99,12 +107,12 @@ ObjPair* newPair(VM* vm, Value first, Value second) {
     return pair;
 }
 
-ObjList* newList(VM* vm, uint32_t len, Value head) {
-    push(vm, head);
-    ObjList* list = (ObjList*)allocateObject(vm, sizeof(ObjList), OBJ_LIST);
-    list->len = len;
-    list->head = pop(vm);
-    return list;
+ObjDict* newDict(VM* vm) {
+    ObjDict* dict = (ObjDict*)allocateObject(vm, sizeof(ObjDict), OBJ_DICT);
+    push(vm, OBJ_VAL(dict));
+    initTableWithCapacity(&dict->table, 16);
+    pop(vm); // pop the dict
+    return dict;
 }
 
 ObjModule* newModule(VM* vm, const char* name) {

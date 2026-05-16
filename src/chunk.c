@@ -237,6 +237,14 @@ char* sprintChunk(const Chunk* chunk) {
                 i += 4;  // Skip the operand bytes
                 break;
             }
+            case OP_PAIR: {
+                APPEND_TO_BUFFER("OP_PAIR\n");
+                break;
+            }
+            case OP_NEGATE: {
+                APPEND_TO_BUFFER("OP_NEGATE\n");
+                break;
+            }
             default:
                 APPEND_TO_BUFFER("Unknown opcode %d\n", opcode);
                 break;
