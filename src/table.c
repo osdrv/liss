@@ -56,7 +56,8 @@ void initTableWithCapacity(Table* table, size_t capacity) {
         bucket_cnt *= TABLE_GROWTH_FACTOR;
     }
 
-    table->buckets = table->buckets = (TableEntry**)malloc(sizeof(TableEntry*) * bucket_cnt);
+    table->buckets = table->buckets =
+        (TableEntry**)malloc(sizeof(TableEntry*) * bucket_cnt);
     for (size_t i = 0; i < bucket_cnt; i++) {
         table->buckets[i] = NULL;
     }

@@ -51,7 +51,7 @@ void markObject(VM* vm, Obj* object) {
     if (object == NULL || object->isMarked) return;
 
     object->isMarked = true;
-    //DEBUG_LOG("Marked object %p", (void*)object);
+    // DEBUG_LOG("Marked object %p", (void*)object);
 
     switch (object->type) {
         case OBJ_FUNCTION: {

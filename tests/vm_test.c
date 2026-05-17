@@ -563,14 +563,19 @@ static VMTestCase interpret_tests[] = {
         .name = "a dict with string keys",
         .src = "(dict (\"foo\" . 1) (\"bar\" . 2) (\"boo\" . 3))",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_DICT, .as.string = "(dict (\"bar\" . 2) (\"boo\" . 3) (\"foo\" . 1))"},
+        .expected_value =
+            {EXPECT_DICT,
+             .as.string = "(dict (\"bar\" . 2) (\"boo\" . 3) (\"foo\" . 1))"},
     },
     {
         .name = "a dict with various keys",
-        .src = "(dict (1 . 2) (3.14 . 15.16) (true . false) (\"foo\" . \"bar\"))",
+        .src = "(dict (1 . 2) (3.14 . 15.16) (-1 . -1) (true . false) (\"foo\" "
+               ". \"bar\"))",
         .expected_result = INTERPRET_OK,
-        .expected_value = {EXPECT_DICT, .as.string = "(dict (true . false) (1 . 2) (3.14 . 15.16) (\"foo\" . \"bar\"))"},
-        //.is_failing = true,
+        .expected_value = {EXPECT_DICT,
+                           .as.string =
+                               "(dict (true . false) (-1 . -1) (1 . 2) (3.14 . "
+                               "15.16) (\"foo\" . \"bar\"))"},
     },
 };
 

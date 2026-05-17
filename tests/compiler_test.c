@@ -438,14 +438,13 @@ static char* test_compile(void) {
         {
             .name = "unary minus",
             .src = "(* -1 -2)",
-            .expected_instructions =
-                (uint8_t[]){OP_CONSTANT, 0, 0, OP_NEGATE, OP_CONSTANT, 0, 1,
-                            OP_NEGATE, OP_MULTIPLY, OP_RETURN},
-            .expected_instruction_count = 10,
+            .expected_instructions = (uint8_t[]){OP_CONSTANT, 0, 0, OP_CONSTANT,
+                                                 0, 1, OP_MULTIPLY, OP_RETURN},
+            .expected_instruction_count = 8,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_INT, .as.integer = 1},
-                    {EXPECT_INT, .as.integer = 2},
+                    {EXPECT_INT, .as.integer = -1},
+                    {EXPECT_INT, .as.integer = -2},
                 },
             .expected_constant_size = 2,
         },
@@ -629,7 +628,7 @@ static char* test_compile(void) {
         },
         {
             .name = "parse pair with negative int KV",
-            .src = "(123 . -456)",
+            .src = "(-123 . -456)",
             .expected_instructions =
                 (uint8_t[]){
                     OP_CONSTANT,
@@ -638,15 +637,14 @@ static char* test_compile(void) {
                     OP_CONSTANT,
                     0,
                     1,
-                    OP_NEGATE,
                     OP_PAIR,
                     OP_RETURN,
                 },
-            .expected_instruction_count = 9,
+            .expected_instruction_count = 8,
             .expected_constants =
                 (ExpectedConstant[]){
-                    {EXPECT_INT, .as.integer = 123},
-                    {EXPECT_INT, .as.integer = 456},
+                    {EXPECT_INT, .as.integer = -123},
+                    {EXPECT_INT, .as.integer = -456},
                 },
             .expected_constant_size = 2,
         },
@@ -741,8 +739,11 @@ static char* test_compile(void) {
             .src = "(dict)",
             .expected_instructions =
                 (uint8_t[]){
-                    OP_GET_GLOBAL, 0, 0,
-                    OP_TAIL_CALL, 0,
+                    OP_GET_GLOBAL,
+                    0,
+                    0,
+                    OP_TAIL_CALL,
+                    0,
                     OP_RETURN,
                 },
             .expected_instruction_count = 6,

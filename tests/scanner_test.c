@@ -98,11 +98,11 @@ static char* test_scanner_operator_keywords(void) {
 }
 
 static char* test_scanner_int_literals(void) {
-    const char* source = "123 0 0xFFFFFF";
+    const char* source = "123 0 0xFFFFFF -123";
     Scanner scanner;
     initScanner(&scanner, source);
 
-    const char* expected_lexemes[] = {"123", "0", "0xFFFFFF"};
+    const char* expected_lexemes[] = {"123", "0", "0xFFFFFF", "-123"};
 
     for (size_t i = 0;
          i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
@@ -116,11 +116,11 @@ static char* test_scanner_int_literals(void) {
 }
 
 static char* test_scanner_real_literals(void) {
-    const char* source = "0.123 2.34e05 4.56E-02";
+    const char* source = "0.123 2.34e05 4.56E-02 -1.23";
     Scanner scanner;
     initScanner(&scanner, source);
 
-    const char* expected_lexemes[] = {"0.123", "2.34e05", "4.56E-02"};
+    const char* expected_lexemes[] = {"0.123", "2.34e05", "4.56E-02", "-1.23"};
 
     for (size_t i = 0;
          i < sizeof(expected_lexemes) / sizeof(expected_lexemes[0]); i++) {
@@ -177,9 +177,7 @@ static char* test_scanner_unary_minus(void) {
     initScanner(&scanner, source);
 
     TokenType expected_types[] = {
-        TOKEN_LPAREN,   TOKEN_MINUS_OP, TOKEN_INT,
-        TOKEN_MINUS_OP, TOKEN_REAL,     TOKEN_MINUS_OP,
-        TOKEN_INT,      TOKEN_RPAREN,   TOKEN_EOF,
+        TOKEN_LPAREN, TOKEN_INT, TOKEN_REAL, TOKEN_INT, TOKEN_RPAREN, TOKEN_EOF,
     };
     for (size_t i = 0; i < sizeof(expected_types) / sizeof(expected_types[0]);
          i++) {

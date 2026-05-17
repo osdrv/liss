@@ -47,10 +47,14 @@ static int cmpValues(Value a, Value b) {
     if (a.type != b.type) return a.type - b.type;
 
     switch (a.type) {
-        case VAL_BOOL: return AS_BOOL(a) - AS_BOOL(b);
-        case VAL_NIL: return 0;
-        case VAL_INT: return (AS_INT(a) < AS_INT(b)) ? -1 : (AS_INT(a) > AS_INT(b));
-        case VAL_REAL: return (AS_REAL(a) < AS_REAL(b)) ? -1 : (AS_REAL(a) > AS_REAL(b));
+        case VAL_BOOL:
+            return AS_BOOL(a) - AS_BOOL(b);
+        case VAL_NIL:
+            return 0;
+        case VAL_INT:
+            return (AS_INT(a) < AS_INT(b)) ? -1 : (AS_INT(a) > AS_INT(b));
+        case VAL_REAL:
+            return (AS_REAL(a) < AS_REAL(b)) ? -1 : (AS_REAL(a) > AS_REAL(b));
         case VAL_OBJ: {
             if (OBJ_TYPE(a) != OBJ_TYPE(b)) return OBJ_TYPE(a) - OBJ_TYPE(b);
             if (IS_STRING(a)) {
@@ -157,7 +161,8 @@ char* sprintValue(Value value) {
                 case OBJ_DICT: {
                     ObjDict* dict = AS_DICT(value);
                     APPEND_TO_BUFFER("(dict");
-                    TableEntry** entries = malloc(sizeof(TableEntry*) * dict->table.size);
+                    TableEntry** entries =
+                        malloc(sizeof(TableEntry*) * dict->table.size);
                     int entry_cnt = 0;
                     for (size_t i = 0; i < dict->table.bucket_count; i++) {
                         TableEntry* entry = dict->table.buckets[i];

@@ -111,7 +111,7 @@ ObjDict* newDict(VM* vm) {
     ObjDict* dict = (ObjDict*)allocateObject(vm, sizeof(ObjDict), OBJ_DICT);
     push(vm, OBJ_VAL(dict));
     initTableWithCapacity(&dict->table, 16);
-    pop(vm); // pop the dict
+    pop(vm);  // pop the dict
     return dict;
 }
 
