@@ -58,8 +58,10 @@ static Value lenNative(VM* vm, int argc, Value* argv) {
         return INT_VAL(AS_STRING(arg)->length);
     } else if (IS_LIST(arg)) {
         return INT_VAL(AS_LIST(arg)->len);
+    } else if (IS_DICT(arg)) {
+        return INT_VAL((int64_t)AS_DICT(arg)->table.size);
     } else {
-        return raiseErr(vm, "len takes a string or list argument");
+        return raiseErr(vm, "len takes a string, list, or dict argument");
     }
 }
 
@@ -72,8 +74,10 @@ static Value isEmptyNative(VM* vm, int argc, Value* argv) {
         return BOOL_VAL(AS_STRING(arg)->length == 0);
     } else if (IS_LIST(arg)) {
         return BOOL_VAL(AS_LIST(arg)->len == 0);
+    } else if (IS_DICT(arg)) {
+        return BOOL_VAL(AS_DICT(arg)->table.size == 0);
     } else {
-        return raiseErr(vm, "is_empty? takes a string or list argument");
+        return raiseErr(vm, "is_empty? takes a string, list, or dict argument");
     }
 }
 

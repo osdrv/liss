@@ -32,7 +32,7 @@ OBJS = $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(SRCS))
 OBJS_NO_MAIN = $(filter-out $(OBJDIR)/main.o, $(OBJS))
 
 # Test source files and object files
-TEST_SRCS = $(wildcard $(TESTDIR)/*.c)
+TEST_SRCS = $(wildcard $(TESTDIR)/*.c) $(wildcard $(TESTDIR)/modules/*.c)
 TEST_OBJS = $(patsubst $(TESTDIR)/%.c, $(OBJDIR)/%.o, $(TEST_SRCS))
 
 # Main executable
@@ -75,7 +75,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
 # Rule to compile test files into object files
 $(OBJDIR)/%.o: $(TESTDIR)/%.c | $(OBJDIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -I$(SRCDIR) -c -o $@ $<
+	$(CC) $(CFLAGS) -I$(SRCDIR) -I$(TESTDIR) -c -o $@ $<
 
 # Create directories if they don't exist
 $(BINDIR) $(OBJDIR):
