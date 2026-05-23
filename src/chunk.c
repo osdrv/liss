@@ -147,6 +147,24 @@ char* sprintChunk(const Chunk* chunk) {
             case OP_NOT:
                 APPEND_TO_BUFFER("OP_NOT\n");
                 break;
+            case OP_BAND:
+                APPEND_TO_BUFFER("OP_BAND\n");
+                break;
+            case OP_BOR:
+                APPEND_TO_BUFFER("OP_BOR\n");
+                break;
+            case OP_BXOR:
+                APPEND_TO_BUFFER("OP_BXOR\n");
+                break;
+            case OP_BNOT:
+                APPEND_TO_BUFFER("OP_BNOT\n");
+                break;
+            case OP_LSHIFT:
+                APPEND_TO_BUFFER("OP_LSHIFT\n");
+                break;
+            case OP_RSHIFT:
+                APPEND_TO_BUFFER("OP_RSHIFT\n");
+                break;
             case OP_SET_GLOBAL:
                 uint16_t set_index =
                     (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];

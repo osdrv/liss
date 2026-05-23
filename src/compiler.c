@@ -739,6 +739,13 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
             if (compiler->parser->hadError) return;
             emitByte(compiler, OP_NOT);
             break;
+        case TOKEN_BNOT_OP:
+        case TOKEN_BNOT_KW:
+            advance(compiler);
+            parseExpression(compiler, is_tail);
+            if (compiler->parser->hadError) return;
+            emitByte(compiler, OP_BNOT);
+            break;
         case TOKEN_PLUS_OP:
         case TOKEN_PLUS_KW:
         case TOKEN_MINUS_OP:
@@ -758,7 +765,17 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
         case TOKEN_LESS_OP:
         case TOKEN_LESS_KW:
         case TOKEN_LESS_EQUAL_OP:
-        case TOKEN_LESS_EQUAL_KW: {
+        case TOKEN_LESS_EQUAL_KW:
+        case TOKEN_BAND_OP:
+        case TOKEN_BAND_KW:
+        case TOKEN_BOR_OP:
+        case TOKEN_BOR_KW:
+        case TOKEN_BXOR_OP:
+        case TOKEN_BXOR_KW:
+        case TOKEN_LSHIFT_OP:
+        case TOKEN_LSHIFT_KW:
+        case TOKEN_RSHIFT_OP:
+        case TOKEN_RSHIFT_KW: {
             TokenType op = compiler->parser->current.type;
             advance(compiler);
             parseExpression(compiler, false);
@@ -811,6 +828,26 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                     case TOKEN_LESS_EQUAL_KW:
                         emitByte(compiler, OP_GREATER);
                         emitByte(compiler, OP_NOT);
+                        goto END_PARSE_GROUPING;
+                    case TOKEN_BAND_OP:
+                    case TOKEN_BAND_KW:
+                        emitByte(compiler, OP_BAND);
+                        goto END_PARSE_GROUPING;
+                    case TOKEN_BOR_OP:
+                    case TOKEN_BOR_KW:
+                        emitByte(compiler, OP_BOR);
+                        goto END_PARSE_GROUPING;
+                    case TOKEN_BXOR_OP:
+                    case TOKEN_BXOR_KW:
+                        emitByte(compiler, OP_BXOR);
+                        goto END_PARSE_GROUPING;
+                    case TOKEN_LSHIFT_OP:
+                    case TOKEN_LSHIFT_KW:
+                        emitByte(compiler, OP_LSHIFT);
+                        goto END_PARSE_GROUPING;
+                    case TOKEN_RSHIFT_OP:
+                    case TOKEN_RSHIFT_KW:
+                        emitByte(compiler, OP_RSHIFT);
                         goto END_PARSE_GROUPING;
                     default:
                         compiler->parser->hadError = true;

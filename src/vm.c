@@ -605,6 +605,15 @@ static InterpretResult run(VM* vm) {
         }                                                                     \
     } while (false)
 
+#define BINARY_BITWISE_OP(op)                          \
+    do {                                               \
+        Value b = pop(vm);                             \
+        Value a = pop(vm);                             \
+        if (IS_INT(a) && IS_INT(b)) {                  \
+            push(vm, INT_VAL(AS_INT(a) op AS_INT(b))); \
+        }                                              \
+    } while (false)
+
 #define COMPARISON_OP(op)                                        \
     do {                                                         \
         Value b = pop(vm);                                       \
@@ -644,6 +653,14 @@ static InterpretResult run(VM* vm) {
         &&OP_MULTIPLY_IMPL,
         &&OP_DIVIDE_IMPL,
         &&OP_NEGATE_IMPL,
+
+        &&OP_BAND_IMPL,
+        &&OP_BOR_IMPL,
+        &&OP_BXOR_IMPL,
+        &&OP_BNOT_IMPL,
+        &&OP_LSHIFT_IMPL,
+        &&OP_RSHIFT_IMPL,
+
         &&OP_TRUE_IMPL,
         &&OP_FALSE_IMPL,
         &&OP_NULL_IMPL,
@@ -817,6 +834,35 @@ OP_NEGATE_IMPL: {
     }
     DISPATCH();
 }
+
+OP_BAND_IMPL: {
+    BINARY_BITWISE_OP(&);
+    DISPATCH();
+}
+
+OP_BOR_IMPL: {
+    BINARY_BITWISE_OP(|);
+    DISPATCH();
+}
+
+OP_BXOR_IMPL: {
+    BINARY_BITWISE_OP(^);
+    DISPATCH();
+}
+
+OP_BNOT_IMPL: {
+    if (!IS_INT(peek(vm, 0))) {
+        ERROR_LOG("Runtime error: bitwise operand must be an integer");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+    push(vm, INT_VAL(~AS_INT(pop(vm))));
+    DISPATCH();
+}
+
+OP_LSHIFT_IMPL: { BINARY_BITWISE_OP(<<); }
+
+OP_RSHIFT_IMPL: { BINARY_BITWISE_OP(>>); }
 
 OP_TRUE_IMPL: {
     push(vm, BOOL_VAL(true));

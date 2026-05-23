@@ -1,6 +1,8 @@
 #ifndef liss_tests_test_common_h
 #define liss_tests_test_common_h
 
+#include <string.h>
+
 #include "value.h"
 #include "object.h"
 #include "minunit.h"

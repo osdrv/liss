@@ -14,6 +14,13 @@ typedef enum {
     OP_DIVIDE,
     OP_NEGATE,
 
+    OP_BAND,
+    OP_BOR,
+    OP_BXOR,
+    OP_BNOT,
+    OP_LSHIFT,
+    OP_RSHIFT,
+
     OP_TRUE,
     OP_FALSE,
     OP_NULL,

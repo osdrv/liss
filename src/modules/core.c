@@ -219,20 +219,13 @@ static Value valuesNative(VM* vm, int argc, Value* argv) {
 }
 
 static const NativeReg core_functions[] = {
-    {"err!", 1, errNative},
-    {"is_err?", 1, isErrNative},
-    {"raise!", 1, raiseNative},
-    {"len", 1, lenNative},
-    {"is_empty?", 1, isEmptyNative},
-    {"pair", 2, pairNative},
-    {"dict", -1, dictNative},
-    {"get", 2, getNative},
-    {"put", 3, putNative},
-    {"has?", 2, hasNative},
-    {"del", 2, delNative},
-    {"keys", 1, keysNative},
-    {"values", 1, valuesNative},
-    {NULL, 0, NULL},  // Sentinel value
+    {"err!", 1, errNative},          {"is_err?", 1, isErrNative},
+    {"raise!", 1, raiseNative},      {"len", 1, lenNative},
+    {"is_empty?", 1, isEmptyNative}, {"pair", 2, pairNative},
+    {"dict", -1, dictNative},        {"get", 2, getNative},
+    {"put", 3, putNative},           {"has?", 2, hasNative},
+    {"del", 2, delNative},           {"keys", 1, keysNative},
+    {"values", 1, valuesNative},     {NULL, 0, NULL},  // Sentinel value
 };
 
 void registerCoreNatives(VM* vm, ObjModule* module) {

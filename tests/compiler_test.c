@@ -1,5 +1,6 @@
 #include "compiler.h"
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -281,6 +282,262 @@ static char* test_compile(void) {
             .expected_instruction_count = 26,
             .expected_constants = NULL,
             .expected_constant_size = 0,
+        },
+        {
+            .name = "compile binary kw and expression",
+            .src = "(band 1 2)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_BAND,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "compile binary op and expression",
+            .src = "(&& 1 2)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_BAND,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "compile binary kw or expression",
+            .src = "(bor 1 2)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_BOR,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "compile binary op or expression",
+            .src = "(|| 1 2)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_BOR,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "compile binary kw xor expression",
+            .src = "(bxor 1 2)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_BXOR,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "compile binary op xor expression",
+            .src = "(^ 1 2)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_BXOR,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "compile binary kw not expression",
+            .src = "(bnot 1)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_BNOT,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 5,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                },
+            .expected_constant_size = 1,
+        },
+        {
+            .name = "compile binary op xor expression",
+            .src = "(~ 1)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_BNOT,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 5,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                },
+            .expected_constant_size = 1,
+        },
+        {
+            .name = "compile binary kw lshift expression",
+            .src = "(bsl 1 2)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_LSHIFT,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "compile binary op lshift expression",
+            .src = "(<< 1 2)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_LSHIFT,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "compile binary kw rshift expression",
+            .src = "(bsr 1 2)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_RSHIFT,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                },
+            .expected_constant_size = 2,
+        },
+        {
+            .name = "compile binary op rshift expression",
+            .src = "(>> 1 2)",
+            .expected_instructions =
+                (uint8_t[]){
+                    OP_CONSTANT,
+                    0,
+                    0,
+                    OP_CONSTANT,
+                    0,
+                    1,
+                    OP_RSHIFT,
+                    OP_RETURN,
+                },
+            .expected_instruction_count = 8,
+            .expected_constants =
+                (ExpectedConstant[]){
+                    {EXPECT_INT, .as.integer = 1},
+                    {EXPECT_INT, .as.integer = 2},
+                },
+            .expected_constant_size = 2,
         },
         {
             .name = "compile cond expression with no else branch",
