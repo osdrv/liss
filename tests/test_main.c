@@ -25,8 +25,8 @@ int main(int argc, char** argv) {
     // Call all the test suites
     // table_suite();
     // scanner_suite();
-    compiler_suite();
-    // vm_suite();
+    // compiler_suite();
+    vm_suite();
     // module_suite();
     // modules_core_suite();
 
