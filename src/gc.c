@@ -113,6 +113,11 @@ void markObject(VM* vm, Obj* object) {
         case OBJ_FILE: {
             break;
         }
+        case OBJ_RE: {
+            ObjRe* re = (ObjRe*)object;
+            markObject(vm, (Obj*)re->pattern);
+            break;
+        }
     }
 }
 

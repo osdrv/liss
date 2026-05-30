@@ -133,6 +133,14 @@ ObjFile* newFile(VM* vm, FILE* file) {
     return file_obj;
 }
 
+ObjRe* newRe(VM* vm, ObjString* pattern) {
+    ObjString* pattern_cp = copyString(vm, pattern->chars, pattern->length);
+    push(vm, OBJ_VAL(pattern_cp));
+    ObjRe* re_obj = (ObjRe*)allocateObject(vm, sizeof(ObjRe), OBJ_RE);
+    re_obj->pattern = AS_STRING(pop(vm));
+    return re_obj;
+}
+
 // --- String ---
 
 uint32_t hashString(const char* key, int length) {

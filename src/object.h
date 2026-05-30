@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "chunk.h"
+#include "regex.h"
 #include "table.h"
 #include "value.h"
 
@@ -29,6 +30,7 @@ typedef enum {
     OBJ_LIST,
     OBJ_MODULE,
     OBJ_FILE,
+    OBJ_RE,
 } ObjType;
 
 struct Obj {
@@ -128,6 +130,12 @@ typedef struct {
     bool is_closed;
 } ObjFile;
 
+typedef struct {
+    Obj obj;
+    ReProgram* program;
+    ObjString* pattern;
+} ObjRe;
+
 // --- Helper Functions and Macros ---
 
 // Safely checks if a Value is an object of a given ObjType.
@@ -150,6 +158,7 @@ static inline bool isObjType(Value value, ObjType type) {
 #define IS_DICT(value) isObjType(value, OBJ_DICT)
 #define IS_MODULE(value) isObjType(value, OBJ_MODULE)
 #define IS_FILE(value) isObjType(value, OBJ_FILE)
+#define IS_RE(value) isObjType(value, OBJ_RE)
 
 // Macros for casting a Value to a specific object type pointer.
 #define AS_FUNCTION(value) ((ObjFunction*)AS_OBJ(value))
@@ -164,6 +173,7 @@ static inline bool isObjType(Value value, ObjType type) {
 #define AS_DICT(value) ((ObjDict*)AS_OBJ(value))
 #define AS_MODULE(value) ((ObjModule*)AS_OBJ(value))
 #define AS_FILE(value) ((ObjFile*)AS_OBJ(value))
+#define AS_RE(value) ((ObjRe*)AS_OBJ(value))
 
 // Helper function to compute the hash of a string.
 uint32_t hashString(const char* key, int length);
@@ -180,6 +190,7 @@ ObjPair* newPair(VM* vm, Value first, Value second);
 ObjDict* newDict(VM* vm);
 ObjModule* newModule(VM* vm, const char* name);
 ObjFile* newFile(VM* vm, FILE* file);
+ObjRe* newRe(VM* vm, ObjString* pattern);
 
 // Allocates an ObjString on the heap and returns a pointer to it.
 ObjString* takeString(VM* vm, char* chars, int length);

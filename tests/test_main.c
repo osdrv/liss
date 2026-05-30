@@ -15,6 +15,7 @@ void compiler_suite(void);
 void vm_suite(void);
 void module_suite(void);
 void modules_core_suite(void);
+void regex_suite(void);
 
 int main(int argc, char** argv) {
     (void)argc;
@@ -23,12 +24,13 @@ int main(int argc, char** argv) {
     printf("--- Running Test Suites ---\n");
 
     // Call all the test suites
-    // table_suite();
-    // scanner_suite();
-    // compiler_suite();
+    table_suite();
+    scanner_suite();
+    compiler_suite();
     vm_suite();
-    // module_suite();
-    // modules_core_suite();
+    module_suite();
+    modules_core_suite();
+    regex_suite();
 
     printf("\n---------------------------\n");
     if (result == 0) {
