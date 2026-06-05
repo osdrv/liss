@@ -19,8 +19,11 @@ typedef struct {
 typedef struct {
     ReInstr* instrs;
     int size;
+    int start;
 } ReProgram;
 
 char* re2postfix(const char* re);
+
+bool match(ReProgram* prog, const char* text);
 
 #endif

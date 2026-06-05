@@ -1,7 +1,8 @@
+#include "regex.h"
+
 #include "common.h"
 #include "minunit.h"
 #include "test_common.h"
-#include "regex.h"
 
 typedef struct {
     const char* pattern;
@@ -11,25 +12,26 @@ typedef struct {
 static char* test_re2postfix() {
     RegexPostfixTest tests[] = {
         {"a", "a"},
-        {"ab", "ab."},
-        {"abc", "ab.c."},
+        {"ab", "ab@"},
+        {"a.b", "a.@b@"},
+        {"abc", "ab@c@"},
 
         {"a*", "a*"},
         {"a+", "a+"},
         {"a?", "a?"},
-        {"ab*", "ab*."},
-        {"(ab)*", "ab.*"},
+        {"ab*", "ab*@"},
+        {"(ab)*", "ab@*"},
 
         {"a|b", "ab|"},
         {"a|b|c", "ab|c|"},
-        {"ab|cd", "ab.cd.|"},
+        {"ab|cd", "ab@cd@|"},
 
-        {"a|bc*", "abc*.|"},
-        {"(a|b)c", "ab|c."},
-        {"(a|b)*c", "ab|*c."},
+        {"a|bc*", "abc*@|"},
+        {"(a|b)c", "ab|c@"},
+        {"(a|b)*c", "ab|*c@"},
 
         {"((a))", "a"},
-        {"(a(b|c))", "abc|."},
+        {"(a(b|c))", "abc|@"},
     };
 
     for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
