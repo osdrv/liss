@@ -23,7 +23,7 @@ typedef struct {
 } ReProgram;
 
 char* re2postfix(const char* re);
-
+ReProgram* compileRegex(const char* postfix);
 bool match(ReProgram* prog, const char* text);
 
 #endif
