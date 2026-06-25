@@ -14,7 +14,7 @@ typedef struct {
     const char* src;
     InterpretResult expected_result;
     ExpectedValue expected_value;
-    bool is_failing;
+    bool debug;
 } VMTestCase;
 
 static char* test_vm_stack(void) {
@@ -649,6 +649,25 @@ static VMTestCase interpret_tests[] = {
                                "(dict (true . false) (-1 . -1) (1 . 2) (3.14 . "
                                "15.16) (\"foo\" . \"bar\"))"},
     },
+    {
+        .name = "regex match with capturing groups",
+        .src = "(import re)(re:match (re:re \"a(b*)(c+)\") \"abbbc\")",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST,
+                           .as.string = "[\"abbbc\" \"bbb\" \"c\"]"},
+    },
+    {
+        .name = "regex match non-matching optional group",
+        .src = "(import re)(re:match (re:re \"a(b)?c\") \"ac\")",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST, .as.string = "[\"ac\" null]"},
+    },
+    {
+        .name = "regex match failing match returns nil",
+        .src = "(import re)(re:match (re:re \"a(b)c\") \"adc\")",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_NIL},
+    },
 };
 
 static char* test_vm_interpret(void) {
@@ -666,7 +685,7 @@ static char* test_vm_interpret(void) {
         VM* vm = newVM(options);
         mu_assert("Failed to create VM", vm != NULL);
 
-        if (test->is_failing) {
+        if (test->debug) {
             DEBUG_LOG("Set a breakpoint for a failing test");
             __builtin_debugtrap();
         }

@@ -15,7 +15,12 @@ typedef struct {
 } Frag;
 
 typedef struct {
-    int* instr_ixs;
+    int instr_ix;
+    const char* submatch[MAX_GROUPS * 2];
+} Thread;
+
+typedef struct {
+    Thread* thread;
     int size;
 } ThreadList;
 
@@ -89,22 +94,37 @@ char* addConcat(const char* re) {
 
 char* infixToPostfix(const char* infix) {
     int len = strlen(infix);
-    char* postfix = malloc(len + 1);
+    char* postfix = malloc(len * 2 + 1);
     char stack[1024];
     int top = -1;
     int j = 0;
+
+    int group_stack[100];
+    int group_stack_top = -1;
+    int next_group_id = 1;
 
     for (int i = 0; i < len; i++) {
         char c = infix[i];
         switch (c) {
             case '(':
+                if (next_group_id < MAX_GROUPS) {
+                    group_stack[++group_stack_top] = next_group_id++;
+                } else {
+                    group_stack[++group_stack_top] = 0;
+                }
                 stack[++top] = c;
                 break;
             case ')':
                 while (top >= 0 && stack[top] != '(') {
                     postfix[j++] = stack[top--];
                 }
-                top--;
+                if (top >= 0) top--;  // pop '('
+                if (group_stack_top >= 0) {
+                    int g = group_stack[group_stack_top--];
+                    if (g > 0) {
+                        postfix[j++] = (char)g;
+                    }
+                }
                 break;
             case '|':
             case '*':
@@ -138,8 +158,8 @@ char* re2postfix(const char* re) {
 }
 
 static void addstate(ThreadList* list, int i, ReProgram* prog, int generation,
-                     int* last_visited) {
-    // we've already added this instruction in this step so skip it
+                     int* last_visited, const char* submatch[MAX_GROUPS * 2],
+                     const char* sp) {
     if (last_visited[i] == generation) return;
     last_visited[i] = generation;
 
@@ -147,17 +167,29 @@ static void addstate(ThreadList* list, int i, ReProgram* prog, int generation,
 
     switch (instr->type) {
         case RE_SPLIT: {
-            addstate(list, instr->s1, prog, generation, last_visited);
-            addstate(list, instr->s2, prog, generation, last_visited);
+            addstate(list, instr->s1, prog, generation, last_visited, submatch,
+                     sp);
+            addstate(list, instr->s2, prog, generation, last_visited, submatch,
+                     sp);
             break;
         }
         case RE_JMP: {
-            addstate(list, instr->s1, prog, generation, last_visited);
+            addstate(list, instr->s1, prog, generation, last_visited, submatch,
+                     sp);
+            break;
+        }
+        case RE_SAVE: {
+            const char* new_submatch[MAX_GROUPS * 2];
+            memcpy(new_submatch, submatch, sizeof(new_submatch));
+            new_submatch[instr->c] = sp;
+            addstate(list, instr->s1, prog, generation, last_visited,
+                     new_submatch, sp);
             break;
         }
         default: {
-            // A char or a match, stop here and wait for the next input char
-            list->instr_ixs[list->size++] = i;
+            Thread* t = &list->thread[list->size++];
+            t->instr_ix = i;
+            memcpy(t->submatch, submatch, sizeof(t->submatch));
             break;
         }
     }
@@ -166,8 +198,16 @@ static void addstate(ThreadList* list, int i, ReProgram* prog, int generation,
 ReProgram* compileRegex(const char* postfix) {
     int len = strlen(postfix);
     ReProgram* prog = malloc(sizeof(ReProgram));
-    prog->instrs = malloc(sizeof(ReInstr) * (len + 1));
+    prog->instrs = malloc(sizeof(ReInstr) * (len * 2 + 10));
     prog->size = 0;
+
+    int max_grp = 0;
+    for (const char* p = postfix; *p; p++) {
+        if (*p >= 1 && *p <= 9) {
+            if (*p > max_grp) max_grp = *p;
+        }
+    }
+    prog->num_grps = max_grp + 1;  // the complete match is group 0
 
     Frag stack[1024];
     int top = -1;
@@ -220,62 +260,102 @@ ReProgram* compileRegex(const char* postfix) {
                 break;
             }
             default: {
-                int i = prog->size++;
-                prog->instrs[i] = (ReInstr){RE_CHAR, *p, 0, 0};
-                stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
+                if (*p >= 1 && *p <= 9) {
+                    int g = *p;
+                    Frag e = stack[top--];
+                    int s_start = prog->size++;
+                    int s_end = prog->size++;
+                    prog->instrs[s_start] =
+                        (ReInstr){RE_SAVE, 2 * g, e.start, 0};
+                    prog->instrs[s_end] = (ReInstr){RE_SAVE, 2 * g + 1, 0, 0};
+                    patch(e.out, s_end);
+                    stack[++top] =
+                        (Frag){s_start, list1(&prog->instrs[s_end].s1)};
+                } else {
+                    int i = prog->size++;
+                    prog->instrs[i] = (ReInstr){RE_CHAR, *p, 0, 0};
+                    stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
+                }
                 break;
             }
         }
     }
 
     Frag final = stack[top--];
+    int start_save = prog->size++;
+    int end_save = prog->size++;
     int match_idx = prog->size++;
-    prog->instrs[match_idx] = (ReInstr){RE_MATCH, 0, 0, 0};
-    patch(final.out, match_idx);
 
-    prog->start = final.start;
+    prog->instrs[start_save] = (ReInstr){RE_SAVE, 0, final.start, 0};
+    prog->instrs[end_save] = (ReInstr){RE_SAVE, 1, match_idx, 0};
+    prog->instrs[match_idx] = (ReInstr){RE_MATCH, 0, 0, 0};
+
+    patch(final.out, end_save);
+    prog->start = start_save;
     return prog;
 }
 
-bool match(ReProgram* prog, const char* text) {
+bool matchGroups(ReProgram* prog, const char* text,
+                 const char* submatch[MAX_GROUPS * 2]) {
     int n_instr = prog->size;
     int* last_visited = calloc(n_instr, sizeof(int));
     int generation = 1;
 
-    // 2 lists: current and next
-    ThreadList clist = {malloc(sizeof(int) * n_instr), 0};
-    ThreadList nlist = {malloc(sizeof(int) * n_instr), 0};
+    const char* init_submatch[MAX_GROUPS * 2];
+    memset(init_submatch, 0, sizeof(init_submatch));
 
-    addstate(&clist, prog->start, prog, generation++, last_visited);
+    ThreadList clist = {malloc(sizeof(Thread) * n_instr), 0};
+    ThreadList nlist = {malloc(sizeof(Thread) * n_instr), 0};
 
-    for (; *text; text++) {
-        nlist.size = 0;  // clear the next list
+    const char* sp = text;
+    addstate(&clist, prog->start, prog, generation++, last_visited,
+             init_submatch, sp);
+
+    const char* matched_submatch[MAX_GROUPS * 2];
+    bool matched = false;
+
+    for (;;) {
         for (int j = 0; j < clist.size; j++) {
-            ReInstr* instr = &prog->instrs[clist.instr_ixs[j]];
-            if (instr->type == RE_ANY ||
-                (instr->type == RE_CHAR && instr->c == *text)) {
-                addstate(&nlist, instr->s1, prog, generation, last_visited);
+            if (prog->instrs[clist.thread[j].instr_ix].type == RE_MATCH) {
+                memcpy(matched_submatch, clist.thread[j].submatch,
+                       sizeof(matched_submatch));
+                matched = true;
+                break;
             }
         }
-        // swap the lists
+
+        if (*sp == '\0') break;
+
+        nlist.size = 0;
+        for (int j = 0; j < clist.size; j++) {
+            ReInstr* instr = &prog->instrs[clist.thread[j].instr_ix];
+            if (instr->type == RE_ANY ||
+                (instr->type == RE_CHAR && instr->c == *sp)) {
+                addstate(&nlist, instr->s1, prog, generation, last_visited,
+                         clist.thread[j].submatch, sp + 1);
+            }
+        }
         ThreadList tmp = clist;
         clist = nlist;
         nlist = tmp;
         generation++;
+        sp++;
 
-        if (clist.size == 0) break;  // no more options to explore
+        if (clist.size == 0) break;
     }
 
-    bool found = false;
-    for (int j = 0; j < clist.size; j++) {
-        if (prog->instrs[clist.instr_ixs[j]].type == RE_MATCH) {
-            found = true;
-            break;
-        }
+    if (matched) {
+        memcpy(submatch, matched_submatch, sizeof(matched_submatch));
     }
 
-    free(clist.instr_ixs);
-    free(nlist.instr_ixs);
+    free(clist.thread);
+    free(nlist.thread);
     free(last_visited);
-    return found;
+
+    return matched;
+}
+
+bool match(ReProgram* prog, const char* text) {
+    const char* submatch[MAX_GROUPS * 2];
+    return matchGroups(prog, text, submatch);
 }

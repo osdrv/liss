@@ -232,5 +232,14 @@ void freeObject(VM* vm, Obj* object) {
             reallocate(vm, file, sizeof(ObjFile), 0);
             break;
         }
+        case OBJ_RE: {
+            ObjRe* re = (ObjRe*)object;
+            if (re->program != NULL) {
+                free(re->program->instrs);
+                free(re->program);
+            }
+            reallocate(vm, re, sizeof(ObjRe), 0);
+            break;
+        }
     }
 }
