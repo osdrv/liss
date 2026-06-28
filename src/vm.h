@@ -66,6 +66,7 @@ typedef struct VM {
     TryBlock try_stack[TRY_MAX];
     int try_cnt;
     Value raise_value;
+    char error_msg[512];
 
     // (!!!) Flexible Array Member for the stack. Keep at the end.
     Value stack[];

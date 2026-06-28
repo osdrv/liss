@@ -42,9 +42,7 @@ static void advance(Compiler* compiler) {
         }
         if (parser->current.type != TOKEN_ERROR) break;
 
-        parser->hadError = true;
-        ERROR_LOG("[line %d] Error: %s", parser->current.line,
-                  parser->current.start);
+        COMPILE_ERR(compiler, "%s", parser->current.start);
     }
 }
 
@@ -56,10 +54,7 @@ static Token consume(Compiler* compiler, TokenType type, const char* message) {
         return token;
     }
 
-    parser->hadError = true;
-    ERROR_LOG("[line %d] Error: %s", parser->current.line, message);
-    (void)message;  // Suppress unused parameter warning
-
+    COMPILE_ERR(compiler, "%s", message);
     return token;
 }
 
@@ -74,10 +69,7 @@ static Token consumeAnyOf(Compiler* compiler, size_t count, TokenType types[],
         }
     }
 
-    parser->hadError = true;
-    ERROR_LOG("[line %d] Error: %s", parser->current.line, message);
-    (void)message;  // Suppress unused parameter warning
-
+    COMPILE_ERR(compiler, "%s", message);
     return parser->current;
 }
 
@@ -98,9 +90,7 @@ static void emitConstant(Compiler* compiler, Value value) {
     Chunk* chunk = currentChunk(compiler);
     int constant = addConstant(compiler->vm, chunk, value);
     if (constant > UINT16_MAX) {
-        compiler->parser->hadError = true;
-        ERROR_LOG("[line %d] Error: Too many constants in one chunk",
-                  compiler->parser->current.line);
+        COMPILE_ERR(compiler, "Too many constants in one chunk");
         return;
     }
     emitByte(compiler, OP_CONSTANT);
@@ -120,9 +110,8 @@ static void patchJump(Compiler* compiler, int offset) {
     int jump = currentChunk(compiler)->count - offset - 2;
 
     if (jump > UINT16_MAX) {
-        compiler->parser->hadError = true;
-        ERROR_LOG("[line %d] Error: Too much code to jump over",
-                  compiler->parser->current.line);
+        COMPILE_ERR(compiler, "Too much code to jump over");
+        return;
     }
 
     currentChunk(compiler)->code[offset] = (jump >> 8) & 0xff;
@@ -140,7 +129,7 @@ static void initCompiler(Compiler* compiler, Compiler* enclosing,
                          ObjModule* module) {
     // Enforce that the module is not NULL. Unconditionally.
     if (module == NULL) {
-        ERROR_LOG("Internal error: Compiler requires a non-NULL module.");
+        COMPILE_ERR(compiler, "Compiler requires a non-NULL module");
         exit(1);
     }
 
@@ -196,10 +185,7 @@ static void parseNumber(Compiler* compiler) {
     Token prev = compiler->parser->previous;
     char* buf = (char*)malloc(prev.length + 1);
     if (buf == NULL) {
-        compiler->parser->hadError = true;
-        ERROR_LOG(
-            "[line %d] Error: Memory allocation failed for number literal",
-            compiler->parser->previous.line);
+        COMPILE_ERR(compiler, "Memory allocation failed for number literal");
         return;
     }
     memcpy(buf, prev.start, prev.length);
@@ -209,18 +195,14 @@ static void parseNumber(Compiler* compiler) {
         int64_t value = strtoll(prev.start, NULL,
                                 0);  // Support hex, octal, and binary literals
         if (errno == ERANGE) {
-            compiler->parser->hadError = true;
-            ERROR_LOG("[line %d] Error: Integer literal out of range",
-                      compiler->parser->previous.line);
+            COMPILE_ERR(compiler, "Integer literal out of range");
             goto END_PARSE_NUMBER;
         }
         emitConstant(compiler, INT_VAL(value));
     } else {
         double value = strtod(compiler->parser->previous.start, NULL);
         if (errno == ERANGE) {
-            compiler->parser->hadError = true;
-            ERROR_LOG("[line %d] Error: Real number literal out of range",
-                      compiler->parser->previous.line);
+            COMPILE_ERR(compiler, "Real number literal out of range");
             goto END_PARSE_NUMBER;
         }
         emitConstant(compiler, REAL_VAL(value));
@@ -256,10 +238,7 @@ static void parseAnd(Compiler* compiler) {
 
 static void parseOr(Compiler* compiler) {
     if (compiler->parser->current.type == TOKEN_RPAREN) {
-        compiler->parser->hadError = true;
-        ERROR_LOG(
-            "[line %d] Error: 'or' expression requires at least one operand",
-            compiler->parser->current.line);
+        COMPILE_ERR(compiler, "`or` expression requires at least one operand");
         return;
     }
     int jump_list[100];
@@ -286,9 +265,7 @@ static void parseOr(Compiler* compiler) {
 
 static void addLocal(Compiler* compiler, Token name) {
     if (compiler->local_count >= MAX_LOCALS) {
-        compiler->parser->hadError = true;
-        ERROR_LOG("[line %d] Error: Too many local variables in function.",
-                  compiler->parser->current.line);
+        COMPILE_ERR(compiler, "Too many local variables in function");
         return;
     }
     Local* local = &compiler->locals[compiler->local_count++];
@@ -316,7 +293,7 @@ static int addUpvalue(Compiler* compiler, uint8_t index, bool is_local) {
         }
     }
     if (cnt == MAX_UPVALUES) {
-        ERROR_LOG("Too many closure variables in function.");
+        COMPILE_ERR(compiler, "Too many closure variables in function");
         return -1;
     }
     compiler->upvalues[cnt].is_local = is_local;
@@ -364,18 +341,13 @@ static void parseLet(Compiler* compiler) {
         int var_index = identifierConstant(compiler, identifier);
         Value name = currentChunk(compiler)->constants.values[var_index];
         if (tableGet(&compiler->module->symbols, name) != NULL) {
-            compiler->parser->hadError = true;
-            ERROR_LOG(
-                "[line %d] Error: Cannot redeclare global variable '%.*s'",
-                identifier.line, identifier.length, identifier.start);
+            COMPILE_ERR(compiler, "Cannot redeclare global variable '%.*s'",
+                        identifier.length, identifier.start);
             return;
         }
         if (compiler->added_globals_cnt >= MAX_GLOBALS) {
-            compiler->parser->hadError = true;
-            ERROR_LOG(
-                "[line %d] Error: Too many global variables declared in "
-                "program",
-                identifier.line);
+            COMPILE_ERR(compiler,
+                        "Too many global variables declared in program");
             return;
         }
         tableInsert(&compiler->module->symbols, name, NIL_VAL);
@@ -391,11 +363,9 @@ static void parseLet(Compiler* compiler) {
                 break;
             }
             if (identifiersEqual(&identifier, &local->name)) {
-                compiler->parser->hadError = true;
-                ERROR_LOG(
-                    "[line %d] Error: Cannot redeclare variable '%.*s' in this "
-                    "scope",
-                    identifier.line, identifier.length, identifier.start);
+                COMPILE_ERR(compiler,
+                            "Cannot redeclare variable '%.*s' in this scope",
+                            identifier.length, identifier.start);
                 return;
             }
         }
@@ -450,10 +420,7 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
         do {
             fn_compiler->function->arity++;
             if (fn_compiler->function->arity >= MAX_LOCALS) {
-                compiler->parser->hadError = true;
-                ERROR_LOG(
-                    "[line %d] Error: max function parameter limit reached",
-                    fn_compiler->parser->current.line);
+                COMPILE_ERR(compiler, "Max function parameter limit reached");
                 return NULL;
             }
             Token param =
@@ -536,9 +503,7 @@ static void parseList(Compiler* compiler) {
         len++;
     }
     if (len > UINT8_MAX) {
-        compiler->parser->hadError = true;
-        ERROR_LOG("[line %d] Error: List literal too long",
-                  compiler->parser->current.line);
+        COMPILE_ERR(compiler, "List literal too long");
         return;
     }
     consume(compiler, TOKEN_RBRAKET, "expect ']' after list literal");
@@ -563,8 +528,7 @@ static void parseImport(Compiler* compiler) {
     Token module_name_token = readStringOrIdentifier(
         compiler, "expect module name as string or identifier");
     if (compiler->parser->hadError) {
-        ERROR_LOG("[line %d] Error: expect module name as string or identifier",
-                  compiler->parser->current.line);
+        COMPILE_ERR(compiler, "Expect module name as string or identifier");
         return;
     }
     ObjString* module_name_obj = copyString(
@@ -572,8 +536,9 @@ static void parseImport(Compiler* compiler) {
 
     ObjModule* module = loadModule(compiler->vm, module_name_obj);
     if (module == NULL) {
-        ERROR_LOG("[line %d] Error: could not load module %s",
-                  compiler->parser->current.line, module_name_obj->chars);
+        COMPILE_ERR(compiler, "could not load module %s",
+                    module_name_obj->chars);
+        return;
     }
 
     if (compiler->parser->current.type == TOKEN_AS_KW) {
@@ -581,8 +546,7 @@ static void parseImport(Compiler* compiler) {
         Token alias_token = readStringOrIdentifier(
             compiler, "expect alias as string or identifier");
         if (compiler->parser->hadError) {
-            ERROR_LOG("[line %d] Error: expect alias as string or identifier",
-                      compiler->parser->current.line);
+            COMPILE_ERR(compiler, "Expect alias as string or identifier");
             return;
         }
         ObjString* alias_obj =
@@ -602,10 +566,8 @@ static void parseImport(Compiler* compiler) {
         Value* module_val =
             tableGet(&compiler->vm->modules, OBJ_VAL(module_name_obj));
         if (module_val == NULL) {
-            compiler->parser->hadError = true;
-            ERROR_LOG("[line %d] Error: module '%.*s' not found",
-                      module_name_token.line, module_name_token.length,
-                      module_name_token.start);
+            COMPILE_ERR(compiler, "Module '%.*s' not found",
+                        module_name_token.length, module_name_token.start);
             return;
         }
         ObjModule* module = (ObjModule*)AS_MODULE(*module_val);
@@ -614,10 +576,9 @@ static void parseImport(Compiler* compiler) {
                 compiler,
                 "expect symbol name as string or identifier in import list");
             if (compiler->parser->hadError) {
-                ERROR_LOG(
-                    "[line %d] Error: expect symbol name as string or "
-                    "identifier in import list",
-                    compiler->parser->current.line);
+                COMPILE_ERR(compiler,
+                            "expect symbol name as string or identifier in "
+                            "import list");
                 return;
             }
             ObjString* symbol_obj = copyString(compiler->vm, symbol_token.start,
@@ -625,12 +586,10 @@ static void parseImport(Compiler* compiler) {
 
             Value* remote_ptr = tableGet(&module->symbols, OBJ_VAL(symbol_obj));
             if (remote_ptr == NULL) {
-                compiler->parser->hadError = true;
-                ERROR_LOG(
-                    "[line %d] Error: symbol '%.*s' not found in module '%.*s'",
-                    symbol_token.line, symbol_token.length, symbol_token.start,
-                    module_name_token.line, module_name_token.length,
-                    module_name_token.start);
+                COMPILE_ERR(compiler,
+                            "Symbol '%.*s' not found in module '%.*s'",
+                            symbol_token.length, symbol_token.start,
+                            module_name_token.length, module_name_token.start);
                 return;
             }
             // NOTE: if I ever end up debugging expired module symbol pointers,
@@ -704,12 +663,10 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                 if (compiler->scope_depth > 0) {
                     int local_slot = resolveLocal(compiler, fn_name);
                     if (local_slot == -1) {
-                        compiler->parser->hadError = true;
-                        ERROR_LOG(
-                            "[line %d] Error: Failed to resolve local variable "
-                            "for "
-                            "function name '%.*s'",
-                            fn_name.line, fn_name.length, fn_name.start);
+                        COMPILE_ERR(compiler,
+                                    "Failed to resolve local variable for "
+                                    "function name '%.*s'",
+                                    fn_name.length, fn_name.start);
                         return;
                     }
                     emitBytes(compiler, OP_SET_LOCAL, (uint8_t)local_slot);
@@ -850,10 +807,7 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                         emitByte(compiler, OP_RSHIFT);
                         goto END_PARSE_GROUPING;
                     default:
-                        compiler->parser->hadError = true;
-                        ERROR_LOG(
-                            "[line %d] Error: Unknown operator in expression",
-                            compiler->parser->current.line);
+                        COMPILE_ERR(compiler, "Unknown operator in expression");
                         return;
                 }
             }
@@ -890,11 +844,8 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
             int arg_count = 0;
             while (compiler->parser->current.type != TOKEN_RPAREN) {
                 if (arg_count > MAX_ARITY) {
-                    compiler->parser->hadError = true;
-                    ERROR_LOG(
-                        "[line %d] Error: Too many arguments in a function "
-                        "call",
-                        compiler->parser->current.line);
+                    COMPILE_ERR(compiler,
+                                "Too many arguments in a function call");
                     return;
                 }
                 parseExpression(compiler, false);
@@ -970,9 +921,7 @@ static void namedVariable(Compiler* compiler, Token name) {
     int const_index = identifierConstant(compiler, name);
 
     if (const_index > UINT16_MAX) {
-        compiler->parser->hadError = true;
-        ERROR_LOG("[line %d] Error: Too many constants in one chunk",
-                  compiler->parser->current.line);
+        COMPILE_ERR(compiler, "Too many constants in one chunk");
         return;
     }
 
@@ -1023,9 +972,7 @@ static void parseExpression(Compiler* compiler, bool is_tail) {
             parseList(compiler);
             break;
         default:
-            compiler->parser->hadError = true;
-            ERROR_LOG("[line %d] Error: Expected expression",
-                      compiler->parser->current.line);
+            COMPILE_ERR(compiler, "Expected expression");
             break;
     }
 }

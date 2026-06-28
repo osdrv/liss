@@ -5,10 +5,7 @@
 #include "vm.h"
 
 static Value errNative(VM* vm, int argc, Value* argv) {
-    if (argc != 1) {
-        // TODO: raise! once we've implemented it
-        return NIL_VAL;
-    }
+    (void)argc;
     ObjError* error;
     // If it's already a string, we can create the error directly from it.
     if (IS_STRING(argv[0])) {
@@ -23,36 +20,23 @@ static Value errNative(VM* vm, int argc, Value* argv) {
 }
 
 static Value isErrNative(VM* vm, int argc, Value* argv) {
-    if (argc != 1) return BOOL_VAL(false);
+    (void)argc;
+    (void)vm;
     return BOOL_VAL(IS_ERROR(argv[0]));
 }
 
 static Value raiseNative(VM* vm, int argc, Value* argv) {
-    if (argc != 1) {
-        // TODO: handle this properly once we have error handling in place
-        return NIL_VAL;
+    (void)argc;
+    if (!IS_ERROR(argv[0])) {
+        return raiseErr(vm, "raise! expects an err value");
     }
-    Value error = argv[0];
-    if (IS_STRING(error)) {
-        ObjError* err = newError(vm, AS_CSTRING(error));
-        error = OBJ_VAL(err);
-    }
-    if (!IS_ERROR(error)) {
-        char* str = sprintValue(error);
-        error = OBJ_VAL(newError(vm, str));
-        free(str);
-    }
-
-    vm->raise_value = error;
+    vm->raise_value = argv[0];
     vm->last_result = INTERPRET_RUNTIME_ERROR;
-
-    return NIL_VAL;  // This would be ignored
+    return NIL_VAL;
 }
 
 static Value lenNative(VM* vm, int argc, Value* argv) {
-    if (argc != 1) {
-        return raiseErr(vm, "len takes exactly 1 argument");
-    }
+    (void)argc;
     Value arg = argv[0];
     if (IS_STRING(arg)) {
         return INT_VAL(AS_STRING(arg)->length);
@@ -60,15 +44,13 @@ static Value lenNative(VM* vm, int argc, Value* argv) {
         return INT_VAL(AS_LIST(arg)->len);
     } else if (IS_DICT(arg)) {
         return INT_VAL((int64_t)AS_DICT(arg)->table.size);
-    } else {
-        return raiseErr(vm, "len takes a string, list, or dict argument");
     }
+
+    return raiseErr(vm, "len takes a string, list, or dict argument");
 }
 
 static Value isEmptyNative(VM* vm, int argc, Value* argv) {
-    if (argc != 1) {
-        return raiseErr(vm, "is_empty? takes exactly 1 argument");
-    }
+    (void)argc;
     Value arg = argv[0];
     if (IS_STRING(arg)) {
         return BOOL_VAL(AS_STRING(arg)->length == 0);
@@ -76,17 +58,16 @@ static Value isEmptyNative(VM* vm, int argc, Value* argv) {
         return BOOL_VAL(AS_LIST(arg)->len == 0);
     } else if (IS_DICT(arg)) {
         return BOOL_VAL(AS_DICT(arg)->table.size == 0);
-    } else {
-        return raiseErr(vm, "is_empty? takes a string, list, or dict argument");
     }
+
+    return raiseErr(vm, "is_empty? takes a string, list, or dict argument");
 }
 
 static Value pairNative(VM* vm, int argc, Value* argv) {
-    if (argc != 2) {
-        return raiseErr(vm, "pair takes exactly 2 arguments");
-    }
+    (void)argc;
     Value first = argv[0];
     Value second = argv[1];
+
     return OBJ_VAL(newPair(vm, first, second));
 }
 
@@ -103,9 +84,7 @@ static Value dictNative(VM* vm, int argc, Value* argv) {
 }
 
 static Value getNative(VM* vm, int argc, Value* argv) {
-    if (argc != 2) {
-        return raiseErr(vm, "get expects 2 arguments");
-    }
+    (void)argc;
     Value box = argv[0];
     Value key = argv[1];
 
@@ -135,45 +114,41 @@ static Value getNative(VM* vm, int argc, Value* argv) {
         }
         return OBJ_VAL(copyString(vm, &str->chars[ix], 1));
     }
+
     return raiseErr(vm, "get argument must be a dict, list or string");
 }
 
 static Value putNative(VM* vm, int argc, Value* argv) {
-    if (argc != 3) {
-        return raiseErr(vm, "put expects 3 arguments");
-    }
+    (void)argc;
     if (!IS_DICT(argv[0])) {
         return raiseErr(vm, "put expects dict as the first argument");
     }
     tableInsert(&AS_DICT(argv[0])->table, argv[1], argv[2]);
+
     return argv[0];
 }
 
 static Value hasNative(VM* vm, int argc, Value* argv) {
-    if (argc != 2) {
-        return raiseErr(vm, "has? expects 2 arguments");
-    }
+    (void)argc;
     if (!IS_DICT(argv[0])) {
         return raiseErr(vm, "has? expects a dict as the first argument");
     }
+
     return BOOL_VAL(tableGet(&AS_DICT(argv[0])->table, argv[1]) != NULL);
 }
 
 static Value delNative(VM* vm, int argc, Value* argv) {
-    if (argc != 2) {
-        return raiseErr(vm, "del expects 2 arguments");
-    }
+    (void)argc;
     if (!IS_DICT(argv[0])) {
         return raiseErr(vm, "del expects a dict as the first argument");
     }
     tableRemove(&AS_DICT(argv[0])->table, argv[1]);
+
     return NIL_VAL;
 }
 
 static Value keysNative(VM* vm, int argc, Value* argv) {
-    if (argc != 1) {
-        return raiseErr(vm, "keys expects 1 argument");
-    }
+    (void)argc;
     if (!IS_DICT(argv[0])) {
         return raiseErr(vm, "keys expects a dict as the first argument");
     }
@@ -191,13 +166,12 @@ static Value keysNative(VM* vm, int argc, Value* argv) {
     }
     Value result = OBJ_VAL(newList(vm, dict->table.size, head));
     pop(vm);
+
     return result;
 }
 
 static Value valuesNative(VM* vm, int argc, Value* argv) {
-    if (argc != 1) {
-        return raiseErr(vm, "values expects 1 argument");
-    }
+    (void)argc;
     if (!IS_DICT(argv[0])) {
         return raiseErr(vm, "values expects a dict as the first argument");
     }
@@ -215,11 +189,12 @@ static Value valuesNative(VM* vm, int argc, Value* argv) {
     }
     Value result = OBJ_VAL(newList(vm, dict->table.size, head));
     pop(vm);
+
     return result;
 }
 
 static const NativeReg core_functions[] = {
-    {"err!", 1, errNative},          {"is_err?", 1, isErrNative},
+    {"err", 1, errNative},           {"is_err?", 1, isErrNative},
     {"raise!", 1, raiseNative},      {"len", 1, lenNative},
     {"is_empty?", 1, isEmptyNative}, {"pair", 2, pairNative},
     {"dict", -1, dictNative},        {"get", 2, getNative},

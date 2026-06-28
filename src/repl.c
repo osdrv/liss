@@ -21,14 +21,12 @@ void runRepl(VMOptions options) {
             break;
         }
         InterpretResult result = interpret(vm, line, NULL);
-        if (result == INTERPRET_RUNTIME_ERROR) {
-            // Print the last popped value if available
-            if (vm->last_popped_value.type != VAL_NIL) {
-                ERROR_LOG("Runtime error");
-                char* str = sprintValue(vm->last_popped_value);
-                DEBUG_LOG("%s", str);
-                free(str);
-            }
+        if (result == INTERPRET_COMPILE_ERROR) {
+            ERROR_LOG("%s", vm->error_msg);
+        } else if (result == INTERPRET_RUNTIME_ERROR) {
+            char* str = sprintValue(vm->raise_value);
+            ERROR_LOG("%s", str);
+            free(str);
         } else if (result == INTERPRET_OK) {
             // Print the last popped value
             char* str = sprintValue(vm->last_popped_value);

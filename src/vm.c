@@ -97,7 +97,7 @@ ObjModule* loadModule(VM* vm, ObjString* module_name) {
     // Step 3: check files
     char* source = readLissFile(module_name->chars);
     if (source == NULL) {
-        ERROR_LOG("Could not load module '%s'", module_name->chars);
+        RUNTIME_ERR(vm, "Could not load module '%s'", module_name->chars);
         return NULL;
     }
     ObjModule* module = newModule(vm, module_name->chars);
@@ -108,7 +108,7 @@ ObjModule* loadModule(VM* vm, ObjString* module_name) {
 
     InterpretResult result = interpret(vm, source, module);
     if (result != INTERPRET_OK) {
-        ERROR_LOG("Failed to load module '%s'", module_name->chars);
+        RUNTIME_ERR(vm, "Failed to load module '%s'", module_name->chars);
         free(source);
         return NULL;
     }
@@ -143,7 +143,7 @@ InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
 
     push(vm, OBJ_VAL(closure));
     if (vm->frame_cnt >= vm->options.frames_max) {
-        ERROR_LOG("Call stack overflow");
+        RUNTIME_ERR(vm, "Call stack overflow");
         return INTERPRET_RUNTIME_ERROR;
     }
 
@@ -174,7 +174,7 @@ void push(VM* vm, Value value) {
 
 Value pop(VM* vm) {
     if (vm->stack_top == vm->stack) {
-        ERROR_LOG("Stack underflow");
+        RUNTIME_ERR(vm, "Stack underflow");
         vm->last_result = INTERPRET_RUNTIME_ERROR;
         return NIL_VAL;
     }
@@ -193,7 +193,7 @@ static bool concatStrings(VM* vm, Value a, Value b) {
     int length = left->length + right->length;
     char* chars = (char*)malloc(length + 1);
     if (chars == NULL) {
-        ERROR_LOG("Memory allocation failed for string concatenation");
+        RUNTIME_ERR(vm, "Memory allocation failed for string concatenation");
         return false;
     }
     memcpy(chars, left->chars, left->length);
@@ -249,7 +249,8 @@ static void closeUpvalue(VM* vm, Value* last) {
 
 static bool duplicateString(VM* vm, Value a, Value b) {
     if (!IS_STRING(a) || !IS_INT(b)) {
-        ERROR_LOG("Type error: Expected string and number for duplication");
+        RUNTIME_ERR(vm,
+                    "Type error: Expected string and number for duplication");
         return false;
     }
 
@@ -257,9 +258,9 @@ static bool duplicateString(VM* vm, Value a, Value b) {
     int64_t count = AS_INT(b);
 
     if (count < 0) {
-        ERROR_LOG(
-            "Value error: Duplication count must be a non-negative "
-            "integer");
+        RUNTIME_ERR(
+            vm,
+            "Value error: Duplication count must be a non-negative integer");
         return false;
     } else if (count == 0) {
         ObjString* res = copyString(vm, "", 0);
@@ -275,7 +276,7 @@ static bool duplicateString(VM* vm, Value a, Value b) {
     int len = str->length * count;
     char* chars = (char*)malloc(len + 1);
     if (chars == NULL) {
-        ERROR_LOG("Memory allocation failed for string duplication");
+        RUNTIME_ERR(vm, "Memory allocation failed for string duplication");
         return false;
     }
 
@@ -345,14 +346,14 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
     size_t loaded_code_size = sizeof(void*) * chunk->count;
     void** loaded_code = (void**)malloc(loaded_code_size);
     if (!loaded_code) {
-        ERROR_LOG("Memory error loading threaded code");
+        RUNTIME_ERR(vm, "Memory error loading threaded code");
         result = -1;
         goto LOADER_CLEANUP;
     }
 
     int* byte_to_slot_map = malloc(sizeof(int) * (chunk->count + 1));
     if (byte_to_slot_map == NULL) {
-        ERROR_LOG("Memory error allocating byte-to-slot map");
+        RUNTIME_ERR(vm, "Memory error allocating byte-to-slot map");
         result = -1;
         goto LOADER_CLEANUP;
     }
@@ -404,7 +405,8 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
                         NULL, jumps_to_patch, sizeof(int) * old_capacity,
                         sizeof(int) * jumps_capacity);
                     if (jumps_to_patch == NULL) {
-                        ERROR_LOG("Memory error allocating jumps to patch");
+                        RUNTIME_ERR(vm,
+                                    "Memory error allocating jumps to patch");
                         result = -1;
                         goto LOADER_CLEANUP;
                     }
@@ -446,9 +448,9 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
                     symbol = tableGet(&vm->core_module->symbols, symbol_name);
                 }
                 if (symbol == NULL) {
-                    ERROR_LOG("Undefined variable '%.*s'",
-                              AS_STRING(symbol_name)->length,
-                              AS_STRING(symbol_name)->chars);
+                    RUNTIME_ERR(vm, "Undefined variable '%.*s'",
+                                AS_STRING(symbol_name)->length,
+                                AS_STRING(symbol_name)->chars);
                     result = -1;
                     goto LOADER_CLEANUP;
                 }
@@ -516,16 +518,17 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
                 Value var_name = chunk->constants.values[var_ix];
 
                 if (AS_STRING(var_name)->chars[0] == '_') {
-                    ERROR_LOG(
-                        "Visibility error: symbol `%s` is private to module "
-                        "`%s`.",
-                        AS_STRING(var_name)->chars, AS_STRING(mod_name)->chars);
+                    RUNTIME_ERR(vm,
+                                "Visibility error: symbol `%s` is private to "
+                                "module `%s`",
+                                AS_STRING(var_name)->chars,
+                                AS_STRING(mod_name)->chars);
                 }
 
                 Value* mod_val = tableGet(&vm->modules, mod_name);
                 if (mod_val == NULL) {
-                    ERROR_LOG("Module '%s' not found.",
-                              AS_STRING(mod_name)->chars);
+                    RUNTIME_ERR(vm, "Module '%s' not found.",
+                                AS_STRING(mod_name)->chars);
                     result = -1;
                     goto LOADER_CLEANUP;
                 }
@@ -533,9 +536,9 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
 
                 Value* global_ptr = tableGet(&module->symbols, var_name);
                 if (global_ptr == NULL) {
-                    ERROR_LOG("Global variable '%s' not found in module '%s'.",
-                              AS_STRING(var_name)->chars,
-                              AS_STRING(mod_name)->chars);
+                    RUNTIME_ERR(
+                        vm, "Global variable '%s' not found in module '%s'",
+                        AS_STRING(var_name)->chars, AS_STRING(mod_name)->chars);
                     result = -1;
                     goto LOADER_CLEANUP;
                 }
@@ -549,7 +552,7 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
     loaded_code = reallocate(NULL, loaded_code, sizeof(void*) * chunk->count,
                              sizeof(void*) * loaded_idx);
     if (loaded_code == NULL) {
-        ERROR_LOG("Memory error resizing loaded code");
+        RUNTIME_ERR(vm, "Memory error resizing loaded code");
         result = -1;
         goto LOADER_CLEANUP;
     }
@@ -560,7 +563,7 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
         int target_byte_addr = (int)(uintptr_t)loaded_code[operand_slot_ix];
         int target_slot_ix = byte_to_slot_map[target_byte_addr];
         if (target_slot_ix == -1) {
-            ERROR_LOG("Invalid jump target during patching");
+            RUNTIME_ERR(vm, "Invalid jump target during patching");
             result = -1;
             goto LOADER_CLEANUP;
         }
@@ -598,7 +601,8 @@ static InterpretResult run(VM* vm) {
         } else if (IS_REAL(a) && IS_INT(b)) {                                 \
             push(vm, REAL_VAL(AS_REAL(a) op(double) AS_INT(b)));              \
         } else {                                                              \
-            ERROR_LOG(                                                        \
+            RUNTIME_ERR(                                                      \
+                vm,                                                           \
                 "Type error: operands must be numbers for binary operation"); \
             result = INTERPRET_RUNTIME_ERROR;                                 \
             goto RETURN;                                                      \
@@ -619,7 +623,7 @@ static InterpretResult run(VM* vm) {
         Value b = pop(vm);                                       \
         Value a = pop(vm);                                       \
         if (a.type != b.type) {                                  \
-            ERROR_LOG("Comparison type mismatch error");         \
+            RUNTIME_ERR(vm, "Comparison type mismatch error");   \
             result = INTERPRET_RUNTIME_ERROR;                    \
             goto RETURN;                                         \
         }                                                        \
@@ -632,7 +636,7 @@ static InterpretResult run(VM* vm) {
         } else if (IS_REAL(a) && IS_INT(b)) {                    \
             push(vm, BOOL_VAL(AS_REAL(a) op(double) AS_INT(b))); \
         } else {                                                 \
-            ERROR_LOG("Comparison type mismatch error");         \
+            RUNTIME_ERR(vm, "Comparison type mismatch error");   \
             result = INTERPRET_RUNTIME_ERROR;                    \
             goto RETURN;                                         \
         }                                                        \
@@ -780,9 +784,9 @@ OP_ADD_IMPL: {
             goto RETURN;
         }
     } else {
-        ERROR_LOG(
-            "Runtime error: operands must be two numbers or two strings "
-            "for addition");
+        RUNTIME_ERR(vm,
+                    "Runtime error: operands must be two numbers or two "
+                    "strings for addition");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -806,9 +810,9 @@ OP_MULTIPLY_IMPL: {
             goto RETURN;
         }
     } else {
-        ERROR_LOG(
-            "Runtime error: operands must be two numbers or a string and "
-            "a number for multiplication");
+        RUNTIME_ERR(vm,
+                    "Runtime error: operands must be two numbers or a string "
+                    "and a number for multiplication");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -823,7 +827,7 @@ OP_DIVIDE_IMPL: {
 OP_NEGATE_IMPL: {
     Value value = pop(vm);
     if (!IS_NUMERIC(value)) {
-        ERROR_LOG("Runtime error: negation operand must be a number");
+        RUNTIME_ERR(vm, "Runtime error: negation operand must be a number");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -852,7 +856,7 @@ OP_BXOR_IMPL: {
 
 OP_BNOT_IMPL: {
     if (!IS_INT(peek(vm, 0))) {
-        ERROR_LOG("Runtime error: bitwise operand must be an integer");
+        RUNTIME_ERR(vm, "Runtime error: bitwise operand must be an integer");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -933,9 +937,10 @@ OP_CALL_IMPL: {
     if (IS_OBJ(callee) && OBJ_TYPE(callee) == OBJ_NATIVE) {
         ObjNative* native = AS_NATIVE(callee);
         if (native->arity != -1 && arg_count != native->arity) {
-            ERROR_LOG("Native function '%s': expected %d arguments but got %d",
-                      native->name ? native->name->chars : "<unnamed>",
-                      native->arity, arg_count);
+            RUNTIME_ERR(
+                vm, "Native function '%s': expected %d arguments but got %d",
+                native->name ? native->name->chars : "<unnamed>", native->arity,
+                arg_count);
             result = INTERPRET_RUNTIME_ERROR;
             goto RESCUE;
         }
@@ -960,15 +965,16 @@ OP_CALL_IMPL: {
 
     ObjClosure* closure = AS_CLOSURE(callee);
     if (arg_count != closure->function->arity) {
-        ERROR_LOG(
-            "Function %s: runtime error: expected %d arguments but got %d",
-            closure->function->name, closure->function->arity, arg_count);
+        RUNTIME_ERR(
+            vm, "Function %s: runtime error: expected %d arguments but got %d",
+            closure->function->name->chars, closure->function->arity,
+            arg_count);
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
 
     if (vm->frame_cnt >= vm->options.frames_max) {
-        ERROR_LOG("Runtime error: stack overflow (too many call frames)");
+        RUNTIME_ERR(vm, "Runtime error: stack overflow (too many call frames)");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -1041,9 +1047,10 @@ OP_TAIL_CALL_IMPL: {
     if (IS_OBJ(callee) && OBJ_TYPE(callee) == OBJ_NATIVE) {
         ObjNative* native = AS_NATIVE(callee);
         if (native->arity != -1 && arg_cnt != native->arity) {
-            ERROR_LOG("Native function '%s': expected %d arguments but got %d",
-                      native->name ? native->name->chars : "<unnamed>",
-                      native->arity, arg_cnt);
+            RUNTIME_ERR(
+                vm, "Native function '%s': expected %d arguments but got %d",
+                native->name ? native->name->chars : "<unnamed>", native->arity,
+                arg_cnt);
             result = INTERPRET_RUNTIME_ERROR;
             goto RETURN;
         }
@@ -1054,16 +1061,16 @@ OP_TAIL_CALL_IMPL: {
     }
 
     if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_CLOSURE) {
-        ERROR_LOG("Runtime error: can only call functions");
+        RUNTIME_ERR(vm, "Runtime error: can only call functions");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
 
     ObjClosure* closure = AS_CLOSURE(callee);
     if (arg_cnt != closure->function->arity) {
-        ERROR_LOG(
-            "Function %s: runtime error: expected %d arguments but got %d",
-            closure->function->name, closure->function->arity, arg_cnt);
+        RUNTIME_ERR(
+            vm, "Function %s: runtime error: expected %d arguments but got %d",
+            closure->function->name->chars, closure->function->arity, arg_cnt);
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -1090,7 +1097,7 @@ OP_TAIL_CALL_IMPL: {
 OP_TRY_START_IMPL: {
     uint16_t offset = (uint16_t)READ_ARG();
     if (vm->try_cnt > TRY_MAX) {
-        ERROR_LOG("Runtime error: too many nested try blocks");
+        RUNTIME_ERR(vm, "Runtime error: too many nested try blocks");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -1105,7 +1112,8 @@ OP_TRY_START_IMPL: {
 
 OP_TRY_END_IMPL: {
     if (vm->try_cnt == 0) {
-        ERROR_LOG("Runtime error: OP_TRY_END without matching OP_TRY_START");
+        RUNTIME_ERR(vm,
+                    "Runtime error: OP_TRY_END without matching OP_TRY_START");
         result = INTERPRET_RUNTIME_ERROR;
         goto RETURN;
     }
@@ -1176,7 +1184,7 @@ RETURN:
 // Fallback for compilers that don't support computed gotos (e.g., MSVC)
 #warning "Computed gotos not supported, falling back to switch-based dispatch."
     // ... switch-based implementation would go here ...
-    ERROR_LOG("Direct threading not supported by this compiler");
+    RUNTIME_ERR(vm, "Direct threading not supported by this compiler");
     return INTERPRET_RUNTIME_ERROR;
 #endif
 }
