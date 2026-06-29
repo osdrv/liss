@@ -326,4 +326,4 @@ void registerMathNatives(VM* vm, ObjModule* module) {
     defineConst(vm, module, "E", REAL_VAL(M_E));
     defineConst(vm, module, "TAU", REAL_VAL(2.0 * M_PI));
     defineConst(vm, module, "SQRT2", REAL_VAL(1.41421356237309504880));
-};
+}

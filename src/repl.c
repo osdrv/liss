@@ -30,7 +30,7 @@ void runRepl(VMOptions options) {
         } else if (result == INTERPRET_OK) {
             // Print the last popped value
             char* str = sprintValue(vm->last_popped_value);
-            PRINTF("%s", str);
+            PRINTF("%s\n", str);
             free(str);
         }
     }

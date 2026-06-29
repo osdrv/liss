@@ -73,6 +73,15 @@ void destroyVM(VM* vm) {
                sizeof(VM) + sizeof(Value) * vm->options.stack_capacity, 0);
 }
 
+void vmRecover(VM* vm) {
+    vm->raise_value = NIL_VAL;
+    vm->last_result = INTERPRET_OK;
+    vm->error_msg[0] = '\0';
+    vm->try_cnt = 0;
+    vm->open_upvalues = NULL;
+    vm->last_popped_value = NIL_VAL;
+}
+
 // --- Public API ---
 
 ObjModule* loadModule(VM* vm, ObjString* module_name) {
@@ -117,7 +126,7 @@ ObjModule* loadModule(VM* vm, ObjString* module_name) {
 }
 
 InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
-    vm->last_popped_value = NIL_VAL;
+    vmRecover(vm);
 
     if (module == NULL) {
         module = newModule(vm, "main");
