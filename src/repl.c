@@ -1,6 +1,5 @@
 #include "repl.h"
 
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,10 +10,11 @@
 #include "value.h"
 #include "vm.h"
 
+#define REPL_LINE_MAX 4096
 #define HISTORY_MAX 100
 
 typedef struct {
-    char buf[LINE_MAX];
+    char buf[REPL_LINE_MAX];
     int len;
     int cur;
 } Line;
@@ -76,7 +76,7 @@ static void historyAdd(History* hist, const char* line) {
 static char* lineRead(History* hist) {
     Line l = {.len = 0, .cur = 0};
 
-    char saved[LINE_MAX] = {0};
+    char saved[REPL_LINE_MAX] = {0};
     bool navigating = false;
 
     write(STDOUT_FILENO, PROMPT, PROMPT_LEN);
@@ -141,7 +141,7 @@ static char* lineRead(History* hist) {
         } else if (c == '\x03') {
             write(STDOUT_FILENO, "\n", 1);
             return NULL;  // EOF/exit
-        } else if (c >= 32 && l.len < LINE_MAX - 1) {
+        } else if (c >= 32 && l.len < REPL_LINE_MAX - 1) {
             memmove(&l.buf[l.cur + 1], &l.buf[l.cur], l.len - l.cur);
             l.buf[l.cur] = c;
             l.cur++;
