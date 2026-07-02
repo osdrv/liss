@@ -73,6 +73,8 @@ void destroyVM(VM* vm) {
                sizeof(VM) + sizeof(Value) * vm->options.stack_capacity, 0);
 }
 
+// --- Public API ---
+
 void vmRecover(VM* vm) {
     vm->raise_value = NIL_VAL;
     vm->last_result = INTERPRET_OK;
@@ -81,8 +83,6 @@ void vmRecover(VM* vm) {
     vm->open_upvalues = NULL;
     vm->last_popped_value = NIL_VAL;
 }
-
-// --- Public API ---
 
 ObjModule* loadModule(VM* vm, ObjString* module_name) {
     // Step 1: check cache

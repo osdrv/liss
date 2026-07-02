@@ -89,6 +89,8 @@ VM* newVM(VMOptions options);
 // Destroys the VM and frees all associated memory.
 void destroyVM(VM* vm);
 
+void vmRecover(VM* vm);
+
 ObjModule* loadModule(VM* vm, ObjString* module_name);
 
 // The main entry point for running source code.

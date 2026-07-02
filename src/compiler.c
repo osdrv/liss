@@ -601,11 +601,11 @@ static void parseImport(Compiler* compiler) {
         }
         consume(compiler, TOKEN_RBRAKET, "expect `]` after the symbol list");
     }
-    // Emit dangling NULL because each expression should return something
+    // Emit True to indicate that module import was successful.
     // TODO: if I ever want to make modules first-level primitives (e.g. for
     // reflect) This would be the place to change: I would need to add a public
     // API for modules and return it as an object.
-    emitByte(compiler, OP_NULL);
+    emitByte(compiler, OP_TRUE);
 }
 
 static void parseGrouping(Compiler* compiler, bool is_tail) {
