@@ -30,7 +30,20 @@ static const int PROMPT_LEN = 2;
 
 static const char* LISS_REPL_HELLO = "LISS REPL. Type Ctrl+D (EOF) to exit.\n";
 
+static const char* LISS_BANNER = "\x1b[38;5;93m"
+    "      _____________________________________\n"
+    " ___ |                                     | ___\n"
+    " \\   |         \x1b[1;37mrecurre et invenies\x1b[0m\x1b[38;5;93m         |   /\n"
+    "  >  |_____________________________________|  <\n"
+    " /___/                                     \\___\\\n\x1b[0m";
+
 static struct termios orig_termios;
+
+static void printBanner() {
+    write(STDOUT_FILENO, LISS_BANNER, strlen(LISS_BANNER));
+
+    write(STDOUT_FILENO, LISS_REPL_HELLO, strlen(LISS_REPL_HELLO));
+}
 
 static void disableRawMode(void) {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
@@ -156,7 +169,7 @@ void runRepl(VMOptions options) {
 
     enableRawMode();
 
-    write(STDOUT_FILENO, LISS_REPL_HELLO, strlen(LISS_REPL_HELLO));
+    printBanner();
 
     History* hist = calloc(1, sizeof(History));
 
