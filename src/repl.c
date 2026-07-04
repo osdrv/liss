@@ -28,12 +28,14 @@ typedef struct {
 static const char* PROMPT = "> ";
 static const int PROMPT_LEN = 2;
 
-static const char* LISS_REPL_HELLO = "LISS REPL. Type Ctrl+D (EOF) to exit.\n";
+static const char* LISS_REPL_HELLO = "LISS REPL. Type Ctrl+C to exit.\n";
 
-static const char* LISS_BANNER = "\x1b[38;5;93m"
+static const char* LISS_BANNER =
+    "\x1b[38;5;93m"
     "      _____________________________________\n"
     " ___ |                                     | ___\n"
-    " \\   |         \x1b[1;37mrecurre et invenies\x1b[0m\x1b[38;5;93m         |   /\n"
+    " \\   |         \x1b[1;37mrecurre et invenies\x1b[0m\x1b[38;5;93m         "
+    "|   /\n"
     "  >  |_____________________________________|  <\n"
     " /___/                                     \\___\\\n\x1b[0m";
 

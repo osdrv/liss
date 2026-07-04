@@ -6,6 +6,7 @@
 #include "math.h"
 #include "object.h"
 #include "re.h"
+#include "str.h"
 #include "vm.h"
 
 typedef void (*NativeModuleLoader)(VM* vm, ObjModule* module);
@@ -16,11 +17,9 @@ typedef struct {
 } NativeModuleEntry;
 
 static const NativeModuleEntry native_module_registry[] = {
-    {"core", registerCoreNatives},
-    {"math", registerMathNatives},
-    {"io", registerIONatives},
-    {"re", registerRENatives},
-    {NULL, NULL},
+    {"core", registerCoreNatives}, {"math", registerMathNatives},
+    {"io", registerIONatives},     {"re", registerRENatives},
+    {"str", registerStrNatives},   {NULL, NULL},
 };
 
 #endif
