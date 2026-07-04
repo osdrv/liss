@@ -343,12 +343,12 @@ static Value toRealNative(VM* vm, int argc, Value* argv) {
         return NIL_VAL;
     }
     ObjString* s = AS_STRING(argv[0]);
-    if (s->length == 0) return OBJ_VAL(newError(vm, "to_int: empty string"));
+    if (s->length == 0) return OBJ_VAL(newError(vm, "to_real: empty string"));
 
     char* end;
     double val = strtod(s->chars, &end);
     if (end != s->chars + s->length)
-        return OBJ_VAL(newError(vm, "to_int: invalid integer"));
+        return OBJ_VAL(newError(vm, "to_real: invalid real"));
     return REAL_VAL((double)val);
 }
 
