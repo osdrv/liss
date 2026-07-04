@@ -118,7 +118,11 @@ char* infixToPostfix(const char* infix) {
                 while (top >= 0 && stack[top] != '(') {
                     postfix[j++] = stack[top--];
                 }
-                if (top >= 0) top--;  // pop '('
+                if (top < 0) {  // unmatched ')'
+                    free(postfix);
+                    return NULL;
+                }
+                top--;  // pop '('
                 if (group_stack_top >= 0) {
                     int g = group_stack[group_stack_top--];
                     if (g > 0) {
@@ -143,6 +147,10 @@ char* infixToPostfix(const char* infix) {
     }
 
     while (top >= 0) {
+        if (stack[top] == '(') {  // unmatched '('
+            free(postfix);
+            return NULL;
+        }
         postfix[j++] = stack[top--];
     }
     postfix[j] = '\0';

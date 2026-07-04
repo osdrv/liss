@@ -5,7 +5,8 @@
 #include "vm.h"
 
 static Value reNative(VM* vm, int argc, Value* argv) {
-    if (argc != 1 || !IS_STRING(argv[0])) {
+    (void)argc;
+    if (!IS_STRING(argv[0])) {
         return raiseErr(vm, "re:re expects a pattern string");
     }
     ObjString* pattern = AS_STRING(argv[0]);
@@ -22,7 +23,8 @@ static Value reNative(VM* vm, int argc, Value* argv) {
 }
 
 static Value matchQuestNative(VM* vm, int argc, Value* argv) {
-    if (argc != 2 || !IS_RE(argv[0]) || !IS_STRING(argv[1])) {
+    (void)argc;
+    if (!IS_RE(argv[0]) || !IS_STRING(argv[1])) {
         return raiseErr(vm, "re:match? expects a regex object and a string");
     }
 
@@ -34,7 +36,8 @@ static Value matchQuestNative(VM* vm, int argc, Value* argv) {
 }
 
 static Value matchNative(VM* vm, int argc, Value* argv) {
-    if (argc != 2 || !IS_RE(argv[0]) || !IS_STRING(argv[1])) {
+    (void)argc;
+    if (!IS_RE(argv[0]) || !IS_STRING(argv[1])) {
         return raiseErr(vm, "re:match expects a regex object and a string");
     }
 

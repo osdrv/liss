@@ -117,6 +117,14 @@ static char *test_re_match(void) {
              "(import re [\"re\" \"match\"]) (match (re \"(a)b(c)\") \"abc\")",
          .expected_str = "[\"abc\" \"a\" \"c\"]",
          .expected_type = EXPECT_LIST},
+        {.name = "unmatched open paren raises",
+         .src = "(import re [\"re\"]) (try (re \"(abc\"))",
+         .expected_str = "Invalid regex pattern",
+         .expected_type = EXPECT_ERROR},
+        {.name = "unmatched close paren raises",
+         .src = "(import re [\"re\"]) (try (re \"abc)\"))",
+         .expected_str = "Invalid regex pattern",
+         .expected_type = EXPECT_ERROR},
     };
     return run_tests(tests, sizeof(tests) / sizeof(tests[0]));
 }
