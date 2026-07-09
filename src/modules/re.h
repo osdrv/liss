@@ -1,5 +1,5 @@
-#ifndef liss_modules_re
-#define liss_modules_re
+#ifndef liss_modules_re_h
+#define liss_modules_re_h
 
 #include "object.h"
 

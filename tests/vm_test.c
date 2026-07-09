@@ -668,6 +668,56 @@ static VMTestCase interpret_tests[] = {
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_NIL},
     },
+    {
+        .name = "switch with literal match",
+        .src = "(switch 2"
+               "[1 \"one\"]"
+               "[2 \"two\"]"
+               "[* \"many\"])",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_STRING, .as.string = "two"},
+    },
+    {
+        .name = "switch with literal wildcard match",
+        .src = "(switch 3"
+               "[1 \"one\"]"
+               "[2 \"two\"]"
+               "[* \"many\"])",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_STRING, .as.string = "many"},
+    },
+    {
+        .name = "switch with deconstructing err match",
+        .src = "(switch (err \"oops\")"
+               "[(err msg) msg]"
+               "[* \"ok\"])",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_STRING, .as.string = "oops"},
+    },
+    {
+        .name = "switch with deconstructing err wildcard match",
+        .src = "(switch null"
+               "[(err msg) msg]"
+               "[* \"ok\"])",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_STRING, .as.string = "ok"},
+    },
+    {
+        .name = "switch with deconstructing pair match",
+        .src = "(switch (1 . 2)"
+               "[(pair a b) (+ a b)]"
+               "[* 0])",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 3},
+    },
+    {
+        .name = "switch with deconstructing pair wildcard match",
+        .src = "(switch null"
+               "[(pair a b) (+ a b)]"
+               "[* 0])",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 0},
+    },
 };
 
 static char* test_vm_interpret(void) {

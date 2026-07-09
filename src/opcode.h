@@ -47,6 +47,13 @@ typedef enum {
     OP_LIST,
     OP_PAIR,
     OP_GET_MODULE_GLOBAL,
+
+    OP_DUP,
+    OP_IS_ERROR,
+    OP_ERROR_MSG,
+    OP_IS_PAIR,
+    OP_UNPACK_PAIR,
+    OP_SLIDE,
 } OpCode;
 
 #endif

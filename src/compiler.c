@@ -608,6 +608,128 @@ static void parseImport(Compiler* compiler) {
     emitByte(compiler, OP_TRUE);
 }
 
+static void parseSwitch(Compiler* compiler, bool is_tail) {
+    parseExpression(compiler, false);
+    if (compiler->parser->hadError) return;
+
+    int N = compiler->local_count;
+    int end_jumps[64];
+    int end_jump_cnt = 0;
+    bool has_default = false;
+
+    while (!has_default && compiler->parser->current.type == TOKEN_LBRAKET) {
+        consume(compiler, TOKEN_LBRAKET, "expect '[' in switch arm");
+        if (compiler->parser->hadError) return;
+
+        TokenType ptype = compiler->parser->current.type;
+
+        if (ptype == TOKEN_STAR_OP) {
+            advance(compiler);
+            emitByte(compiler, OP_POP);
+            parseExpression(compiler, is_tail);
+            if (compiler->parser->hadError) return;
+            end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP);
+            has_default = true;
+        } else if (ptype == TOKEN_IDENTIFIER) {
+            Token sym = compiler->parser->current;
+            advance(compiler);
+            addLocal(compiler, sym);
+            parseExpression(compiler, is_tail);
+            if (compiler->parser->hadError) return;
+            emitBytes(compiler, OP_SLIDE, 1);
+            compiler->local_count = N;
+            end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP);
+            has_default = true;
+        } else if (ptype == TOKEN_LPAREN) {
+            advance(compiler);
+            Token head =
+                consume(compiler, TOKEN_IDENTIFIER, "expect pattern head");
+            if (compiler->parser->hadError) return;
+
+            bool is_err = head.length == 3 && memcmp(head.start, "err", 3) == 0;
+            bool is_pair =
+                head.length == 4 && memcmp(head.start, "pair", 4) == 0;
+
+            if (is_err) {
+                Token msg_sym = consume(compiler, TOKEN_IDENTIFIER,
+                                        "expect binding for error message");
+                if (compiler->parser->hadError) return;
+                consume(compiler, TOKEN_RPAREN,
+                        "expect ')' to close error pattern");
+                if (compiler->parser->hadError) return;
+
+                emitByte(compiler, OP_IS_ERROR);
+                int no_match = emitJump(compiler, OP_JUMP_IF_FALSE);
+                emitByte(compiler, OP_POP);
+                emitByte(compiler, OP_ERROR_MSG);
+                addLocal(compiler, msg_sym);
+                parseExpression(compiler, is_tail);
+                if (compiler->parser->hadError) return;
+                emitBytes(compiler, OP_SLIDE, 1);
+                compiler->local_count = N;
+                end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP);
+                patchJump(compiler, no_match);
+                emitByte(compiler, OP_POP);
+            } else if (is_pair) {
+                Token fsym =
+                    consume(compiler, TOKEN_IDENTIFIER, "expect first binding");
+                if (compiler->parser->hadError) return;
+                Token ssym = consume(compiler, TOKEN_IDENTIFIER,
+                                     "expect second binding");
+                if (compiler->parser->hadError) return;
+                consume(compiler, TOKEN_RPAREN,
+                        "expect ')' to close pair pattern");
+                if (compiler->parser->hadError) return;
+
+                emitByte(compiler, OP_IS_PAIR);
+                int no_match = emitJump(compiler, OP_JUMP_IF_FALSE);
+                emitByte(compiler, OP_POP);
+                emitByte(compiler, OP_UNPACK_PAIR);
+                addLocal(compiler, fsym);
+                addLocal(compiler, ssym);
+                parseExpression(compiler, is_tail);
+                if (compiler->parser->hadError) return;
+                emitBytes(compiler, OP_SLIDE, 2);
+                compiler->local_count -= 2;
+                end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP);
+                patchJump(compiler, no_match);
+                emitByte(compiler, OP_POP);
+            } else {
+                COMPILE_ERR(
+                    compiler,
+                    "Unknown pattern head '%.*s': expected 'err' or 'pair'",
+                    head.length, head.start);
+                return;
+            }
+        } else {
+            emitByte(compiler, OP_DUP);
+            parseExpression(compiler, false);
+            if (compiler->parser->hadError) return;
+            emitByte(compiler, OP_EQUAL);
+            int no_match = emitJump(compiler, OP_JUMP_IF_FALSE);
+            emitByte(compiler, OP_POP);
+            emitByte(compiler, OP_POP);
+            parseExpression(compiler, is_tail);
+            if (compiler->parser->hadError) return;
+            end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP);
+            patchJump(compiler, no_match);
+            emitByte(compiler, OP_POP);
+        }
+
+        consume(compiler, TOKEN_RBRAKET, "expect ']' to close switch arm");
+        if (compiler->parser->hadError) return;
+    }
+
+    if (!has_default) {
+        emitByte(compiler, OP_POP);
+        emitByte(compiler, OP_NULL);
+    }
+
+    for (int i = 0; i < end_jump_cnt; i++) {
+        patchJump(compiler, end_jumps[i]);
+    }
+}
+
 static void parseGrouping(Compiler* compiler, bool is_tail) {
     switch (compiler->parser->current.type) {
         case TOKEN_AND_KW:
@@ -684,6 +806,10 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
         case TOKEN_TRY_KW:
             advance(compiler);
             parseTry(compiler);
+            break;
+        case TOKEN_SWITCH_KW:
+            advance(compiler);
+            parseSwitch(compiler, is_tail);
             break;
         case TOKEN_IMPORT_KW:
             advance(compiler);

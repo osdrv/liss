@@ -506,10 +506,16 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)arg_cnt;
                 break;
             }
-            case OP_LIST:
+            case OP_LIST: {
                 uint8_t len = *bytecode++;
                 loaded_code[loaded_idx++] = (void*)(uintptr_t)len;
                 break;
+            }
+            case OP_SLIDE: {
+                uint8_t n = *bytecode++;
+                loaded_code[loaded_idx++] = (void*)(uintptr_t)n;
+                break;
+            }
             case OP_GET_MODULE_GLOBAL: {
                 // 1. Get module_name and symbol_name from constants.
                 // 2. Find the module: tableGet(&vm->modules, module_name).
@@ -695,6 +701,13 @@ static InterpretResult run(VM* vm) {
         &&OP_LIST_IMPL,
         &&OP_PAIR_IMPL,
         &&OP_GET_MODULE_GLOBAL_IMPL,
+
+        &&OP_DUP_IMPL,
+        &&OP_IS_ERROR_IMPL,
+        &&OP_ERROR_MSG_IMPL,
+        &&OP_IS_PAIR_IMPL,
+        &&OP_UNPACK_PAIR_IMPL,
+        &&OP_SLIDE_IMPL,
     };
 
     int sentinel_frame_cnt = vm->frame_cnt - 1;
@@ -1162,6 +1175,43 @@ OP_PAIR_IMPL: {
 OP_GET_MODULE_GLOBAL_IMPL: {
     Value* val_ptr = (Value*)*frame->ip++;
     push(vm, *val_ptr);
+    DISPATCH();
+}
+
+OP_DUP_IMPL: {
+    push(vm, peek(vm, 0));
+    DISPATCH();
+}
+
+OP_IS_ERROR_IMPL: {
+    push(vm, BOOL_VAL(IS_ERROR(peek(vm, 0))));
+    DISPATCH();
+}
+
+OP_ERROR_MSG_IMPL: {
+    Value v = pop(vm);
+    push(vm, OBJ_VAL(AS_ERROR(v)->message));
+    DISPATCH();
+}
+
+OP_IS_PAIR_IMPL: {
+    push(vm, BOOL_VAL(IS_PAIR(peek(vm, 0))));
+    DISPATCH();
+}
+
+OP_UNPACK_PAIR_IMPL: {
+    Value v = pop(vm);
+    ObjPair* p = AS_PAIR(v);
+    push(vm, p->first);
+    push(vm, p->second);
+    DISPATCH();
+}
+
+OP_SLIDE_IMPL: {
+    uint8_t n = (uint8_t)READ_ARG();
+    Value res = pop(vm);
+    for (uint8_t i = 0; i < n; i++) pop(vm);
+    push(vm, res);
     DISPATCH();
 }
 
