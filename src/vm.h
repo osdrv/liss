@@ -56,6 +56,7 @@ typedef struct VM {
     Table strings;
     Table modules;
     ObjModule* core_module;  // The core module containing built-in functions
+    ObjModule* main_module;
                              // and constants
 
     Value last_popped_value;    // Store the last popped value

@@ -72,6 +72,7 @@ typedef enum {
     TOKEN_IMPORT_KW,
     TOKEN_AS_KW,
     TOKEN_BREAKPOINT_KW,
+    TOKEN_ARROW_KW,
 } TokenType;
 
 typedef struct {

@@ -32,6 +32,7 @@ void markRoots(VM* vm) {
     markValue(vm, vm->raise_value);
     markTable(vm, &vm->modules);
     markValue(vm, OBJ_VAL(vm->core_module));
+    markValue(vm, OBJ_VAL(vm->main_module));
     //  mark upvalues
     for (ObjUpvalue* upvalue = vm->open_upvalues; upvalue != NULL;
          upvalue = upvalue->next) {

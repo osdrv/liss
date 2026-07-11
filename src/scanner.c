@@ -244,6 +244,10 @@ Token scanToken(Scanner* scanner) {
         case '+':
             return mkToken(scanner, TOKEN_PLUS_OP);
         case '-':
+            if (peek(scanner) == '>') {
+                advance(scanner);
+                return mkToken(scanner, TOKEN_ARROW_KW);
+            }
             if (isDigit(scanner)) return number(scanner);
             return mkToken(scanner, TOKEN_MINUS_OP);
         case '*':

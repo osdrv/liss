@@ -120,6 +120,8 @@ const char* printTokenType(TokenType type) {
             return "TOKEN_ERROR";
         case TOKEN_EOF:
             return "TOKEN_EOF";
+        case TOKEN_ARROW_KW:
+            return "TOKEN_ARROW_KW";
         default:
             return "UNKNOWN_TOKEN";
     }

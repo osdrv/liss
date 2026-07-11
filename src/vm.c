@@ -129,10 +129,13 @@ InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
     vmRecover(vm);
 
     if (module == NULL) {
-        module = newModule(vm, "main");
+        if (vm->main_module == NULL) {
+            vm->main_module = newModule(vm, "main");
+            tableInsert(&vm->modules, OBJ_VAL(vm->main_module->name),
+                                OBJ_VAL(vm->main_module));  // Cache main module in modules table
+        }
+        module = vm->main_module;
         push(vm, OBJ_VAL(module));  // Push for GC safety during compilation
-        tableInsert(&vm->modules, OBJ_VAL(module->name),
-                    OBJ_VAL(module));  // Cache main module in modules table
     } else {
         push(vm, OBJ_VAL(module));
     }
@@ -396,6 +399,7 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
             }
             case OP_JUMP:
             case OP_JUMP_IF_FALSE:
+            case OP_JUMP_IF_ERR:
             case OP_TRY_START: {
                 // Read the relative offset from the original bytecode
                 uint16_t relative_byte_offset =
@@ -708,6 +712,9 @@ static InterpretResult run(VM* vm) {
         &&OP_IS_PAIR_IMPL,
         &&OP_UNPACK_PAIR_IMPL,
         &&OP_SLIDE_IMPL,
+
+        &&OP_SWAP_IMPL,
+        &&OP_JUMP_IF_ERR_IMPL,
     };
 
     int sentinel_frame_cnt = vm->frame_cnt - 1;
@@ -1212,6 +1219,22 @@ OP_SLIDE_IMPL: {
     Value res = pop(vm);
     for (uint8_t i = 0; i < n; i++) pop(vm);
     push(vm, res);
+    DISPATCH();
+}
+
+OP_SWAP_IMPL: {
+    Value a = pop(vm);
+    Value b = pop(vm);
+    push(vm, a);
+    push(vm, b);
+    DISPATCH();
+}
+
+OP_JUMP_IF_ERR_IMPL: {
+    uint16_t offset = (uint16_t)(uintptr_t)(*frame->ip++);
+    if (IS_ERROR(peek(vm, 0))) {
+        frame->ip += offset;
+    }
     DISPATCH();
 }
 

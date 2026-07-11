@@ -608,6 +608,40 @@ static void parseImport(Compiler* compiler) {
     emitByte(compiler, OP_TRUE);
 }
 
+static void parsePipe(Compiler* compiler, bool is_tail) {
+    parseExpression(compiler, false);
+    if (compiler->parser->hadError) return;
+
+    int end_jumps[64];
+    int end_jump_cnt = 0;
+
+    while (compiler->parser->current.type != TOKEN_RPAREN &&
+           compiler->parser->current.type != TOKEN_EOF) {
+        if (compiler->parser->current.type != TOKEN_LPAREN) {
+            COMPILE_ERR(compiler, "pipe step must be a parenthesized call: (f) or (f arg ...)");
+            return;
+        }
+        end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP_IF_ERR);
+        advance(compiler);
+        parseExpression(compiler, false);
+        if (compiler->parser->hadError) return;
+        emitByte(compiler, OP_SWAP);
+        int extra = 0;
+        while (compiler->parser->current.type != TOKEN_RPAREN &&
+               compiler->parser->current.type != TOKEN_EOF) {
+            parseExpression(compiler, false);
+            if (compiler->parser->hadError) return;
+            extra++;
+        }
+        consume(compiler, TOKEN_RPAREN, "expect ')' after pipe step");
+        emitBytes(compiler, OP_CALL, (uint8_t)(extra + 1));
+    }
+
+    for (int i = 0; i < end_jump_cnt; i++) {
+        patchJump(compiler, end_jumps[i]);
+    }
+}
+
 static void parseSwitch(Compiler* compiler, bool is_tail) {
     parseExpression(compiler, false);
     if (compiler->parser->hadError) return;
@@ -810,6 +844,10 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
         case TOKEN_SWITCH_KW:
             advance(compiler);
             parseSwitch(compiler, is_tail);
+            break;
+        case TOKEN_ARROW_KW:
+            advance(compiler);
+            parsePipe(compiler, is_tail);
             break;
         case TOKEN_IMPORT_KW:
             advance(compiler);

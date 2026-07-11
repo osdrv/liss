@@ -54,6 +54,9 @@ typedef enum {
     OP_IS_PAIR,
     OP_UNPACK_PAIR,
     OP_SLIDE,
+
+    OP_SWAP,
+    OP_JUMP_IF_ERR,
 } OpCode;
 
 #endif
