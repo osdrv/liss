@@ -29,14 +29,26 @@ static int loadThreadedCode(VM* vm, ObjFunction* function,
 VM* newVM(VMOptions options) {
     VM* vm = (VM*)reallocate(
         NULL, NULL, 0, sizeof(VM) + sizeof(Value) * options.stack_capacity);
+
+    // Initialize all GC-scanned fields before any allocation that can trigger
+    // GC. If the VM struct reuses freed memory (e.g., second test run), stale
+    // pointers in these fields would cause markRoots to dereference freed
+    // memory → SIGBUS.
     vm->compiler = NULL;
+    vm->core_module = NULL;
+    vm->main_module = NULL;
+    vm->objects = NULL;
+    vm->stack_top = vm->stack;
+    vm->open_upvalues = NULL;
+    vm->raise_value = NIL_VAL;
+    vm->last_popped_value = NIL_VAL;
+    initTable(&vm->strings);
+
     vm->options = options;
     vm->bytes_allocated = 0;
     vm->next_gc = options.gc_threshold;
-    vm->stack_top = vm->stack;
-    vm->objects = NULL;
     vm->last_result = INTERPRET_OK;
-    vm->open_upvalues = NULL;
+    vm->try_cnt = 0;
     vm->frame_cnt = 0;
     vm->frame_cap = 8;
     vm->frames = reallocate(NULL, NULL, 0, sizeof(CallFrame) * vm->frame_cap);
@@ -46,11 +58,6 @@ VM* newVM(VMOptions options) {
     push(vm, OBJ_VAL(core_name));
     vm->core_module = loadModule(vm, core_name);
     pop(vm);
-
-    initTable(&vm->strings);
-    vm->try_cnt = 0;
-    vm->raise_value = NIL_VAL;
-    vm->last_popped_value = NIL_VAL;
 
     DEBUG_LOG("Initialized new VM with stack capacity %zu",
               options.stack_capacity);
@@ -131,8 +138,10 @@ InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
     if (module == NULL) {
         if (vm->main_module == NULL) {
             vm->main_module = newModule(vm, "main");
-            tableInsert(&vm->modules, OBJ_VAL(vm->main_module->name),
-                                OBJ_VAL(vm->main_module));  // Cache main module in modules table
+            tableInsert(
+                &vm->modules, OBJ_VAL(vm->main_module->name),
+                OBJ_VAL(
+                    vm->main_module));  // Cache main module in modules table
         }
         module = vm->main_module;
         push(vm, OBJ_VAL(module));  // Push for GC safety during compilation

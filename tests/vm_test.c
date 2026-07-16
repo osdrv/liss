@@ -726,7 +726,8 @@ static VMTestCase interpret_tests[] = {
     },
     {
         .name = "pipe multi step",
-        .src = "(import str)(-> \"  hello:world  \" (str:trim) (str:split \":\"))",
+        .src =
+            "(import str)(-> \"  hello:world  \" (str:trim) (str:split \":\"))",
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_LIST, .as.string = "[\"hello\" \"world\"]"},
     },

@@ -57,7 +57,7 @@ typedef struct VM {
     Table modules;
     ObjModule* core_module;  // The core module containing built-in functions
     ObjModule* main_module;
-                             // and constants
+    // and constants
 
     Value last_popped_value;    // Store the last popped value
     ObjUpvalue* open_upvalues;  // Linked list of open upvalues

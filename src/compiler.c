@@ -618,7 +618,9 @@ static void parsePipe(Compiler* compiler, bool is_tail) {
     while (compiler->parser->current.type != TOKEN_RPAREN &&
            compiler->parser->current.type != TOKEN_EOF) {
         if (compiler->parser->current.type != TOKEN_LPAREN) {
-            COMPILE_ERR(compiler, "pipe step must be a parenthesized call: (f) or (f arg ...)");
+            COMPILE_ERR(
+                compiler,
+                "pipe step must be a parenthesized call: (f) or (f arg ...)");
             return;
         }
         end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP_IF_ERR);
@@ -1146,6 +1148,7 @@ void markCompilerRoots(VM* vm) {
     while (compiler != NULL) {
         push(vm, OBJ_VAL(compiler->function));
         markObject(vm, (Obj*)compiler->function);
+        markObject(vm, (Obj*)compiler->module);
         markTable(vm, &compiler->aliases);
         pop(vm);
         compiler = compiler->enclosing;

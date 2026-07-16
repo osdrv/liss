@@ -31,6 +31,7 @@ typedef enum {
     OBJ_MODULE,
     OBJ_FILE,
     OBJ_RE,
+    OBJ_HAMT_NODE,
 } ObjType;
 
 struct Obj {

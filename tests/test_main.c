@@ -27,16 +27,16 @@ int main(int argc, char** argv) {
     printf("--- Running Test Suites ---\n");
 
     // Call all the test suites
-    // table_suite();
-    // scanner_suite();
-    // compiler_suite();
+    table_suite();
+    scanner_suite();
+    compiler_suite();
     vm_suite();
-    // module_suite();
-    // modules_core_suite();
+    module_suite();
+    modules_core_suite();
     str_suite();
     modules_math_suite();
     modules_re_suite();
-    // regex_suite();
+    regex_suite();
 
     printf("\n---------------------------\n");
     if (result == 0) {

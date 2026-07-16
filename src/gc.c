@@ -4,8 +4,10 @@
 #include <string.h>
 
 #include "compiler.h"
+#include "hamt.h"
 #include "memory.h"
 #include "object.h"
+#include "table.h"
 #include "value.h"
 #include "vm.h"
 
@@ -58,6 +60,7 @@ void markObject(VM* vm, Obj* object) {
         case OBJ_FUNCTION: {
             ObjFunction* function = (ObjFunction*)object;
             markObject(vm, (Obj*)function->name);
+            markObject(vm, (Obj*)function->module);
             for (int i = 0; i < function->chunk.constants.count; i++) {
                 markValue(vm, function->chunk.constants.values[i]);
             }
@@ -119,6 +122,11 @@ void markObject(VM* vm, Obj* object) {
             markObject(vm, (Obj*)re->pattern);
             break;
         }
+        case OBJ_HAMT_NODE: {
+            HamtNode* node = (HamtNode*)object;
+            hamtMark(vm, node);
+            break;
+        }
     }
 }
 
@@ -163,9 +171,12 @@ void sweep(VM* vm) {
 
 void freeObject(VM* vm, Obj* object) {
     DEBUG_LOG("Freeing object %p type %d", (void*)object, object->type);
+
+    ObjType object_type = object->type;
     memset(object, 0xEF,
            sizeof(Obj));  // Fill with a recognizable pattern for debugging
-    switch (object->type) {
+
+    switch (object_type) {
         case OBJ_FUNCTION: {
             ObjFunction* function = (ObjFunction*)object;
             if (function->loaded_code != NULL) {
@@ -222,11 +233,13 @@ void freeObject(VM* vm, Obj* object) {
         }
         case OBJ_MODULE: {
             ObjModule* module = (ObjModule*)object;
+            freeTable(&module->symbols);
+            freeTable(&module->imports);
             reallocate(vm, module, sizeof(ObjModule), 0);
             break;
         }
         case OBJ_FILE: {
-            ObjFile* file = (ObjModule*)object;
+            ObjFile* file = (ObjFile*)object;
             if (!file->is_closed && file->file != NULL) {
                 fclose(file->file);
             }
@@ -240,6 +253,12 @@ void freeObject(VM* vm, Obj* object) {
                 free(re->program);
             }
             reallocate(vm, re, sizeof(ObjRe), 0);
+            break;
+        }
+        case OBJ_HAMT_NODE: {
+            HamtNode* node = (HamtNode*)object;
+            hamtFree(vm, node);
+            reallocate(vm, node, sizeof(HamtNode), 0);
             break;
         }
     }
