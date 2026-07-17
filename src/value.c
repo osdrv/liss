@@ -5,7 +5,14 @@
 #include <string.h>
 
 #include "common.h"
+#include "hamt.h"
 #include "object.h"
+
+// forward-declaration
+typedef struct {
+    Value key;
+    Value val;
+} DictPair;
 
 bool valuesEqual(Value a, Value b) {
     if (a.type != b.type) return false;
@@ -66,10 +73,23 @@ static int cmpValues(Value a, Value b) {
     return 0;
 }
 
-static int cmpEntries(const void* a, const void* b) {
-    const TableEntry* entry_a = *(const TableEntry**)a;
-    const TableEntry* entry_b = *(const TableEntry**)b;
-    return cmpValues(entry_a->key, entry_b->key);
+static int cmpDictPairs(const void* a, const void* b) {
+    return cmpValues(((const DictPair*)a)->key, ((const DictPair*)b)->key);
+}
+
+typedef struct {
+    DictPair* entries;
+    int count;
+    int cap;
+} CollectCtx;
+
+static void collectPair(Value key, Value val, void* ctx_) {
+    CollectCtx* ctx = ctx_;
+    if (ctx->count == ctx->cap) {
+        ctx->cap *= 2;
+        ctx->entries = realloc(ctx->entries, sizeof(DictPair) * ctx->cap);
+    }
+    ctx->entries[ctx->count++] = (DictPair){key, val};
 }
 
 char* sprintValue(Value value) {
@@ -161,26 +181,18 @@ char* sprintValue(Value value) {
                 case OBJ_DICT: {
                     ObjDict* dict = AS_DICT(value);
                     APPEND_TO_BUFFER("(dict");
-                    TableEntry** entries =
-                        malloc(sizeof(TableEntry*) * dict->table.size);
-                    int entry_cnt = 0;
-                    for (size_t i = 0; i < dict->table.bucket_count; i++) {
-                        TableEntry* entry = dict->table.buckets[i];
-                        while (entry != NULL) {
-                            entries[entry_cnt++] = entry;
-                            entry = entry->next;
-                        }
+                    CollectCtx ctx = {malloc(sizeof(DictPair) * 8), 0, 8};
+                    hamtEach(dict->root, collectPair, &ctx);
+                    qsort(ctx.entries, ctx.count, sizeof(DictPair),
+                          cmpDictPairs);
+                    for (int i = 0; i < ctx.count; i++) {
+                        char* k = sprintValue(ctx.entries[i].key);
+                        char* v = sprintValue(ctx.entries[i].val);
+                        APPEND_TO_BUFFER(" (%s . %s)", k, v);
+                        free(k);
+                        free(v);
                     }
-                    qsort(entries, entry_cnt, sizeof(TableEntry*), cmpEntries);
-
-                    for (int i = 0; i < entry_cnt; i++) {
-                        char* key_str = sprintValue(entries[i]->key);
-                        char* val_str = sprintValue(entries[i]->value);
-                        APPEND_TO_BUFFER(" (%s . %s)", key_str, val_str);
-                        free(key_str);
-                        free(val_str);
-                    }
-                    free(entries);
+                    free(ctx.entries);
                     APPEND_TO_BUFFER(")");
                     break;
                 }

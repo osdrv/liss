@@ -11,6 +11,7 @@ typedef struct {
   const char *src;
   const char *expected_str;
   ExpectedValueType expected_type;
+  const bool debug;
 } CoreTestCase;
 
 static char *test_core_containers(void) {
@@ -44,7 +45,7 @@ static char *test_core_containers(void) {
        .expected_str = "\"a\"",
        .expected_type = EXPECT_STRING},
       {.name = "dict put",
-       .src = "(let d (dict)) (put d \"k\" 7) (get d \"k\")",
+       .src = "(let d (put (dict) \"k\" 7)) (get d \"k\")",
        .expected_str = "7",
        .expected_type = EXPECT_INT},
       {.name = "dict has? true",
@@ -56,7 +57,7 @@ static char *test_core_containers(void) {
        .expected_str = "false",
        .expected_type = EXPECT_BOOL},
       {.name = "dict del",
-       .src = "(let d (dict (1 . 1))) (del d 1) (has? d 1)",
+       .src = "(let d (del (dict (1 . 1)) 1)) (has? d 1)",
        .expected_str = "false",
        .expected_type = EXPECT_BOOL},
       {.name = "dict len",
@@ -75,9 +76,17 @@ static char *test_core_containers(void) {
   };
 
   for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+
+    DEBUG_LOG("Running test_containers test: %s", tests[i].name);
+
     VMOptions options = defaultVMOptions();
     options.stress_gc = true;
     VM *vm = newVM(options);
+
+    if (tests[i].debug) {
+        DEBUG_LOG("Set a breakpoint for a failing test");
+        __builtin_debugtrap();
+    }
 
     InterpretResult result = interpret(vm, tests[i].src, NULL);
     if (result != INTERPRET_OK) {

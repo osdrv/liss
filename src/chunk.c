@@ -263,6 +263,35 @@ char* sprintChunk(const Chunk* chunk) {
                 APPEND_TO_BUFFER("OP_NEGATE\n");
                 break;
             }
+            case OP_DUP:
+                APPEND_TO_BUFFER("OP_DUP\n");
+                break;
+            case OP_IS_ERROR:
+                APPEND_TO_BUFFER("OP_IS_ERROR\n");
+                break;
+            case OP_ERROR_MSG:
+                APPEND_TO_BUFFER("OP_ERROR_MSG\n");
+                break;
+            case OP_IS_PAIR:
+                APPEND_TO_BUFFER("OP_IS_PAIR\n");
+                break;
+            case OP_UNPACK_PAIR:
+                APPEND_TO_BUFFER("OP_UNPACK_PAIR\n");
+                break;
+            case OP_SWAP:
+                APPEND_TO_BUFFER("OP_SWAP\n");
+                break;
+            case OP_SLIDE:
+                APPEND_TO_BUFFER("OP_SLIDE %d\n", chunk->code[i + 1]);
+                i++;
+                break;
+            case OP_JUMP_IF_ERR: {
+                uint16_t jmp_offset =
+                    (uint16_t)(chunk->code[i + 1] << 8) | chunk->code[i + 2];
+                APPEND_TO_BUFFER("OP_JUMP_IF_ERR %d\n", jmp_offset);
+                i += 2;
+                break;
+            }
             default:
                 APPEND_TO_BUFFER("Unknown opcode %d\n", opcode);
                 break;

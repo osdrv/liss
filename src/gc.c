@@ -104,7 +104,7 @@ void markObject(VM* vm, Obj* object) {
         }
         case OBJ_DICT: {
             ObjDict* dict = (ObjDict*)object;
-            markTable(vm, &dict->table);
+            markObject(vm, (Obj*)dict->root);
             break;
         }
         case OBJ_MODULE: {
@@ -227,7 +227,6 @@ void freeObject(VM* vm, Obj* object) {
         }
         case OBJ_DICT: {
             ObjDict* dict = (ObjDict*)object;
-            freeTable(&dict->table);
             reallocate(vm, dict, sizeof(ObjDict), 0);
             break;
         }

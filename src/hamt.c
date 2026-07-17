@@ -59,19 +59,21 @@ HamtNode* hamtPut(VM* vm, HamtNode* node, Value key, Value val, uint64_t hash,
     // Case 1: an empty subtrie
     if (node == NULL) {
         HamtNode* n = allocNode(vm);
+        push(vm, OBJ_VAL(n));
         if (depth > HAMT_DEPTH_MAX) {
-            n->is_collision = true;
-            n->cnt = 1;
             n->pairs = (Value*)reallocate(vm, NULL, 0, 2 * sizeof(Value));
             n->pairs[0] = key;
             n->pairs[1] = val;
+            n->is_collision = true;
+            n->cnt = 1;
         } else {
             uint32_t bit = 1u << hamt_chunk(hash, depth);
-            n->data_map = bit;
             n->data = (Value*)reallocate(vm, NULL, 0, 2 * sizeof(Value));
             n->data[0] = key;
             n->data[1] = val;
+            n->data_map = bit;
         }
+        pop(vm);
         return n;
     }
 
@@ -80,22 +82,28 @@ HamtNode* hamtPut(VM* vm, HamtNode* node, Value key, Value val, uint64_t hash,
         for (int i = 0; i < node->cnt; i++) {
             if (valuesEqual(node->pairs[2 * i], key)) {
                 HamtNode* n = allocNode(vm);
-                n->is_collision = true;
-                n->cnt = node->cnt;
-                n->pairs =
-                    (Value*)reallocate(vm, NULL, 0, 2 * n->cnt * sizeof(Value));
-                memcpy(n->pairs, node->pairs, 2 * n->cnt * sizeof(Value));
+                push(vm, OBJ_VAL(n));
+                int new_cnt = node->cnt;
+                n->pairs = (Value*)reallocate(vm, NULL, 0,
+                                              2 * new_cnt * sizeof(Value));
+                memcpy(n->pairs, node->pairs, 2 * new_cnt * sizeof(Value));
                 n->pairs[2 * i + 1] = val;
+                n->is_collision = true;
+                n->cnt = new_cnt;
+                pop(vm);
                 return n;
             }
         }
         HamtNode* n = allocNode(vm);
-        n->is_collision = true;
-        n->cnt = node->cnt + 1;
-        n->pairs = (Value*)reallocate(vm, NULL, 0, 2 * n->cnt * sizeof(Value));
+        push(vm, OBJ_VAL(n));
+        int new_cnt = node->cnt + 1;
+        n->pairs = (Value*)reallocate(vm, NULL, 0, 2 * new_cnt * sizeof(Value));
         memcpy(n->pairs, node->pairs, 2 * node->cnt * sizeof(Value));
         n->pairs[2 * node->cnt] = key;
         n->pairs[2 * node->cnt + 1] = val;
+        n->is_collision = true;
+        n->cnt = new_cnt;
+        pop(vm);
         return n;
     }
 
@@ -110,8 +118,7 @@ HamtNode* hamtPut(VM* vm, HamtNode* node, Value key, Value val, uint64_t hash,
         // 3a: same key, we need to update the value
         if (valuesEqual(node->data[2 * didx], key)) {
             HamtNode* n = allocNode(vm);
-            n->data_map = node->data_map;
-            n->node_map = node->node_map;
+            push(vm, OBJ_VAL(n));
             n->data = (Value*)reallocate(vm, NULL, 0, dc * 2 * sizeof(Value));
             memcpy(n->data, node->data, dc * 2 * sizeof(Value));
             n->data[2 * didx + 1] = val;
@@ -120,6 +127,9 @@ HamtNode* hamtPut(VM* vm, HamtNode* node, Value key, Value val, uint64_t hash,
                     (HamtNode**)reallocate(vm, NULL, 0, nc * sizeof(HamtNode*));
                 memcpy(n->nodes, node->nodes, nc * sizeof(HamtNode*));
             }
+            n->data_map = node->data_map;
+            n->node_map = node->node_map;
+            pop(vm);
             return n;
         }
 
@@ -134,8 +144,7 @@ HamtNode* hamtPut(VM* vm, HamtNode* node, Value key, Value val, uint64_t hash,
 
         int nidx = hamt_idx(node->node_map, bit);
         HamtNode* n = allocNode(vm);
-        n->data_map = node->data_map & ~bit;
-        n->node_map = node->node_map | bit;
+        push(vm, OBJ_VAL(n));
         if (dc - 1 > 0) {
             n->data =
                 (Value*)reallocate(vm, NULL, 0, (dc - 1) * 2 * sizeof(Value));
@@ -149,6 +158,9 @@ HamtNode* hamtPut(VM* vm, HamtNode* node, Value key, Value val, uint64_t hash,
         n->nodes[nidx] = sub;
         memcpy(&n->nodes[nidx + 1], &node->nodes[nidx],
                (nc - nidx) * sizeof(HamtNode*));
+        n->data_map = node->data_map & ~bit;
+        n->node_map = node->node_map | bit;
+        pop(vm);
         pop(vm);
         return n;
     }
@@ -160,8 +172,7 @@ HamtNode* hamtPut(VM* vm, HamtNode* node, Value key, Value val, uint64_t hash,
             hamtPut(vm, node->nodes[nidx], key, val, hash, depth + 1);
         push(vm, OBJ_VAL(child));
         HamtNode* n = allocNode(vm);
-        n->data_map = node->data_map;
-        n->node_map = node->node_map;
+        push(vm, OBJ_VAL(n));
         if (dc > 0) {
             n->data = (Value*)reallocate(vm, NULL, 0, dc * 2 * sizeof(Value));
             memcpy(n->data, node->data, dc * 2 * sizeof(Value));
@@ -169,6 +180,9 @@ HamtNode* hamtPut(VM* vm, HamtNode* node, Value key, Value val, uint64_t hash,
         n->nodes = (HamtNode**)reallocate(vm, NULL, 0, nc * sizeof(HamtNode*));
         memcpy(n->nodes, node->nodes, nc * sizeof(HamtNode*));
         n->nodes[nidx] = child;
+        n->data_map = node->data_map;
+        n->node_map = node->node_map;
+        pop(vm);
         pop(vm);
         return n;
     }
@@ -176,8 +190,7 @@ HamtNode* hamtPut(VM* vm, HamtNode* node, Value key, Value val, uint64_t hash,
     // Case 5: slot is empty, insert inline pair
     int didx = hamt_idx(node->data_map, bit);
     HamtNode* n = allocNode(vm);
-    n->data_map = node->data_map | bit;
-    n->node_map = node->node_map;
+    push(vm, OBJ_VAL(n));
     n->data = (Value*)reallocate(vm, NULL, 0, (dc + 1) * 2 * sizeof(Value));
     memcpy(n->data, node->data, didx * 2 * sizeof(Value));
     n->data[2 * didx] = key;
@@ -188,6 +201,9 @@ HamtNode* hamtPut(VM* vm, HamtNode* node, Value key, Value val, uint64_t hash,
         n->nodes = (HamtNode**)reallocate(vm, NULL, 0, nc * sizeof(HamtNode*));
         memcpy(n->nodes, node->nodes, nc * sizeof(HamtNode*));
     }
+    n->data_map = node->data_map | bit;
+    n->node_map = node->node_map;
+    pop(vm);
     return n;
 }
 
@@ -204,13 +220,16 @@ HamtNode* hamtDel(VM* vm, HamtNode* node, Value key, uint64_t hash, int depth) {
                     return NULL;
                 }
                 HamtNode* n = allocNode(vm);
-                n->is_collision = true;
-                n->cnt = node->cnt - 1;
-                n->pairs =
-                    (Value*)reallocate(vm, NULL, 0, 2 * n->cnt * sizeof(Value));
+                push(vm, OBJ_VAL(n));
+                int new_cnt = node->cnt - 1;
+                n->pairs = (Value*)reallocate(vm, NULL, 0,
+                                              2 * new_cnt * sizeof(Value));
                 memcpy(n->pairs, node->pairs, i * 2 * sizeof(Value));
                 memcpy(&n->pairs[2 * i], &node->pairs[2 * (i + 1)],
                        (node->cnt - i - 1) * 2 * sizeof(Value));
+                n->is_collision = true;
+                n->cnt = new_cnt;
+                pop(vm);
                 return n;
             }
         }
@@ -231,8 +250,7 @@ HamtNode* hamtDel(VM* vm, HamtNode* node, Value key, uint64_t hash, int depth) {
             return NULL;  // node would turn empty
         }
         HamtNode* n = allocNode(vm);
-        n->data_map = node->data_map & ~bit;
-        n->node_map = node->node_map;
+        push(vm, OBJ_VAL(n));
         if (dc - 1 > 0) {
             n->data =
                 (Value*)reallocate(vm, NULL, 0, (dc - 1) * 2 * sizeof(Value));
@@ -245,6 +263,9 @@ HamtNode* hamtDel(VM* vm, HamtNode* node, Value key, uint64_t hash, int depth) {
                 (HamtNode**)reallocate(vm, NULL, 0, nc * sizeof(HamtNode*));
             memcpy(n->nodes, node->nodes, nc * sizeof(HamtNode*));
         }
+        n->data_map = node->data_map & ~bit;
+        n->node_map = node->node_map;
+        pop(vm);
         return n;
     }
 
@@ -261,8 +282,7 @@ HamtNode* hamtDel(VM* vm, HamtNode* node, Value key, uint64_t hash, int depth) {
                 return NULL;
             }
             HamtNode* n = allocNode(vm);
-            n->data_map = node->data_map;
-            n->node_map = node->node_map & ~bit;
+            push(vm, OBJ_VAL(n));
             if (dc > 0) {
                 n->data =
                     (Value*)reallocate(vm, NULL, 0, dc * 2 * sizeof(Value));
@@ -275,13 +295,15 @@ HamtNode* hamtDel(VM* vm, HamtNode* node, Value key, uint64_t hash, int depth) {
                 memcpy(&n->nodes[nidx], &node->nodes[nidx + 1],
                        (nc - nidx - 1) * sizeof(HamtNode*));
             }
+            n->data_map = node->data_map;
+            n->node_map = node->node_map & ~bit;
+            pop(vm);
             return n;
         }
 
         push(vm, OBJ_VAL(child));
         HamtNode* n = allocNode(vm);
-        n->data_map = node->data_map;
-        n->node_map = node->node_map;
+        push(vm, OBJ_VAL(n));
         if (dc > 0) {
             n->data = (Value*)reallocate(vm, NULL, 0, dc * 2 * sizeof(Value));
             memcpy(n->data, node->data, dc * 2 * sizeof(Value));
@@ -289,6 +311,9 @@ HamtNode* hamtDel(VM* vm, HamtNode* node, Value key, uint64_t hash, int depth) {
         n->nodes = (HamtNode**)reallocate(vm, NULL, 0, nc * sizeof(HamtNode*));
         memcpy(n->nodes, node->nodes, nc * sizeof(HamtNode*));
         n->nodes[nidx] = child;
+        n->data_map = node->data_map;
+        n->node_map = node->node_map;
+        pop(vm);
         pop(vm);
         return n;
     }

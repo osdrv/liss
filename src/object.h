@@ -11,6 +11,7 @@
 // Forward declarations for structs used in object definitions.
 typedef struct ObjString ObjString;
 typedef struct ObjModule ObjModule;
+typedef struct HamtNode HamtNode;
 typedef struct VM VM;
 
 // The signature for all native functions
@@ -103,7 +104,8 @@ typedef struct ObjPair {
 
 typedef struct ObjDict {
     Obj obj;
-    Table table;
+    uint32_t count;
+    HamtNode* root;
 } ObjDict;
 
 typedef struct ObjList {
