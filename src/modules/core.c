@@ -228,7 +228,8 @@ static Value tailNative(VM* vm, int argc, Value* argv) {
 
 static Value consNative(VM* vm, int argc, Value* argv) {
     (void)argc;
-    if (!IS_LIST(argv[0])) return raiseErr(vm, "cons expects a list as first argument");
+    if (!IS_LIST(argv[0]))
+        return raiseErr(vm, "cons expects a list as first argument");
     ObjList* list = AS_LIST(argv[0]);
     push(vm, NIL_VAL);
     vm->stack_top[-1] = OBJ_VAL(newPair(vm, argv[1], list->head));
@@ -241,7 +242,8 @@ static Value consNative(VM* vm, int argc, Value* argv) {
 // Invariant: list is argv[0], elem is argv[1] — both on VM stack.
 static Value pushNative(VM* vm, int argc, Value* argv) {
     (void)argc;
-    if (!IS_LIST(argv[0])) return raiseErr(vm, "push expects a list as first argument");
+    if (!IS_LIST(argv[0]))
+        return raiseErr(vm, "push expects a list as first argument");
     ObjList* list = AS_LIST(argv[0]);
     uint32_t len = list->len;
 
@@ -314,26 +316,16 @@ static Value strNative(VM* vm, int argc, Value* argv) {
 }
 
 static const NativeReg core_functions[] = {
-    {"err", 1, errNative},
-    {"is_err?", 1, isErrNative},
-    {"raise!", 1, raiseNative},
-    {"len", 1, lenNative},
-    {"is_empty?", 1, isEmptyNative},
-    {"pair", 2, pairNative},
-    {"dict", -1, dictNative},
-    {"get", 2, getNative},
-    {"put", 3, putNative},
-    {"has?", 2, hasNative},
-    {"del", 2, delNative},
-    {"keys", 1, keysNative},
-    {"values", 1, valuesNative},
-    {"head", 1, headNative},
-    {"tail", 1, tailNative},
-    {"cons", 2, consNative},
-    {"push", 2, pushNative},
-    {"append", 2, appendNative},
-    {"str", 1, strNative},
-    {NULL, 0, NULL},  // Sentinel value
+    {"err", 1, errNative},           {"is_err?", 1, isErrNative},
+    {"raise!", 1, raiseNative},      {"len", 1, lenNative},
+    {"is_empty?", 1, isEmptyNative}, {"pair", 2, pairNative},
+    {"dict", -1, dictNative},        {"get", 2, getNative},
+    {"put", 3, putNative},           {"has?", 2, hasNative},
+    {"del", 2, delNative},           {"keys", 1, keysNative},
+    {"values", 1, valuesNative},     {"head", 1, headNative},
+    {"tail", 1, tailNative},         {"cons", 2, consNative},
+    {"push", 2, pushNative},         {"append", 2, appendNative},
+    {"str", 1, strNative},           {NULL, 0, NULL},  // Sentinel value
 };
 
 void registerCoreNatives(VM* vm, ObjModule* module) {
