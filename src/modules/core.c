@@ -209,6 +209,101 @@ static Value valuesNative(VM* vm, int argc, Value* argv) {
     return result;
 }
 
+static Value headNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_LIST(argv[0])) return raiseErr(vm, "head expects a list");
+    ObjList* list = AS_LIST(argv[0]);
+    if (list->len == 0) return raiseErr(vm, "head of empty list");
+    return AS_PAIR(list->head)->first;
+}
+
+static Value tailNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_LIST(argv[0])) return raiseErr(vm, "tail expects a list");
+    ObjList* list = AS_LIST(argv[0]);
+    if (list->len == 0) return raiseErr(vm, "tail of empty list");
+    Value rest = AS_PAIR(list->head)->second;
+    return OBJ_VAL(newList(vm, list->len - 1, rest));
+}
+
+static Value consNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_LIST(argv[0])) return raiseErr(vm, "cons expects a list as first argument");
+    ObjList* list = AS_LIST(argv[0]);
+    push(vm, NIL_VAL);
+    vm->stack_top[-1] = OBJ_VAL(newPair(vm, argv[1], list->head));
+    Value result = OBJ_VAL(newList(vm, list->len + 1, vm->stack_top[-1]));
+    pop(vm);
+    return result;
+}
+
+// Rebuild the spine of 'list' with 'elem' appended at the end. O(n).
+// Invariant: list is argv[0], elem is argv[1] — both on VM stack.
+static Value pushNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_LIST(argv[0])) return raiseErr(vm, "push expects a list as first argument");
+    ObjList* list = AS_LIST(argv[0]);
+    uint32_t len = list->len;
+
+    // Push each element value; their backing pairs stay rooted via argv[0].
+    Value cur = list->head;
+    for (uint32_t i = 0; i < len; i++) {
+        push(vm, AS_PAIR(cur)->first);
+        cur = AS_PAIR(cur)->second;
+    }
+
+    // Seed the chain with (argv[1] . NIL).
+    push(vm, NIL_VAL);
+    vm->stack_top[-1] = OBJ_VAL(newPair(vm, argv[1], NIL_VAL));
+
+    // Prepend original elements in reverse; chain stays at stack_top[-1].
+    for (uint32_t i = 0; i < len; i++) {
+        Value elem = vm->stack_top[-2];
+        vm->stack_top[-1] = OBJ_VAL(newPair(vm, elem, vm->stack_top[-1]));
+        vm->stack_top[-2] = vm->stack_top[-1];
+        pop(vm);
+    }
+
+    Value result = OBJ_VAL(newList(vm, len + 1, vm->stack_top[-1]));
+    pop(vm);
+    return result;
+}
+
+static Value appendNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_LIST(argv[0]) || !IS_LIST(argv[1]))
+        return raiseErr(vm, "append expects two lists");
+    ObjList* list1 = AS_LIST(argv[0]);
+    ObjList* list2 = AS_LIST(argv[1]);
+
+    if (list1->len == 0) return argv[1];
+    if (list2->len == 0) return argv[0];
+
+    uint32_t len1 = list1->len;
+    uint32_t len2 = list2->len;
+    Value list2_head = list2->head;
+
+    Value cur = list1->head;
+    for (uint32_t i = 0; i < len1; i++) {
+        push(vm, AS_PAIR(cur)->first);
+        cur = AS_PAIR(cur)->second;
+    }
+
+    // Chain starts at list2's existing spine — structural sharing.
+    push(vm, list2_head);
+
+    for (uint32_t i = 0; i < len1; i++) {
+        Value elem = vm->stack_top[-2];
+        vm->stack_top[-1] = OBJ_VAL(newPair(vm, elem, vm->stack_top[-1]));
+        vm->stack_top[-2] = vm->stack_top[-1];
+        pop(vm);
+    }
+
+    Value result = OBJ_VAL(newList(vm, len1 + len2, vm->stack_top[-1]));
+    pop(vm);
+    return result;
+}
+
 static Value strNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (IS_STRING(argv[0])) return argv[0];  // already a string
@@ -232,6 +327,11 @@ static const NativeReg core_functions[] = {
     {"del", 2, delNative},
     {"keys", 1, keysNative},
     {"values", 1, valuesNative},
+    {"head", 1, headNative},
+    {"tail", 1, tailNative},
+    {"cons", 2, consNative},
+    {"push", 2, pushNative},
+    {"append", 2, appendNative},
     {"str", 1, strNative},
     {NULL, 0, NULL},  // Sentinel value
 };
