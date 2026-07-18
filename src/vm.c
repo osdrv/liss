@@ -24,6 +24,9 @@ static InterpretResult run(VM* vm);
 static int loadThreadedCode(VM* vm, ObjFunction* function,
                             void* dispatch_table[]);
 
+// Cached dispatch table pointer set by run() on entry; used by callFromNative.
+static void** g_dispatch_table = NULL;
+
 // --- VM Lifecycle ---
 
 VM* newVM(VMOptions options) {
@@ -344,6 +347,80 @@ static void ensureFrameCap(VM* vm) {
     vm->frame_cap = new_cap;
     vm->frames = reallocate(vm, vm->frames, sizeof(CallFrame) * old_cap,
                             sizeof(CallFrame) * vm->frame_cap);
+}
+
+// Call a Liss value (closure or native) from within a C native function.
+// Saves/restores stack, frame count, try state, and last_result.
+// On error, sets vm->last_result and returns NIL_VAL.
+Value callFromNative(VM* vm, Value callee, int argc, Value* argv) {
+    Value* old_stack_top = vm->stack_top;
+    Value old_last_popped = vm->last_popped_value;
+    int old_frame_cnt = vm->frame_cnt;
+    int saved_try_cnt = vm->try_cnt;
+
+    push(vm, callee);
+    for (int i = 0; i < argc; i++) push(vm, argv[i]);
+
+    if (IS_OBJ(callee) && OBJ_TYPE(callee) == OBJ_NATIVE) {
+        ObjNative* native = AS_NATIVE(callee);
+        if (native->arity != -1 && argc != native->arity) {
+            vm->stack_top = old_stack_top;
+            vm->last_popped_value = old_last_popped;
+            return raiseErr(vm, "callFromNative: native arity mismatch");
+        }
+        Value result = native->function(vm, argc, vm->stack_top - argc);
+        vm->stack_top = old_stack_top;
+        vm->last_popped_value = old_last_popped;
+        return result;
+    }
+
+    if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_CLOSURE) {
+        vm->stack_top = old_stack_top;
+        vm->last_popped_value = old_last_popped;
+        return raiseErr(vm, "callFromNative: not callable");
+    }
+
+    ObjClosure* closure = AS_CLOSURE(callee);
+    if (argc != closure->function->arity) {
+        vm->stack_top = old_stack_top;
+        vm->last_popped_value = old_last_popped;
+        return raiseErr(vm, "callFromNative: arity mismatch");
+    }
+
+    if (vm->frame_cnt >= (int)vm->options.frames_max) {
+        vm->stack_top = old_stack_top;
+        vm->last_popped_value = old_last_popped;
+        return raiseErr(vm, "callFromNative: call stack overflow");
+    }
+
+    ensureFrameCap(vm);
+
+    if (closure->function->loaded_code == NULL && g_dispatch_table != NULL) {
+        if (loadThreadedCode(vm, closure->function, g_dispatch_table) != 0) {
+            vm->stack_top = old_stack_top;
+            vm->last_popped_value = old_last_popped;
+            return raiseErr(vm, "callFromNative: failed to load threaded code");
+        }
+    }
+
+    CallFrame* frame = &vm->frames[vm->frame_cnt++];
+    frame->closure = closure;
+    frame->slots = vm->stack_top - argc - 1;
+    frame->ip = closure->function->loaded_code;
+
+    vm->try_cnt = 0;
+    vm->last_result = INTERPRET_OK;
+
+    InterpretResult r = run(vm);
+    Value ret = vm->last_popped_value;
+    vm->stack_top = old_stack_top;
+    vm->last_popped_value = old_last_popped;
+    vm->try_cnt = saved_try_cnt;
+    vm->frame_cnt = old_frame_cnt;
+    vm->last_result = r;
+
+    if (r != INTERPRET_OK) return NIL_VAL;
+    return ret;
 }
 
 // --- VM Execution (Direct Threading) ---
@@ -725,6 +802,7 @@ static InterpretResult run(VM* vm) {
         &&OP_SWAP_IMPL,
         &&OP_JUMP_IF_ERR_IMPL,
     };
+    g_dispatch_table = dispatch_table;
 
     int sentinel_frame_cnt = vm->frame_cnt - 1;
     InterpretResult result = INTERPRET_OK;
@@ -985,6 +1063,7 @@ OP_CALL_IMPL: {
         Value value =
             native->function(vm, arg_count, vm->stack_top - arg_count);
         vm->stack_top -= arg_count + 1;  // Pop arguments and the native
+        frame = &vm->frames[vm->frame_cnt - 1];  // refresh: callFromNative may reallocate frames
         if (vm->last_result != INTERPRET_OK) {
             goto RESCUE;
         }
@@ -1094,6 +1173,7 @@ OP_TAIL_CALL_IMPL: {
         }
         Value value = native->function(vm, arg_cnt, vm->stack_top - arg_cnt);
         vm->stack_top -= arg_cnt + 1;  // Pop arguments and the native
+        frame = &vm->frames[vm->frame_cnt - 1];  // refresh: callFromNative may reallocate frames
         push(vm, value);               // Push the result of the native call
         DISPATCH();
     }
@@ -1248,6 +1328,10 @@ OP_JUMP_IF_ERR_IMPL: {
 }
 
 RESCUE: {
+    if (vm->try_cnt == 0) {
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
     TryBlock try_block = vm->try_stack[--vm->try_cnt];
     while (vm->frame_cnt > try_block.frame_cnt) {
         closeUpvalue(vm, vm->frames[vm->frame_cnt - 1].slots);

@@ -3,6 +3,7 @@
 
 #include "core.h"
 #include "io.h"
+#include "list.h"
 #include "math.h"
 #include "object.h"
 #include "re.h"
@@ -17,9 +18,10 @@ typedef struct {
 } NativeModuleEntry;
 
 static const NativeModuleEntry native_module_registry[] = {
-    {"core", registerCoreNatives}, {"math", registerMathNatives},
-    {"io", registerIONatives},     {"re", registerRENatives},
-    {"str", registerStrNatives},   {NULL, NULL},
+    {"core", registerCoreNatives}, {"list", registerListNatives},
+    {"math", registerMathNatives}, {"io", registerIONatives},
+    {"re", registerRENatives},     {"str", registerStrNatives},
+    {NULL, NULL},
 };
 
 #endif

@@ -30,13 +30,15 @@ static Value printNative(VM* vm, int argc, Value* args) {
     }
 
     for (int i = start_ix; i < argc; i++) {
-        // We print strings as-is and stringify everything else. A stringified
-        // string would be quoted (so to make sprintValue-produced output
-        // unmarshallable) we don't want a quoted string in the output.
-        char* str =
-            IS_STRING(args[i]) ? AS_CSTRING(args[i]) : sprintValue(args[i]);
-        fprintf(out, "%s", str);
-        free(str);
+        // Strings print as-is (no quotes). Everything else goes through
+        // sprintValue, which returns a malloc'd string we must free.
+        if (IS_STRING(args[i])) {
+            fprintf(out, "%s", AS_CSTRING(args[i]));
+        } else {
+            char* str = sprintValue(args[i]);
+            fprintf(out, "%s", str);
+            free(str);
+        }
     }
 
     return NIL_VAL;
@@ -60,18 +62,20 @@ static Value printlnNative(VM* vm, int argc, Value* args) {
 }
 
 /**
- * Opens a file with the given path and mode.
+ * Opens a file with the given path and optional mode (default: "r").
  *
- * Arguments: [Path: String, Mode: String]
+ * Arguments: [Path: String, Mode: String (optional)]
  * Return type: File Handle
  */
 static Value openNative(VM* vm, int argc, Value* argv) {
-    if (argc != 2 || !IS_STRING(argv[0]) || !IS_STRING(argv[1])) {
-        return raiseErr(vm, "io:open: expect path and mode as strings");
+    if ((argc != 1 && argc != 2) || !IS_STRING(argv[0]) ||
+        (argc == 2 && !IS_STRING(argv[1]))) {
+        return raiseErr(vm, "io:open: expect path and optional mode as strings");
     }
-    FILE* file = fopen(AS_CSTRING(argv[0]), AS_CSTRING(argv[1]));
+    const char* mode = (argc == 2) ? AS_CSTRING(argv[1]) : "r";
+    FILE* file = fopen(AS_CSTRING(argv[0]), mode);
     if (file == NULL) {
-        return raiseErr(vm, "io:open: could not open file");
+        return OBJ_VAL(newError(vm, "io:open: could not open file"));
     }
     return OBJ_VAL(newFile(vm, file));
 }
@@ -164,7 +168,7 @@ static Value readLineNative(VM* vm, int argc, Value* argv) {
 
     if (len == -1) {
         free(line);
-        return OBJ_VAL(copyString(vm, "", 0));
+        return OBJ_VAL(newError(vm, "eof"));
     }
 
     // Strip newline if present
@@ -221,15 +225,54 @@ static Value tellNative(VM* vm, int argc, Value* argv) {
     return INT_VAL(pos);
 }
 
+/**
+ * Opens a file, reads all content, closes it, and returns the string.
+ *
+ * Arguments: [path: String]
+ * Return type: String | err
+ */
+static Value slurpNative(VM* vm, int argc, Value* argv) {
+    if (argc != 1 || !IS_STRING(argv[0])) {
+        return raiseErr(vm, "io:slurp: expect path string");
+    }
+    FILE* file = fopen(AS_CSTRING(argv[0]), "r");
+    if (file == NULL) {
+        return OBJ_VAL(newError(vm, "io:slurp: could not open file"));
+    }
+    if (fseek(file, 0, SEEK_END) != 0) {
+        fclose(file);
+        return OBJ_VAL(newError(vm, "io:slurp: seek failed"));
+    }
+    long size = ftell(file);
+    if (fseek(file, 0, SEEK_SET) != 0) {
+        fclose(file);
+        return OBJ_VAL(newError(vm, "io:slurp: seek failed"));
+    }
+    if (size <= 0) {
+        fclose(file);
+        return OBJ_VAL(copyString(vm, "", 0));
+    }
+    char* buf = malloc(size + 1);
+    if (buf == NULL) {
+        fclose(file);
+        return raiseErr(vm, "io:slurp: memory allocation failed");
+    }
+    size_t bytes_read = fread(buf, 1, size, file);
+    fclose(file);
+    buf[bytes_read] = '\0';
+    return OBJ_VAL(takeString(vm, buf, (int)bytes_read));
+}
+
 static const NativeReg io_functions[] = {
     {"print", -1, printNative},
     {"println", -1, printlnNative},
-    {"open", 2, openNative},
+    {"open", -1, openNative},
     {"close", 1, closeNative},
     {"read", -1, readNative},
     {"read-line", 1, readLineNative},
     {"seek", 3, seekNative},
     {"tell", 1, tellNative},
+    {"slurp", 1, slurpNative},
     {NULL, 0, NULL},  // Sentinel value
 };
 

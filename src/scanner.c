@@ -43,6 +43,16 @@ static bool isAlpha(Scanner* scanner) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
+static char peekNext(Scanner* scanner) { return *(scanner->current + 1); }
+
+// A hyphen is valid mid-identifier (Lisp convention) when followed by a letter.
+static bool isMidHyphen(Scanner* scanner) {
+    char next = peekNext(scanner);
+    return peek(scanner) == '-' &&
+           ((next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z') ||
+            next == '_');
+}
+
 static bool isAnyChar(Scanner* scanner, const char* options) {
     char c = peek(scanner);
     for (int i = 0; options[i] != '\0'; i++) {
@@ -128,7 +138,8 @@ static Token identifier(Scanner* scanner) {
     bool seen_chars[ASCII_SIZE] = {0};
     while (isAlpha(scanner) || isDigit(scanner) ||
            ((scanner->current - scanner->start > 0) &&
-            isAnyCharOnce(scanner, "?!:", seen_chars)))
+            (isAnyCharOnce(scanner, "?!:", seen_chars) ||
+             isMidHyphen(scanner))))
         advance(scanner);
     TokenType type = identifierType(scanner);
     return mkToken(scanner, type);

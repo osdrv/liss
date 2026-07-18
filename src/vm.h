@@ -102,6 +102,9 @@ void push(VM* vm, Value value);
 Value pop(VM* vm);
 Value peek(VM* vm, int distance);
 
+// Call a Liss closure or native from a C native function.
+Value callFromNative(VM* vm, Value callee, int argc, Value* argv);
+
 void printStack(VM* vm);
 void printConsts(Chunk* chunk);
 

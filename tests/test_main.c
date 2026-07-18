@@ -15,6 +15,7 @@ void compiler_suite(void);
 void vm_suite(void);
 void module_suite(void);
 void modules_core_suite(void);
+void modules_list_suite(void);
 void modules_math_suite(void);
 void modules_re_suite(void);
 void str_suite(void);
@@ -33,6 +34,7 @@ int main(int argc, char** argv) {
     vm_suite();
     module_suite();
     modules_core_suite();
+    modules_list_suite();
     str_suite();
     modules_math_suite();
     modules_re_suite();

@@ -70,10 +70,20 @@ static void runFile(const char* path, VMOptions options) {
     }
     InterpretResult result = interpret(vm, buffer, NULL);
     free(buffer);
-    destroyVM(vm);
 
-    if (result == INTERPRET_COMPILE_ERROR) exit(65);
-    if (result == INTERPRET_RUNTIME_ERROR) exit(70);
+    if (result == INTERPRET_COMPILE_ERROR) {
+        fprintf(stderr, "%s\n", vm->error_msg);
+        destroyVM(vm);
+        exit(65);
+    }
+    if (result == INTERPRET_RUNTIME_ERROR) {
+        char* str = sprintValue(vm->raise_value);
+        fprintf(stderr, "%s\n", str);
+        free(str);
+        destroyVM(vm);
+        exit(70);
+    }
+    destroyVM(vm);
 }
 
 int main(int argc, const char* argv[]) {
