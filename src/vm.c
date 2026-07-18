@@ -1063,7 +1063,9 @@ OP_CALL_IMPL: {
         Value value =
             native->function(vm, arg_count, vm->stack_top - arg_count);
         vm->stack_top -= arg_count + 1;  // Pop arguments and the native
-        frame = &vm->frames[vm->frame_cnt - 1];  // refresh: callFromNative may reallocate frames
+        frame =
+            &vm->frames[vm->frame_cnt -
+                        1];  // refresh: callFromNative may reallocate frames
         if (vm->last_result != INTERPRET_OK) {
             goto RESCUE;
         }
@@ -1173,8 +1175,10 @@ OP_TAIL_CALL_IMPL: {
         }
         Value value = native->function(vm, arg_cnt, vm->stack_top - arg_cnt);
         vm->stack_top -= arg_cnt + 1;  // Pop arguments and the native
-        frame = &vm->frames[vm->frame_cnt - 1];  // refresh: callFromNative may reallocate frames
-        push(vm, value);               // Push the result of the native call
+        frame =
+            &vm->frames[vm->frame_cnt -
+                        1];  // refresh: callFromNative may reallocate frames
+        push(vm, value);     // Push the result of the native call
         DISPATCH();
     }
 

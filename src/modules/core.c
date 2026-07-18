@@ -38,6 +38,14 @@ static Value raiseNative(VM* vm, int argc, Value* argv) {
     return NIL_VAL;
 }
 
+static Value noErrNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_ERROR(argv[0])) return argv[0];
+    vm->raise_value = argv[0];
+    vm->last_result = INTERPRET_RUNTIME_ERROR;
+    return NIL_VAL;
+}
+
 static Value lenNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     Value arg = argv[0];
@@ -219,14 +227,14 @@ static Value strNative(VM* vm, int argc, Value* argv) {
 }
 
 static const NativeReg core_functions[] = {
-    {"err", 1, errNative},           {"is_err?", 1, isErrNative},
-    {"raise!", 1, raiseNative},      {"len", 1, lenNative},
-    {"is_empty?", 1, isEmptyNative}, {"pair", 2, pairNative},
-    {"dict", -1, dictNative},        {"get", 2, getNative},
-    {"put", 3, putNative},           {"has?", 2, hasNative},
-    {"del", 2, delNative},           {"keys", 1, keysNative},
-    {"values", 1, valuesNative},
-    {"str", 1, strNative},           {NULL, 0, NULL},  // Sentinel value
+    {"err", 1, errNative},      {"is_err?", 1, isErrNative},
+    {"raise!", 1, raiseNative}, {"noerr!", 1, noErrNative},
+    {"len", 1, lenNative},      {"is_empty?", 1, isEmptyNative},
+    {"pair", 2, pairNative},    {"dict", -1, dictNative},
+    {"get", 2, getNative},      {"put", 3, putNative},
+    {"has?", 2, hasNative},     {"del", 2, delNative},
+    {"keys", 1, keysNative},    {"values", 1, valuesNative},
+    {"str", 1, strNative},      {NULL, 0, NULL},  // Sentinel value
 };
 
 void registerCoreNatives(VM* vm, ObjModule* module) {

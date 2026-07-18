@@ -187,10 +187,10 @@ static Value reduceNative(VM* vm, int argc, Value* argv) {
 }
 
 static const NativeReg list_functions[] = {
-    {"head", 1, headNative},     {"tail", 1, tailNative},
-    {"last", 1, lastNative},     {"cons", 2, consNative},
-    {"push", 2, pushNative},     {"append", 2, appendNative},
-    {"map", 2, mapNative},       {"reduce", 3, reduceNative},
+    {"head", 1, headNative}, {"tail", 1, tailNative},
+    {"last", 1, lastNative}, {"cons", 2, consNative},
+    {"push", 2, pushNative}, {"append", 2, appendNative},
+    {"map", 2, mapNative},   {"reduce", 3, reduceNative},
     {NULL, 0, NULL},
 };
 

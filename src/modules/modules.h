@@ -18,9 +18,12 @@ typedef struct {
 } NativeModuleEntry;
 
 static const NativeModuleEntry native_module_registry[] = {
-    {"core", registerCoreNatives}, {"list", registerListNatives},
-    {"math", registerMathNatives}, {"io", registerIONatives},
-    {"re", registerRENatives},     {"str", registerStrNatives},
+    {"core", registerCoreNatives},
+    {"list", registerListNatives},
+    {"math", registerMathNatives},
+    {"io", registerIONatives},
+    {"re", registerRENatives},
+    {"str", registerStrNatives},
     {NULL, NULL},
 };
 

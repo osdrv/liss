@@ -136,10 +136,10 @@ static TokenType identifierType(Scanner* scanner) {
 
 static Token identifier(Scanner* scanner) {
     bool seen_chars[ASCII_SIZE] = {0};
-    while (isAlpha(scanner) || isDigit(scanner) ||
-           ((scanner->current - scanner->start > 0) &&
-            (isAnyCharOnce(scanner, "?!:", seen_chars) ||
-             isMidHyphen(scanner))))
+    while (
+        isAlpha(scanner) || isDigit(scanner) ||
+        ((scanner->current - scanner->start > 0) &&
+         (isAnyCharOnce(scanner, "?!:", seen_chars) || isMidHyphen(scanner))))
         advance(scanner);
     TokenType type = identifierType(scanner);
     return mkToken(scanner, type);

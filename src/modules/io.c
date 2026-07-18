@@ -70,7 +70,8 @@ static Value printlnNative(VM* vm, int argc, Value* args) {
 static Value openNative(VM* vm, int argc, Value* argv) {
     if ((argc != 1 && argc != 2) || !IS_STRING(argv[0]) ||
         (argc == 2 && !IS_STRING(argv[1]))) {
-        return raiseErr(vm, "io:open: expect path and optional mode as strings");
+        return raiseErr(vm,
+                        "io:open: expect path and optional mode as strings");
     }
     const char* mode = (argc == 2) ? AS_CSTRING(argv[1]) : "r";
     FILE* file = fopen(AS_CSTRING(argv[0]), mode);
@@ -264,16 +265,11 @@ static Value slurpNative(VM* vm, int argc, Value* argv) {
 }
 
 static const NativeReg io_functions[] = {
-    {"print", -1, printNative},
-    {"println", -1, printlnNative},
-    {"open", -1, openNative},
-    {"close", 1, closeNative},
-    {"read", -1, readNative},
-    {"read-line", 1, readLineNative},
-    {"seek", 3, seekNative},
-    {"tell", 1, tellNative},
-    {"slurp", 1, slurpNative},
-    {NULL, 0, NULL},  // Sentinel value
+    {"print", -1, printNative}, {"println", -1, printlnNative},
+    {"open", -1, openNative},   {"close", 1, closeNative},
+    {"read", -1, readNative},   {"read-line", 1, readLineNative},
+    {"seek", 3, seekNative},    {"tell", 1, tellNative},
+    {"slurp", 1, slurpNative},  {NULL, 0, NULL},  // Sentinel value
 };
 
 void registerIONatives(VM* vm, ObjModule* module) {
