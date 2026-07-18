@@ -1174,10 +1174,12 @@ ObjFunction* compile(VM* vm, const char* source, ObjModule* module) {
 #define WILL_READ_BODY() (compiler.parser->current.type != TOKEN_EOF)
 
     do {
-        parseExpression(&compiler, true);
+        parseExpression(&compiler, false);
         if (compiler.parser->hadError) break;
         if (WILL_READ_BODY()) {
             emitByte(&compiler, OP_POP);
+        } else {
+            maybePatchTailCall(&compiler);
         }
     } while (WILL_READ_BODY());
 
