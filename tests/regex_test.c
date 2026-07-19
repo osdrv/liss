@@ -194,6 +194,12 @@ static char* test_char_classes() {
         {.pattern = "^foo$",      .text = "foobar",   .expected = false},
         {.pattern = "^\\d+$",     .text = "123",      .expected = true},
         {.pattern = "^\\d+$",     .text = "12x",      .expected = false},
+        // unanchored substring matching
+        {.pattern = "\\d+",       .text = "L55",      .expected = true},
+        {.pattern = "\\d+",       .text = "no!",      .expected = false},
+        {.pattern = "foo",        .text = "xfooy",    .expected = true},
+        {.pattern = "foo",        .text = "bar",      .expected = false},
+        {.pattern = "\\d+:\\w+",  .text = "key=42:foo!rest", .expected = true},
     };
 
     for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {

@@ -510,6 +510,13 @@ bool matchGroups(ReProgram* prog, const char* text,
                          clist.thread[j].submatch, sp + 1, text);
             }
         }
+        // Always try starting a fresh match at the next position so the
+        // engine finds matches that don't begin at offset 0. Existing
+        // threads are advanced first (above), so leftmost wins when two
+        // threads compete for the same NFA state in this generation.
+        addstate(&nlist, prog->start, prog, generation, last_visited,
+                 init_submatch, sp + 1, text);
+
         ThreadList tmp = clist;
         clist = nlist;
         nlist = tmp;
