@@ -47,10 +47,10 @@ static char peekNext(Scanner* scanner) { return *(scanner->current + 1); }
 
 // A hyphen is valid mid-identifier (Lisp convention) when followed by a letter.
 static bool isMidHyphen(Scanner* scanner) {
+    if (peek(scanner) != '-') return false;
     char next = peekNext(scanner);
-    return peek(scanner) == '-' &&
-           ((next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z') ||
-            next == '_');
+    return (next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z') ||
+           next == '_';
 }
 
 static bool isAnyChar(Scanner* scanner, const char* options) {
