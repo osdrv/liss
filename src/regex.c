@@ -75,10 +75,14 @@ char* addConcat(const char* re) {
 
         if (c1 == '\\' && i + 1 < len) {
             switch (re[i + 1]) {
-                case 'd': emit = RE_ESC_DIGIT;   i++; break;
-                case 'w': emit = RE_ESC_WORD;    i++; break;
-                case 'W': emit = RE_ESC_NONWORD; i++; break;
-                default:  emit = c1;             break;
+                case 'd': emit = RE_ESC_DIGIT;    i++; break;
+                case 'w': emit = RE_ESC_WORD;     i++; break;
+                case 'W': emit = RE_ESC_NONWORD;  i++; break;
+                case 's': emit = RE_ESC_SPACE;    i++; break;
+                case 'S': emit = RE_ESC_NONSPACE; i++; break;
+                case 't': emit = RE_ESC_TAB;      i++; break;
+                case 'n': emit = RE_ESC_NEWLINE;  i++; break;
+                default:  emit = c1;              break;
             }
         } else {
             emit = c1;
@@ -250,12 +254,24 @@ ReProgram* compileRegex(const char* postfix) {
             }
             case RE_ESC_DIGIT:
             case RE_ESC_WORD:
-            case RE_ESC_NONWORD: {
-                int cls = (*p == RE_ESC_DIGIT)   ? 'd'
-                          : (*p == RE_ESC_WORD)   ? 'w'
-                                                  : 'W';
+            case RE_ESC_NONWORD:
+            case RE_ESC_SPACE:
+            case RE_ESC_NONSPACE: {
+                int cls = (*p == RE_ESC_DIGIT)    ? 'd'
+                          : (*p == RE_ESC_WORD)    ? 'w'
+                          : (*p == RE_ESC_NONWORD) ? 'W'
+                          : (*p == RE_ESC_SPACE)   ? 's'
+                                                   : 'S';
                 int i = prog->size++;
                 prog->instrs[i] = (ReInstr){RE_CLASS, cls, 0, 0};
+                stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
+                break;
+            }
+            case RE_ESC_TAB:
+            case RE_ESC_NEWLINE: {
+                int ch = (*p == RE_ESC_TAB) ? '\t' : '\n';
+                int i = prog->size++;
+                prog->instrs[i] = (ReInstr){RE_CHAR, ch, 0, 0};
                 stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
                 break;
             }
@@ -368,7 +384,9 @@ bool matchGroups(ReProgram* prog, const char* text,
                 (instr->type == RE_CHAR && instr->c == *sp) ||
                 (instr->type == RE_CLASS && instr->c == 'd' && isdigit(ch)) ||
                 (instr->type == RE_CLASS && instr->c == 'w' && is_word) ||
-                (instr->type == RE_CLASS && instr->c == 'W' && !is_word);
+                (instr->type == RE_CLASS && instr->c == 'W' && !is_word) ||
+                (instr->type == RE_CLASS && instr->c == 's' && isspace(ch)) ||
+                (instr->type == RE_CLASS && instr->c == 'S' && !isspace(ch));
             if (advance) {
                 addstate(&nlist, instr->s1, prog, generation, last_visited,
                          clist.thread[j].submatch, sp + 1);

@@ -167,10 +167,24 @@ static char* test_char_classes() {
         {.pattern = "\\W",     .text = "!",      .expected = true},
         {.pattern = "\\W",     .text = "a",      .expected = false},
         {.pattern = "\\W",     .text = "3",      .expected = false},
+        // \s / \S
+        {.pattern = "\\s",        .text = " ",        .expected = true},
+        {.pattern = "\\s",        .text = "\t",       .expected = true},
+        {.pattern = "\\s",        .text = "\n",       .expected = true},
+        {.pattern = "\\s",        .text = "a",        .expected = false},
+        {.pattern = "\\S",        .text = "a",        .expected = true},
+        {.pattern = "\\S",        .text = " ",        .expected = false},
+        {.pattern = "\\s+",       .text = "   ",      .expected = true},
+        // \t / \n as literals
+        {.pattern = "a\\tb",      .text = "a\tb",     .expected = true},
+        {.pattern = "a\\tb",      .text = "a b",      .expected = false},
+        {.pattern = "a\\nb",      .text = "a\nb",     .expected = true},
+        {.pattern = "a\\nb",      .text = "ab",       .expected = false},
         // mixed
-        {.pattern = "\\d+:\\w+",  .text = "42:foo",  .expected = true},
-        {.pattern = "\\d+:\\w+",  .text = "42:",      .expected = false},
-        {.pattern = "\\w+\\W\\d", .text = "abc.7",   .expected = true},
+        {.pattern = "\\d+:\\w+",  .text = "42:foo",   .expected = true},
+        {.pattern = "\\d+:\\w+",  .text = "42:",       .expected = false},
+        {.pattern = "\\w+\\W\\d", .text = "abc.7",    .expected = true},
+        {.pattern = "\\S+\\s\\S", .text = "foo bar",  .expected = true},
     };
 
     for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {

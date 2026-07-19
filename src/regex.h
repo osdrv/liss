@@ -15,9 +15,13 @@ typedef enum {
 
 // Sentinel bytes used in the postfix string to represent escape classes.
 // Must be outside 1-9 (group IDs) and not regex operator chars.
-#define RE_ESC_DIGIT   11
-#define RE_ESC_WORD    12
-#define RE_ESC_NONWORD 14
+#define RE_ESC_DIGIT    11
+#define RE_ESC_WORD     12
+#define RE_ESC_NONWORD  14
+#define RE_ESC_SPACE    15
+#define RE_ESC_NONSPACE 16
+#define RE_ESC_TAB      17
+#define RE_ESC_NEWLINE  18
 
 typedef struct {
     ReInstrType type;
