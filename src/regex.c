@@ -1,5 +1,6 @@
 #include "regex.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -70,8 +71,21 @@ char* addConcat(const char* re) {
 
     for (int i = 0; i < len; i++) {
         char c1 = re[i];
-        res[j++] = c1;
-        if (c1 == '(' || c1 == '|') continue;
+        char emit;
+
+        if (c1 == '\\' && i + 1 < len) {
+            switch (re[i + 1]) {
+                case 'd': emit = RE_ESC_DIGIT;   i++; break;
+                case 'w': emit = RE_ESC_WORD;    i++; break;
+                case 'W': emit = RE_ESC_NONWORD; i++; break;
+                default:  emit = c1;             break;
+            }
+        } else {
+            emit = c1;
+        }
+
+        res[j++] = emit;
+        if (emit == '(' || emit == '|') continue;
         if (i + 1 < len) {
             char c2 = re[i + 1];
             switch (c2) {
@@ -82,7 +96,6 @@ char* addConcat(const char* re) {
                 case '?':
                     break;
                 default:
-                    // if the next char is a literal or an open paren, we join
                     res[j++] = '@';
                     break;
             }
@@ -235,6 +248,17 @@ ReProgram* compileRegex(const char* postfix) {
                 stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
                 break;
             }
+            case RE_ESC_DIGIT:
+            case RE_ESC_WORD:
+            case RE_ESC_NONWORD: {
+                int cls = (*p == RE_ESC_DIGIT)   ? 'd'
+                          : (*p == RE_ESC_WORD)   ? 'w'
+                                                  : 'W';
+                int i = prog->size++;
+                prog->instrs[i] = (ReInstr){RE_CLASS, cls, 0, 0};
+                stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
+                break;
+            }
             case '|': {  // alternate
                 Frag e2 = stack[top--];
                 Frag e1 = stack[top--];
@@ -337,8 +361,15 @@ bool matchGroups(ReProgram* prog, const char* text,
         nlist.size = 0;
         for (int j = 0; j < clist.size; j++) {
             ReInstr* instr = &prog->instrs[clist.thread[j].instr_ix];
-            if (instr->type == RE_ANY ||
-                (instr->type == RE_CHAR && instr->c == *sp)) {
+            unsigned char ch = (unsigned char)*sp;
+            bool is_word = isalnum(ch) || *sp == '_';
+            bool advance =
+                instr->type == RE_ANY ||
+                (instr->type == RE_CHAR && instr->c == *sp) ||
+                (instr->type == RE_CLASS && instr->c == 'd' && isdigit(ch)) ||
+                (instr->type == RE_CLASS && instr->c == 'w' && is_word) ||
+                (instr->type == RE_CLASS && instr->c == 'W' && !is_word);
+            if (advance) {
                 addstate(&nlist, instr->s1, prog, generation, last_visited,
                          clist.thread[j].submatch, sp + 1);
             }

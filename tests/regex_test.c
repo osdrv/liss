@@ -138,8 +138,65 @@ static char* test_match_groups() {
     return NULL;
 }
 
+typedef struct {
+    const char* pattern;
+    const char* text;
+    bool expected;
+} ClassMatchTest;
+
+static char* test_char_classes() {
+    ClassMatchTest tests[] = {
+        // \d
+        {.pattern = "\\d",     .text = "5",      .expected = true},
+        {.pattern = "\\d",     .text = "a",      .expected = false},
+        {.pattern = "\\d+",    .text = "123",    .expected = true},
+        {.pattern = "\\d+",    .text = "abc",    .expected = false},
+        {.pattern = "a\\db",   .text = "a7b",    .expected = true},
+        {.pattern = "a\\db",   .text = "axb",    .expected = false},
+        // \w
+        {.pattern = "\\w",     .text = "a",      .expected = true},
+        {.pattern = "\\w",     .text = "Z",      .expected = true},
+        {.pattern = "\\w",     .text = "9",      .expected = true},
+        {.pattern = "\\w",     .text = "_",      .expected = true},
+        {.pattern = "\\w",     .text = " ",      .expected = false},
+        {.pattern = "\\w",     .text = "-",      .expected = false},
+        {.pattern = "\\w+",    .text = "hello",  .expected = true},
+        {.pattern = "\\w+",    .text = "foo_1",  .expected = true},
+        // \W
+        {.pattern = "\\W",     .text = " ",      .expected = true},
+        {.pattern = "\\W",     .text = "!",      .expected = true},
+        {.pattern = "\\W",     .text = "a",      .expected = false},
+        {.pattern = "\\W",     .text = "3",      .expected = false},
+        // mixed
+        {.pattern = "\\d+:\\w+",  .text = "42:foo",  .expected = true},
+        {.pattern = "\\d+:\\w+",  .text = "42:",      .expected = false},
+        {.pattern = "\\w+\\W\\d", .text = "abc.7",   .expected = true},
+    };
+
+    for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+        char* postfix = re2postfix(tests[i].pattern);
+        mu_assert("re2postfix returned NULL", postfix != NULL);
+        ReProgram* prog = compileRegex(postfix);
+        free(postfix);
+
+        bool got = match(prog, tests[i].text);
+        if (got != tests[i].expected) {
+            printf("FAIL: pattern='%s' text='%s' expected=%s got=%s\n",
+                   tests[i].pattern, tests[i].text,
+                   tests[i].expected ? "match" : "no-match",
+                   got ? "match" : "no-match");
+            mu_assert("char class match mismatch", false);
+        }
+
+        free(prog->instrs);
+        free(prog);
+    }
+    return NULL;
+}
+
 void regex_suite() {
     printf("\n--- Regex Suite ---\n");
     mu_run_test(test_re2postfix);
     mu_run_test(test_match_groups);
+    mu_run_test(test_char_classes);
 }

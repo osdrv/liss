@@ -70,7 +70,7 @@ static Value matchNative(VM* vm, int argc, Value* argv) {
         *(vm->stack_top - 1) = head;
     }
 
-    DEBUG_LOG("=== REGEX group count: %d", count);
+    DEBUG_LOG("REGEX group count: %d", count);
 
     ObjList* list = newList(vm, count, head);
     pop(vm);
