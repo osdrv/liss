@@ -75,14 +75,37 @@ char* addConcat(const char* re) {
 
         if (c1 == '\\' && i + 1 < len) {
             switch (re[i + 1]) {
-                case 'd': emit = RE_ESC_DIGIT;    i++; break;
-                case 'w': emit = RE_ESC_WORD;     i++; break;
-                case 'W': emit = RE_ESC_NONWORD;  i++; break;
-                case 's': emit = RE_ESC_SPACE;    i++; break;
-                case 'S': emit = RE_ESC_NONSPACE; i++; break;
-                case 't': emit = RE_ESC_TAB;      i++; break;
-                case 'n': emit = RE_ESC_NEWLINE;  i++; break;
-                default:  emit = c1;              break;
+                case 'd':
+                    emit = RE_ESC_DIGIT;
+                    i++;
+                    break;
+                case 'w':
+                    emit = RE_ESC_WORD;
+                    i++;
+                    break;
+                case 'W':
+                    emit = RE_ESC_NONWORD;
+                    i++;
+                    break;
+                case 's':
+                    emit = RE_ESC_SPACE;
+                    i++;
+                    break;
+                case 'S':
+                    emit = RE_ESC_NONSPACE;
+                    i++;
+                    break;
+                case 't':
+                    emit = RE_ESC_TAB;
+                    i++;
+                    break;
+                case 'n':
+                    emit = RE_ESC_NEWLINE;
+                    i++;
+                    break;
+                default:
+                    emit = c1;
+                    break;
             }
         } else {
             emit = c1;
@@ -190,9 +213,15 @@ static char* replaceBrackets(const char* re, ReProgram* prog) {
         // find matching ']'
         int end = i + 1;
         while (end < len && re[end] != ']') end++;
-        if (end >= len) { free(out); return NULL; }  // unterminated
+        if (end >= len) {
+            free(out);
+            return NULL;
+        }  // unterminated
 
-        if (prog->num_charsets >= MAX_CHARSETS) { free(out); return NULL; }
+        if (prog->num_charsets >= MAX_CHARSETS) {
+            free(out);
+            return NULL;
+        }
 
         ReCharset* cs = &prog->charsets[prog->num_charsets];
         memset(cs->bits, 0, sizeof(cs->bits));
@@ -211,8 +240,7 @@ static char* replaceBrackets(const char* re, ReProgram* prog) {
             unsigned char lo = (unsigned char)re[k];
             if (k + 2 < end && re[k + 1] == '-') {
                 unsigned char hi = (unsigned char)re[k + 2];
-                for (int c = lo; c <= hi; c++)
-                    cs->bits[c / 8] |= 1u << (c % 8);
+                for (int c = lo; c <= hi; c++) cs->bits[c / 8] |= 1u << (c % 8);
                 k += 3;
             } else {
                 cs->bits[lo / 8] |= 1u << (lo % 8);
@@ -251,8 +279,10 @@ ReProgram* compilePattern(const char* re) {
     if (expanded == NULL) return NULL;
 
     // Phase 2: normal pipeline on the expanded string.
-    char* dotted  = addConcat(expanded);  free(expanded);
-    char* postfix = infixToPostfix(dotted); free(dotted);
+    char* dotted = addConcat(expanded);
+    free(expanded);
+    char* postfix = infixToPostfix(dotted);
+    free(dotted);
     if (postfix == NULL) return NULL;
 
     // Phase 3: compile — compileRegex emits RE_BRACKET for sentinel bytes.
@@ -262,8 +292,7 @@ ReProgram* compilePattern(const char* re) {
 
     // Splice our charsets into the compiled program.
     prog->num_charsets = tmp.num_charsets;
-    memcpy(prog->charsets, tmp.charsets,
-           sizeof(ReCharset) * tmp.num_charsets);
+    memcpy(prog->charsets, tmp.charsets, sizeof(ReCharset) * tmp.num_charsets);
     return prog;
 }
 
@@ -367,7 +396,7 @@ ReProgram* compileRegex(const char* postfix) {
             case RE_ESC_NONWORD:
             case RE_ESC_SPACE:
             case RE_ESC_NONSPACE: {
-                int cls = (*p == RE_ESC_DIGIT)    ? 'd'
+                int cls = (*p == RE_ESC_DIGIT)     ? 'd'
                           : (*p == RE_ESC_WORD)    ? 'w'
                           : (*p == RE_ESC_NONWORD) ? 'W'
                           : (*p == RE_ESC_SPACE)   ? 's'

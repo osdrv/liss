@@ -221,6 +221,12 @@ static VMTestCase interpret_tests[] = {
         .expected_value = {EXPECT_INT, .as.integer = ~1},
     },
     {
+        .name = "mod symbol operator",
+        .src = "(% 17 10)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 7},
+    },
+    {
         .name = "LSHIFT kw expression",
         .src = "(bsl 1 3)",
         .expected_result = INTERPRET_OK,
@@ -597,6 +603,12 @@ static VMTestCase interpret_tests[] = {
         .src = "(\"foo\" . 42)",
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_PAIR, .as.string = "(\"foo\" . 42)"},
+    },
+    {
+        .name = "pair with 2 vars",
+        .src = "(let A 1) (let B 2) (A . B)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_PAIR, .as.string = "(1 . 2)"},
     },
     {
         .name = "native fn call",

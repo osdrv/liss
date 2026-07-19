@@ -761,6 +761,7 @@ static InterpretResult run(VM* vm) {
         &&OP_SUBTRACT_IMPL,
         &&OP_MULTIPLY_IMPL,
         &&OP_DIVIDE_IMPL,
+        &&OP_MODULO_IMPL,
         &&OP_NEGATE_IMPL,
 
         &&OP_BAND_IMPL,
@@ -937,6 +938,18 @@ OP_MULTIPLY_IMPL: {
 
 OP_DIVIDE_IMPL: {
     BINARY_OP(/);
+    DISPATCH();
+}
+
+OP_MODULO_IMPL: {
+    Value b = pop(vm);
+    Value a = pop(vm);
+    if (!IS_INT(a) || !IS_INT(b)) {
+        RUNTIME_ERR(vm, "Type error: modulo requires integer operands");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RETURN;
+    }
+    push(vm, INT_VAL(AS_INT(a) % AS_INT(b)));
     DISPATCH();
 }
 

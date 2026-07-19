@@ -240,7 +240,7 @@ static const NativeReg core_functions[] = {
     {"raise!", 1, raiseNative}, {"noerr!", 1, noErrNative},
     {"len", 1, lenNative},      {"is_empty?", 1, isEmptyNative},
     {"pair", 2, pairNative},    {"fst", 1, fstNative},
-    {"snd", 1, sndNative},     {"dict", -1, dictNative},
+    {"snd", 1, sndNative},      {"dict", -1, dictNative},
     {"get", 2, getNative},      {"put", 3, putNative},
     {"has?", 2, hasNative},     {"del", 2, delNative},
     {"keys", 1, keysNative},    {"values", 1, valuesNative},

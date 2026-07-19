@@ -883,6 +883,8 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
         case TOKEN_STAR_KW:
         case TOKEN_SLASH_OP:
         case TOKEN_SLASH_KW:
+        case TOKEN_MODULO_OP:
+        case TOKEN_MODULO_KW:
         case TOKEN_EQUAL_OP:
         case TOKEN_EQUAL_KW:
         case TOKEN_NOT_EQUAL_OP:
@@ -930,6 +932,10 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                     case TOKEN_SLASH_OP:
                     case TOKEN_SLASH_KW:
                         emitByte(compiler, OP_DIVIDE);
+                        goto END_PARSE_GROUPING;
+                    case TOKEN_MODULO_OP:
+                    case TOKEN_MODULO_KW:
+                        emitByte(compiler, OP_MODULO);
                         goto END_PARSE_GROUPING;
                     case TOKEN_EQUAL_OP:
                     case TOKEN_EQUAL_KW:
@@ -1000,6 +1006,10 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
             // 4. Otherwise, it's a block of expressions.
             switch (compiler->parser->current.type) {
                 case TOKEN_IDENTIFIER:
+                    if (compiler->parser->next.type == TOKEN_DOT) {
+                        parsePairOrBlock(compiler, false);
+                        goto END_PARSE_GROUPING;
+                    }
                     break;  // It's a function call, we will parse it below
                 case TOKEN_LPAREN:
                     if (compiler->parser->next.type == TOKEN_FN_KW) {
