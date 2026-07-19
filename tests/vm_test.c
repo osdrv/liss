@@ -453,6 +453,45 @@ static VMTestCase interpret_tests[] = {
         .expected_value = {EXPECT_INT, .as.integer = 123},
     },
     {
+        .name = "local let followed by call using that local",
+        .src = "(fn f [x]"
+               "  (let y (+ x 1))"
+               "  (+ y 10)"
+               ")"
+               "(f 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 16},
+    },
+    {
+        .name = "multiple local lets in sequence",
+        .src = "(fn f []"
+               "  (let a 3)"
+               "  (let b 4)"
+               "  (+ a b)"
+               ")"
+               "(f)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 7},
+    },
+    {
+        .name = "local let inside block expression",
+        .src = "(fn f [x]"
+               "  ((let y (+ x 1)) (+ y 10))"
+               ")"
+               "(f 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 16},
+    },
+    {
+        .name = "two local lets inside block expression",
+        .src = "(fn f []"
+               "  ((let a 3) (let b 4) (+ a b))"
+               ")"
+               "(f)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 7},
+    },
+    {
         .name = "function call with parameters",
         .src = "(fn add [a b] (+ a b)) (add 10 20)",
         .expected_result = INTERPRET_OK,

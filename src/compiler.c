@@ -161,7 +161,9 @@ static ObjFunction* endCompiler(Compiler* compiler) {
 
 static void beginScope(Compiler* compiler) { compiler->scope_depth++; }
 
-static void endScope(Compiler* compiler) {
+// last_was_let: the final expression in the block defined a local, so that
+// local's value IS the result — no separate result sits above the locals.
+static void endScope(Compiler* compiler, bool last_was_let) {
     compiler->scope_depth--;
 
     int locals_in_scope = 0;
@@ -172,12 +174,12 @@ static void endScope(Compiler* compiler) {
         compiler->local_count--;
     }
 
-    if (locals_in_scope > 0) {
-        emitBytes(compiler, OP_SET_LOCAL, (uint8_t)compiler->local_count);
-        // Pop all locals in scope except the last one
-        for (int i = 0; i < locals_in_scope - 1; i++) {
-            emitByte(compiler, OP_POP);
-        }
+    // OP_SLIDE(n) pops the result, discards n values below it, then pushes
+    // the result back. Without last_was_let: stack = [L1..LN, R], slide N.
+    // With last_was_let: stack = [L1..LN] where LN IS R, slide N-1.
+    int n = locals_in_scope - (last_was_let ? 1 : 0);
+    if (n > 0) {
+        emitBytes(compiler, OP_SLIDE, (uint8_t)n);
     }
 }
 
@@ -439,17 +441,15 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
 
     bool is_empty_body = true;
     while (WILL_READ_BODY()) {
+        int prev_locals = fn_compiler->local_count;
         parseExpression(fn_compiler, false);
         if (fn_compiler->parser->hadError) return NULL;
         is_empty_body = false;
-        // We compare init_chunk_count to the current chunk count to determine
-        // if the expression we just parsed emitted any bytecode. If it didn't,
-        // we don't need to emit a POP instruction.
+        bool defined_local = (fn_compiler->local_count > prev_locals);
         if (WILL_READ_BODY()) {
-            emitByte(fn_compiler, OP_POP);
+            // Don't pop a local let: its value on the stack IS the variable.
+            if (!defined_local) emitByte(fn_compiler, OP_POP);
         } else {
-            // If this is the last expression in the function body, we check if
-            // it's a tail call and emit a return if it isn't.
             maybePatchTailCall(fn_compiler);
         }
     }
@@ -467,24 +467,30 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
 static void parsePairOrBlock(Compiler* compiler, bool is_tail) {
     beginScope(compiler);
     bool first_expr = true;
+    bool last_was_let = false;
     while (compiler->parser->current.type != TOKEN_RPAREN) {
+        int prev_locals = compiler->local_count;
         parseExpression(compiler, false);
         if (compiler->parser->hadError) return;
+        bool defined_local = (compiler->local_count > prev_locals);
+        last_was_let = defined_local;
         if (first_expr && compiler->parser->current.type == TOKEN_DOT) {
             consume(compiler, TOKEN_DOT, "expect `.` when initializing a pair");
             parseExpression(compiler, false);
             if (compiler->parser->hadError) return;
             emitByte(compiler, OP_PAIR);
+            last_was_let = false;
             break;
         }
         first_expr = false;
         if (compiler->parser->current.type != TOKEN_RPAREN) {
-            emitByte(compiler, OP_POP);
+            // Don't pop a local let: its value on the stack IS the variable.
+            if (!defined_local) emitByte(compiler, OP_POP);
         } else if (is_tail) {
             maybePatchTailCall(compiler);
         }
     }
-    endScope(compiler);
+    endScope(compiler, last_was_let);
 }
 
 static void parseTry(Compiler* compiler) {
