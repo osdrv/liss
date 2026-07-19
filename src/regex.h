@@ -1,7 +1,10 @@
 #ifndef liss_regex_h
 #define liss_regex_h
 
-#define MAX_GROUPS 10
+#include <stdint.h>
+
+#define MAX_GROUPS   10
+#define MAX_CHARSETS 32
 
 typedef enum {
     RE_CHAR,
@@ -11,9 +14,14 @@ typedef enum {
     RE_ANY,
     RE_SAVE,
     RE_CLASS,  // c encodes class: 'd' digit, 'w' word, 'W' non-word
-    RE_BOL,    // ^ — zero-width: succeeds at start of string
-    RE_EOL,    // $ — zero-width: succeeds at end of string
+    RE_BOL,     // ^ — zero-width: succeeds at start of string
+    RE_EOL,     // $ — zero-width: succeeds at end of string
+    RE_BRACKET, // [...] — c is index into prog->charsets
 } ReInstrType;
+
+typedef struct {
+    uint8_t bits[32];  // 256-bit set: bit i set iff char i matches
+} ReCharset;
 
 // Sentinel bytes used in the postfix string to represent escape classes.
 // Must be outside 1-9 (group IDs) and not regex operator chars.
@@ -37,10 +45,13 @@ typedef struct {
     int size;
     int start;
     int num_grps;
+    ReCharset charsets[MAX_CHARSETS];
+    int num_charsets;
 } ReProgram;
 
 char* re2postfix(const char* re);
 ReProgram* compileRegex(const char* postfix);
+ReProgram* compilePattern(const char* re);  // handles [...] in addition to the above
 bool match(ReProgram* prog, const char* text);
 bool matchGroups(ReProgram* prog, const char* text,
                  const char* submatch[MAX_GROUPS * 2]);

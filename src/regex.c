@@ -174,12 +174,97 @@ char* infixToPostfix(const char* infix) {
     return postfix;
 }
 
+// Replaces each [...] in re with a sentinel byte (128 + charset_index),
+// parsing the charset bitmap into prog->charsets.  Returns a malloc'd string
+// the caller must free; returns NULL on parse error.
+static char* replaceBrackets(const char* re, ReProgram* prog) {
+    int len = strlen(re);
+    char* out = malloc(len + 1);
+    int j = 0;
+
+    for (int i = 0; i < len; i++) {
+        if (re[i] != '[') {
+            out[j++] = re[i];
+            continue;
+        }
+        // find matching ']'
+        int end = i + 1;
+        while (end < len && re[end] != ']') end++;
+        if (end >= len) { free(out); return NULL; }  // unterminated
+
+        if (prog->num_charsets >= MAX_CHARSETS) { free(out); return NULL; }
+
+        ReCharset* cs = &prog->charsets[prog->num_charsets];
+        memset(cs->bits, 0, sizeof(cs->bits));
+
+        int k = i + 1;
+        bool negate = (k < end && re[k] == '^');
+        if (negate) k++;
+
+        // ']' as first char after '[' or '[^' is treated as literal
+        if (k < end && re[k] == ']') {
+            cs->bits[(unsigned char)']' / 8] |= 1u << (']' % 8);
+            k++;
+        }
+
+        while (k < end) {
+            unsigned char lo = (unsigned char)re[k];
+            if (k + 2 < end && re[k + 1] == '-') {
+                unsigned char hi = (unsigned char)re[k + 2];
+                for (int c = lo; c <= hi; c++)
+                    cs->bits[c / 8] |= 1u << (c % 8);
+                k += 3;
+            } else {
+                cs->bits[lo / 8] |= 1u << (lo % 8);
+                k++;
+            }
+        }
+
+        if (negate) {
+            for (int b = 0; b < 32; b++) cs->bits[b] ^= 0xFF;
+            cs->bits[0] &= ~1u;  // never match '\0'
+        }
+
+        out[j++] = (char)(128 + prog->num_charsets);
+        prog->num_charsets++;
+        i = end;  // skip past ']'
+    }
+    out[j] = '\0';
+    return out;
+}
+
 char* re2postfix(const char* re) {
     char* dotted = addConcat(re);
     char* postfix = infixToPostfix(dotted);
     free(dotted);
-
     return postfix;
+}
+
+// All-in-one: handles [...], escape classes, anchors, groups.
+ReProgram* compilePattern(const char* re) {
+    // Phase 1: parse [...] into charsets, replace with sentinel bytes.
+    // We need a temp ReProgram shell just to collect charsets.
+    ReProgram tmp;
+    memset(&tmp, 0, sizeof(tmp));
+
+    char* expanded = replaceBrackets(re, &tmp);
+    if (expanded == NULL) return NULL;
+
+    // Phase 2: normal pipeline on the expanded string.
+    char* dotted  = addConcat(expanded);  free(expanded);
+    char* postfix = infixToPostfix(dotted); free(dotted);
+    if (postfix == NULL) return NULL;
+
+    // Phase 3: compile — compileRegex emits RE_BRACKET for sentinel bytes.
+    ReProgram* prog = compileRegex(postfix);
+    free(postfix);
+    if (prog == NULL) return NULL;
+
+    // Splice our charsets into the compiled program.
+    prog->num_charsets = tmp.num_charsets;
+    memcpy(prog->charsets, tmp.charsets,
+           sizeof(ReCharset) * tmp.num_charsets);
+    return prog;
 }
 
 static void addstate(ThreadList* list, int i, ReProgram* prog, int generation,
@@ -237,6 +322,7 @@ ReProgram* compileRegex(const char* postfix) {
     ReProgram* prog = malloc(sizeof(ReProgram));
     prog->instrs = malloc(sizeof(ReInstr) * (len * 2 + 10));
     prog->size = 0;
+    prog->num_charsets = 0;
 
     int max_grp = 0;
     for (const char* p = postfix; *p; p++) {
@@ -332,7 +418,13 @@ ReProgram* compileRegex(const char* postfix) {
                 break;
             }
             default: {
-                if (*p >= 1 && *p <= 9) {
+                unsigned char uc = (unsigned char)*p;
+                if (uc >= 128) {
+                    // bracket class sentinel: index = uc - 128
+                    int i = prog->size++;
+                    prog->instrs[i] = (ReInstr){RE_BRACKET, uc - 128, 0, 0};
+                    stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
+                } else if (*p >= 1 && *p <= 9) {
                     int g = *p;
                     Frag e = stack[top--];
                     int s_start = prog->size++;
@@ -410,7 +502,9 @@ bool matchGroups(ReProgram* prog, const char* text,
                 (instr->type == RE_CLASS && instr->c == 'w' && is_word) ||
                 (instr->type == RE_CLASS && instr->c == 'W' && !is_word) ||
                 (instr->type == RE_CLASS && instr->c == 's' && isspace(ch)) ||
-                (instr->type == RE_CLASS && instr->c == 'S' && !isspace(ch));
+                (instr->type == RE_CLASS && instr->c == 'S' && !isspace(ch)) ||
+                (instr->type == RE_BRACKET &&
+                 (prog->charsets[instr->c].bits[ch / 8] >> (ch % 8) & 1));
             if (advance) {
                 addstate(&nlist, instr->s1, prog, generation, last_visited,
                          clist.thread[j].submatch, sp + 1, text);

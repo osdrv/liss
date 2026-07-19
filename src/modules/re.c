@@ -10,11 +10,8 @@ static Value reNative(VM* vm, int argc, Value* argv) {
         return raiseErr(vm, "re:re expects a pattern string");
     }
     ObjString* pattern = AS_STRING(argv[0]);
-    char* postfix = re2postfix(pattern->chars);
-    if (!postfix) return raiseErr(vm, "Invalid regex pattern");
-
-    ReProgram* prog = compileRegex(postfix);
-    free(postfix);
+    ReProgram* prog = compilePattern(pattern->chars);
+    if (!prog) return raiseErr(vm, "Invalid regex pattern");
 
     ObjRe* re_obj = newRe(vm, pattern);
     re_obj->program = prog;

@@ -217,9 +217,62 @@ static char* test_char_classes() {
     return NULL;
 }
 
+static char* test_bracket_classes() {
+    ClassMatchTest tests[] = {
+        // literal set
+        {.pattern = "[abc]",      .text = "a",    .expected = true},
+        {.pattern = "[abc]",      .text = "b",    .expected = true},
+        {.pattern = "[abc]",      .text = "d",    .expected = false},
+        // range
+        {.pattern = "[a-z]",      .text = "m",    .expected = true},
+        {.pattern = "[a-z]",      .text = "M",    .expected = false},
+        {.pattern = "[0-9]",      .text = "5",    .expected = true},
+        {.pattern = "[0-9]",      .text = "x",    .expected = false},
+        // negation
+        {.pattern = "[^abc]",     .text = "d",    .expected = true},
+        {.pattern = "[^abc]",     .text = "a",    .expected = false},
+        {.pattern = "[^a-z]",     .text = "A",    .expected = true},
+        {.pattern = "[^a-z]",     .text = "a",    .expected = false},
+        // multi-range
+        {.pattern = "[a-zA-Z]",   .text = "Z",    .expected = true},
+        {.pattern = "[a-zA-Z]",   .text = "5",    .expected = false},
+        {.pattern = "[a-zA-Z0-9]",.text = "9",    .expected = true},
+        // with quantifiers
+        {.pattern = "[a-z]+",     .text = "hello",.expected = true},
+        {.pattern = "[a-z]+",     .text = "HELLO",.expected = false},
+        {.pattern = "[0-9]+",     .text = "007",  .expected = true},
+        // anchored
+        {.pattern = "^[A-Z][a-z]+$", .text = "Hello",  .expected = true},
+        {.pattern = "^[A-Z][a-z]+$", .text = "hello",  .expected = false},
+        {.pattern = "^[A-Z][a-z]+$", .text = "HeLLo",  .expected = false},
+        // combined with escape classes
+        {.pattern = "[a-z]+\\d",  .text = "abc3", .expected = true},
+        {.pattern = "[a-z]+\\d",  .text = "abc",  .expected = false},
+    };
+
+    for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+        ReProgram* prog = compilePattern(tests[i].pattern);
+        mu_assert("compilePattern returned NULL", prog != NULL);
+
+        bool got = match(prog, tests[i].text);
+        if (got != tests[i].expected) {
+            printf("FAIL: pattern='%s' text='%s' expected=%s got=%s\n",
+                   tests[i].pattern, tests[i].text,
+                   tests[i].expected ? "match" : "no-match",
+                   got ? "match" : "no-match");
+            mu_assert("bracket class match mismatch", false);
+        }
+
+        free(prog->instrs);
+        free(prog);
+    }
+    return NULL;
+}
+
 void regex_suite() {
     printf("\n--- Regex Suite ---\n");
     mu_run_test(test_re2postfix);
     mu_run_test(test_match_groups);
     mu_run_test(test_char_classes);
+    mu_run_test(test_bracket_classes);
 }
