@@ -11,6 +11,8 @@ typedef enum {
     RE_ANY,
     RE_SAVE,
     RE_CLASS,  // c encodes class: 'd' digit, 'w' word, 'W' non-word
+    RE_BOL,    // ^ — zero-width: succeeds at start of string
+    RE_EOL,    // $ — zero-width: succeeds at end of string
 } ReInstrType;
 
 // Sentinel bytes used in the postfix string to represent escape classes.

@@ -184,7 +184,7 @@ char* re2postfix(const char* re) {
 
 static void addstate(ThreadList* list, int i, ReProgram* prog, int generation,
                      int* last_visited, const char* submatch[MAX_GROUPS * 2],
-                     const char* sp) {
+                     const char* sp, const char* text_start) {
     if (last_visited[i] == generation) return;
     last_visited[i] = generation;
 
@@ -193,14 +193,14 @@ static void addstate(ThreadList* list, int i, ReProgram* prog, int generation,
     switch (instr->type) {
         case RE_SPLIT: {
             addstate(list, instr->s1, prog, generation, last_visited, submatch,
-                     sp);
+                     sp, text_start);
             addstate(list, instr->s2, prog, generation, last_visited, submatch,
-                     sp);
+                     sp, text_start);
             break;
         }
         case RE_JMP: {
             addstate(list, instr->s1, prog, generation, last_visited, submatch,
-                     sp);
+                     sp, text_start);
             break;
         }
         case RE_SAVE: {
@@ -208,7 +208,19 @@ static void addstate(ThreadList* list, int i, ReProgram* prog, int generation,
             memcpy(new_submatch, submatch, sizeof(new_submatch));
             new_submatch[instr->c] = sp;
             addstate(list, instr->s1, prog, generation, last_visited,
-                     new_submatch, sp);
+                     new_submatch, sp, text_start);
+            break;
+        }
+        case RE_BOL: {
+            if (sp == text_start)
+                addstate(list, instr->s1, prog, generation, last_visited,
+                         submatch, sp, text_start);
+            break;
+        }
+        case RE_EOL: {
+            if (*sp == '\0')
+                addstate(list, instr->s1, prog, generation, last_visited,
+                         submatch, sp, text_start);
             break;
         }
         default: {
@@ -246,9 +258,21 @@ ReProgram* compileRegex(const char* postfix) {
                 stack[++top] = (Frag){e1.start, e2.out};
                 break;
             }
-            case '.': {  // any character
+            case '.': {
                 int i = prog->size++;
                 prog->instrs[i] = (ReInstr){RE_ANY, 0, 0, 0};
+                stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
+                break;
+            }
+            case '^': {
+                int i = prog->size++;
+                prog->instrs[i] = (ReInstr){RE_BOL, 0, 0, 0};
+                stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
+                break;
+            }
+            case '$': {
+                int i = prog->size++;
+                prog->instrs[i] = (ReInstr){RE_EOL, 0, 0, 0};
                 stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
                 break;
             }
@@ -357,7 +381,7 @@ bool matchGroups(ReProgram* prog, const char* text,
 
     const char* sp = text;
     addstate(&clist, prog->start, prog, generation++, last_visited,
-             init_submatch, sp);
+             init_submatch, sp, text);
 
     const char* matched_submatch[MAX_GROUPS * 2];
     bool matched = false;
@@ -389,7 +413,7 @@ bool matchGroups(ReProgram* prog, const char* text,
                 (instr->type == RE_CLASS && instr->c == 'S' && !isspace(ch));
             if (advance) {
                 addstate(&nlist, instr->s1, prog, generation, last_visited,
-                         clist.thread[j].submatch, sp + 1);
+                         clist.thread[j].submatch, sp + 1, text);
             }
         }
         ThreadList tmp = clist;

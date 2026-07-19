@@ -185,6 +185,15 @@ static char* test_char_classes() {
         {.pattern = "\\d+:\\w+",  .text = "42:",       .expected = false},
         {.pattern = "\\w+\\W\\d", .text = "abc.7",    .expected = true},
         {.pattern = "\\S+\\s\\S", .text = "foo bar",  .expected = true},
+        // ^ and $ anchors
+        {.pattern = "^foo",       .text = "foobar",   .expected = true},
+        {.pattern = "^foo",       .text = "xfoo",     .expected = false},
+        {.pattern = "foo$",       .text = "foo",      .expected = true},
+        {.pattern = "foo$",       .text = "foobar",   .expected = false},
+        {.pattern = "^foo$",      .text = "foo",      .expected = true},
+        {.pattern = "^foo$",      .text = "foobar",   .expected = false},
+        {.pattern = "^\\d+$",     .text = "123",      .expected = true},
+        {.pattern = "^\\d+$",     .text = "12x",      .expected = false},
     };
 
     for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
