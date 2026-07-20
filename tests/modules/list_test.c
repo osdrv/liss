@@ -233,6 +233,48 @@ static char *test_list_composition(void) {
     return run_list_tests(tests, sizeof(tests) / sizeof(tests[0]));
 }
 
+static char *test_list_sort(void) {
+    ListTestCase tests[] = {
+        {.name = "sort integers",
+         .src = "(import list [sort]) (sort [3 1 4 1 5 9 2 6])",
+         .expected_str = "[1 1 2 3 4 5 6 9]",
+         .expected_type = EXPECT_LIST},
+        {.name = "sort already sorted",
+         .src = "(import list [sort]) (sort [1 2 3])",
+         .expected_str = "[1 2 3]",
+         .expected_type = EXPECT_LIST},
+        {.name = "sort reverse order",
+         .src = "(import list [sort]) (sort [3 2 1])",
+         .expected_str = "[1 2 3]",
+         .expected_type = EXPECT_LIST},
+        {.name = "sort singleton",
+         .src = "(import list [sort]) (sort [42])",
+         .expected_str = "[42]",
+         .expected_type = EXPECT_LIST},
+        {.name = "sort empty list",
+         .src = "(import list [sort]) (is_empty? (sort []))",
+         .expected_str = "true",
+         .expected_type = EXPECT_BOOL},
+        {.name = "sort preserves duplicates",
+         .src = "(import list [sort]) (sort [2 2 2])",
+         .expected_str = "[2 2 2]",
+         .expected_type = EXPECT_LIST},
+        {.name = "sort_by ascending",
+         .src = "(import list [sort_by]) (sort_by [3 1 2] (fn [a b] (< a b)))",
+         .expected_str = "[1 2 3]",
+         .expected_type = EXPECT_LIST},
+        {.name = "sort_by descending",
+         .src = "(import list [sort_by]) (sort_by [1 3 2] (fn [a b] (> a b)))",
+         .expected_str = "[3 2 1]",
+         .expected_type = EXPECT_LIST},
+        {.name = "sort_by on empty list",
+         .src = "(import list [sort_by]) (is_empty? (sort_by [] (fn [a b] (< a b))))",
+         .expected_str = "true",
+         .expected_type = EXPECT_BOOL},
+    };
+    return run_list_tests(tests, sizeof(tests) / sizeof(tests[0]));
+}
+
 void modules_list_suite(void) {
     printf("--- List Module Suite ---\n");
     mu_run_test(test_list_head_tail_last);
@@ -241,4 +283,5 @@ void modules_list_suite(void) {
     mu_run_test(test_list_map);
     mu_run_test(test_list_reduce);
     mu_run_test(test_list_composition);
+    mu_run_test(test_list_sort);
 }

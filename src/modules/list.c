@@ -1,6 +1,7 @@
 #include "list.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "object.h"
 #include "value.h"
@@ -186,11 +187,127 @@ static Value reduceNative(VM* vm, int argc, Value* argv) {
     return result;
 }
 
+// Three-way comparison for natural order. Sets *type_err on incompatible types.
+static int naturalCmp(Value a, Value b, bool* type_err) {
+    if (IS_INT(a) && IS_INT(b)) {
+        int64_t x = AS_INT(a), y = AS_INT(b);
+        return (x > y) - (x < y);
+    }
+    if (IS_NUMERIC(a) && IS_NUMERIC(b)) {
+        double x = IS_INT(a) ? (double)AS_INT(a) : AS_REAL(a);
+        double y = IS_INT(b) ? (double)AS_INT(b) : AS_REAL(b);
+        return (x > y) - (x < y);
+    }
+    if (IS_STRING(a) && IS_STRING(b))
+        return strcmp(AS_CSTRING(a), AS_CSTRING(b));
+    *type_err = true;
+    return 0;
+}
+
+// Merges elems[lo..mid) and elems[mid..hi) in-place, using tmp[lo..hi) as
+// scratch. Returns false (with vm->last_result set) on error.
+static bool mergeParts(VM* vm, Value* elems, Value* tmp, uint32_t lo,
+                       uint32_t mid, uint32_t hi, Value fn, bool use_fn) {
+    memcpy(tmp + lo, elems + lo, (hi - lo) * sizeof(Value));
+    uint32_t i = lo, j = mid, k = lo;
+    while (i < mid && j < hi) {
+        bool a_first;
+        if (use_fn) {
+            Value args[2] = {tmp[i], tmp[j]};
+            Value r = callFromNative(vm, fn, 2, args);
+            if (vm->last_result != INTERPRET_OK) return false;
+            a_first = IS_BOOL(r) && AS_BOOL(r);
+        } else {
+            bool type_err = false;
+            int cmp = naturalCmp(tmp[i], tmp[j], &type_err);
+            if (type_err) {
+                (void)raiseErr(
+                    vm, "list:sort: cannot compare values of different types");
+                return false;
+            }
+            a_first = (cmp <= 0);
+        }
+        elems[k++] = a_first ? tmp[i++] : tmp[j++];
+    }
+    while (i < mid) elems[k++] = tmp[i++];
+    while (j < hi) elems[k++] = tmp[j++];
+    return true;
+}
+
+static bool mergeSort(VM* vm, Value* elems, Value* tmp, uint32_t lo,
+                      uint32_t hi, Value fn, bool use_fn) {
+    if (hi - lo <= 1) return true;
+    uint32_t mid = lo + (hi - lo) / 2;
+    return mergeSort(vm, elems, tmp, lo, mid, fn, use_fn) &&
+           mergeSort(vm, elems, tmp, mid, hi, fn, use_fn) &&
+           mergeParts(vm, elems, tmp, lo, mid, hi, fn, use_fn);
+}
+
+static Value sortImpl(VM* vm, Value list_val, Value fn, bool use_fn) {
+    ObjList* list = AS_LIST(list_val);
+    uint32_t len = list->len;
+    if (len <= 1) return list_val;
+
+    Value* elems = malloc(len * sizeof(Value));
+    Value* tmp = malloc(len * sizeof(Value));
+    if (!elems || !tmp) {
+        free(elems);
+        free(tmp);
+        return raiseErr(vm, "list:sort: allocation failed");
+    }
+
+    Value cur = list->head;
+    for (uint32_t i = 0; i < len; i++) {
+        elems[i] = AS_PAIR(cur)->first;
+        cur = AS_PAIR(cur)->second;
+    }
+
+    bool ok = mergeSort(vm, elems, tmp, 0, len, fn, use_fn);
+    free(tmp);
+
+    if (!ok) {
+        free(elems);
+        return NIL_VAL;
+    }
+
+    // Rebuild chain right-to-left; head kept rooted at stack_top[-1].
+    push(vm, NIL_VAL);
+    for (int32_t i = (int32_t)len - 1; i >= 0; i--) {
+        push(vm, elems[i]);
+        vm->stack_top[-1] =
+            OBJ_VAL(newPair(vm, vm->stack_top[-1], vm->stack_top[-2]));
+        vm->stack_top[-2] = vm->stack_top[-1];
+        pop(vm);
+    }
+    Value result = OBJ_VAL(newList(vm, len, vm->stack_top[-1]));
+    pop(vm);
+    free(elems);
+    return result;
+}
+
+static Value sortNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_LIST(argv[0])) return raiseErr(vm, "list:sort: expects a list");
+    return sortImpl(vm, argv[0], NIL_VAL, false);
+}
+
+static Value sortByNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_LIST(argv[0]))
+        return raiseErr(vm, "list:sort_by: first argument must be a list");
+    Value fn = argv[1];
+    if (!IS_OBJ(fn) ||
+        (OBJ_TYPE(fn) != OBJ_CLOSURE && OBJ_TYPE(fn) != OBJ_NATIVE))
+        return raiseErr(vm, "list:sort_by: second argument must be a function");
+    return sortImpl(vm, argv[0], fn, true);
+}
+
 static const NativeReg list_functions[] = {
     {"head", 1, headNative}, {"tail", 1, tailNative},
     {"last", 1, lastNative}, {"cons", 2, consNative},
     {"push", 2, pushNative}, {"append", 2, appendNative},
     {"map", 2, mapNative},   {"reduce", 3, reduceNative},
+    {"sort", 1, sortNative}, {"sort_by", 2, sortByNative},
     {NULL, 0, NULL},
 };
 

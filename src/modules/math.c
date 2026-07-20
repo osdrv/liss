@@ -206,6 +206,29 @@ static Value log2Native(VM* vm, int argc, Value* argv) {
 }
 
 /**
+ * Returns the base-10 logarithm of the argument.
+ *
+ * Arguments: 1
+ * Argument types: Int or Real (must be greater than zero)
+ * Return type: Real
+ */
+static Value log10Native(VM* vm, int argc, Value* argv) {
+    if (argc != 1) {
+        return raiseErr(vm, "log10 takes exactly 1 argument");
+    }
+    Value arg = argv[0];
+    if (!(IS_INT(arg) || IS_REAL(arg))) {
+        return raiseErr(vm, "log10 takes int or real arguments");
+    }
+    double val = (IS_INT(arg) ? (double)AS_INT(arg) : AS_REAL(arg));
+    if (val <= 0) {
+        return raiseErr(vm, "log10 argument must be greater than zero");
+    }
+    double res = log10(val);
+    return REAL_VAL(res);
+}
+
+/**
  * Returns the value of e (Euler's number) raised to the power of the argument.
  *
  * Arguments: 1
@@ -313,10 +336,10 @@ static const NativeReg math_functions[] = {
     {"round", 1, roundNative}, {"abs", 1, absNative},
     {"sqrt", 1, sqrtNative},   {"pow", 2, powNative},
     {"fmod", 2, fmodNative},   {"log", 1, logNative},
-    {"log2", 1, log2Native},   {"exp", 1, expNative},
-    {"sin", 1, sinNative},     {"cos", 1, cosNative},
-    {"tan", 1, tanNative},     {"atan2", 2, atan2Native},
-    {NULL, 0, NULL},  // Sentinel value
+    {"log2", 1, log2Native},   {"log10",1, log10Native},
+    {"exp", 1, expNative},     {"sin", 1, sinNative},
+    {"cos", 1, cosNative},     {"tan", 1, tanNative},
+    {"atan2", 2, atan2Native}, {NULL, 0, NULL},  // Sentinel value
 };
 
 void registerMathNatives(VM* vm, ObjModule* module) {
