@@ -122,6 +122,9 @@ static char *test_core_containers(void) {
     case EXPECT_BOOL:
       assert_msg = assert_bool(val, strcmp(tests[i].expected_str, "true") == 0);
       break;
+    case EXPECT_REAL:
+      assert_msg = assert_real(val, atof(tests[i].expected_str));
+      break;
     case EXPECT_STRING: {
       mu_assert("Value is not string", IS_STRING(val));
       char *s = sprintValue(val);
@@ -141,7 +144,64 @@ static char *test_core_containers(void) {
   return NULL;
 }
 
+static char *test_core_conversions(void) {
+  CoreTestCase tests[] = {
+      {.name = "to_int from int is passthrough",
+       .src = "(to_int 42)",
+       .expected_str = "42",
+       .expected_type = EXPECT_INT},
+      {.name = "to_int truncates real toward zero",
+       .src = "(to_int 3.9)",
+       .expected_str = "3",
+       .expected_type = EXPECT_INT},
+      {.name = "to_int truncates negative real toward zero",
+       .src = "(to_int -3.9)",
+       .expected_str = "-3",
+       .expected_type = EXPECT_INT},
+      {.name = "to_int of ceil result",
+       .src = "(import math [ceil]) (to_int (ceil 3.2))",
+       .expected_str = "4",
+       .expected_type = EXPECT_INT},
+      {.name = "to_real from real is passthrough",
+       .src = "(import math [ceil]) (to_real 1.5)",
+       .expected_str = "1.5",
+       .expected_type = EXPECT_REAL},
+      {.name = "to_real promotes int",
+       .src = "(to_real 7)",
+       .expected_str = "7",
+       .expected_type = EXPECT_REAL},
+  };
+  for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+    VMOptions options = defaultVMOptions();
+    VM *vm = newVM(options);
+    InterpretResult result = interpret(vm, tests[i].src, NULL);
+    if (result != INTERPRET_OK) {
+      printf("Failed test: %s\n", tests[i].name);
+      mu_assert("Interpretation failed", false);
+    }
+    Value val = vm->last_popped_value;
+    char *assert_msg = NULL;
+    switch (tests[i].expected_type) {
+    case EXPECT_INT:
+      assert_msg = assert_int(val, atoll(tests[i].expected_str));
+      break;
+    case EXPECT_REAL:
+      assert_msg = assert_real(val, atof(tests[i].expected_str));
+      break;
+    default:
+      break;
+    }
+    if (assert_msg != NULL) {
+      printf("Failed test: %s\n", tests[i].name);
+      mu_assert(assert_msg, false);
+    }
+    destroyVM(vm);
+  }
+  return NULL;
+}
+
 void modules_core_suite(void) {
   printf("--- Core Module Suite ---\n");
   mu_run_test(test_core_containers);
+  mu_run_test(test_core_conversions);
 }

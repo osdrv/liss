@@ -728,7 +728,7 @@ static InterpretResult run(VM* vm) {
         Value b = pop(vm);                                       \
         Value a = pop(vm);                                       \
         if (a.type != b.type) {                                  \
-            RUNTIME_ERR(vm, "Comparison type mismatch error");   \
+            RUNTIME_ERR(vm, "Incompatible comparison types");   \
             result = INTERPRET_RUNTIME_ERROR;                    \
             goto RETURN;                                         \
         }                                                        \
@@ -741,7 +741,7 @@ static InterpretResult run(VM* vm) {
         } else if (IS_REAL(a) && IS_INT(b)) {                    \
             push(vm, BOOL_VAL(AS_REAL(a) op(double) AS_INT(b))); \
         } else {                                                 \
-            RUNTIME_ERR(vm, "Comparison type mismatch error");   \
+            RUNTIME_ERR(vm, "Unsupported comparison type");   \
             result = INTERPRET_RUNTIME_ERROR;                    \
             goto RETURN;                                         \
         }                                                        \

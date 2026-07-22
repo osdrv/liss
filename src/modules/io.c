@@ -264,6 +264,7 @@ static Value slurpNative(VM* vm, int argc, Value* argv) {
     return OBJ_VAL(takeString(vm, buf, (int)bytes_read));
 }
 
+
 static const NativeReg io_functions[] = {
     {"print", -1, printNative}, {"println", -1, printlnNative},
     {"open", -1, openNative},   {"close", 1, closeNative},

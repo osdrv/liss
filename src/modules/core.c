@@ -1,5 +1,6 @@
 #include "core.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #include "hamt.h"
@@ -235,6 +236,88 @@ static Value strNative(VM* vm, int argc, Value* argv) {
     return result;
 }
 
+static Value toIntNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (IS_INT(argv[0])) return argv[0];
+    if (IS_REAL(argv[0])) return INT_VAL((int64_t)AS_REAL(argv[0]));
+    return raiseErr(vm, "to_int: expected int or real");
+}
+
+static Value toRealNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (IS_REAL(argv[0])) return argv[0];
+    if (IS_INT(argv[0])) return REAL_VAL((double)AS_INT(argv[0]));
+    return raiseErr(vm, "to_real: expected int or real");
+}
+
+static const char* valTypeName(Value v) {
+    switch (v.type) {
+        case VAL_INT:  return "int";
+        case VAL_REAL: return "real";
+        case VAL_BOOL: return "bool";
+        case VAL_NIL:  return "nil";
+        case VAL_OBJ:
+            switch (OBJ_TYPE(v)) {
+                case OBJ_STRING:   return "string";
+                case OBJ_LIST:     return "list";
+                case OBJ_PAIR:     return "pair";
+                case OBJ_DICT:     return "dict";
+                case OBJ_CLOSURE:
+                case OBJ_FUNCTION: return "fn";
+                case OBJ_NATIVE:   return "native-fn";
+                case OBJ_ERROR:    return "error";
+                case OBJ_RE:       return "re";
+                case OBJ_MODULE:   return "module";
+                case OBJ_FILE:     return "file";
+                default:           return "obj";
+            }
+        default: return "?";
+    }
+}
+
+static Value inspectNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    Value v = argv[0];
+
+    if (IS_NIL(v))
+        return OBJ_VAL(copyString(vm, "nil", 3));
+
+    const char* type = valTypeName(v);
+    char* buf;
+    int len;
+
+    if (IS_CLOSURE(v)) {
+        // sprintValue returns "<object>" for closures — use the name directly.
+        ObjString* name = AS_CLOSURE(v)->function->name;
+        const char* n = name ? name->chars : "(anon)";
+        len = snprintf(NULL, 0, "%s: %s", type, n);
+        buf = malloc(len + 1);
+        snprintf(buf, len + 1, "%s: %s", type, n);
+    } else if (IS_RE(v)) {
+        // sprintValue returns "<object>" for regex — show the pattern.
+        const char* pat = AS_RE(v)->pattern->chars;
+        len = snprintf(NULL, 0, "%s: /%s/", type, pat);
+        buf = malloc(len + 1);
+        snprintf(buf, len + 1, "%s: /%s/", type, pat);
+    } else if (IS_ERROR(v)) {
+        // sprintValue wraps in "<error: ...>" — show the message directly.
+        const char* msg = AS_ERROR(v)->message->chars;
+        len = snprintf(NULL, 0, "%s: %s", type, msg);
+        buf = malloc(len + 1);
+        snprintf(buf, len + 1, "%s: %s", type, msg);
+    } else {
+        char* repr = sprintValue(v);
+        len = snprintf(NULL, 0, "%s: %s", type, repr);
+        buf = malloc(len + 1);
+        snprintf(buf, len + 1, "%s: %s", type, repr);
+        free(repr);
+    }
+
+    Value result = OBJ_VAL(copyString(vm, buf, len));
+    free(buf);
+    return result;
+}
+
 static const NativeReg core_functions[] = {
     {"err", 1, errNative},      {"is_err?", 1, isErrNative},
     {"raise!", 1, raiseNative}, {"noerr!", 1, noErrNative},
@@ -244,7 +327,9 @@ static const NativeReg core_functions[] = {
     {"get", 2, getNative},      {"put", 3, putNative},
     {"has?", 2, hasNative},     {"del", 2, delNative},
     {"keys", 1, keysNative},    {"values", 1, valuesNative},
-    {"str", 1, strNative},      {NULL, 0, NULL},  // Sentinel value
+    {"str", 1, strNative},      {"to_int", 1, toIntNative},
+    {"to_real", 1, toRealNative}, {"inspect", 1, inspectNative},
+    {NULL, 0, NULL},  // Sentinel value
 };
 
 void registerCoreNatives(VM* vm, ObjModule* module) {

@@ -19,7 +19,7 @@ This is the C implementation of Liss, built as a systems programming exercise. T
 - **Pipe Operator:** `->` threads a value left-to-right, short-circuiting on `err`.
 - **Error Handling:** Value-level errors (`err` / `is_err?`) and stack-unwinding exceptions (`raise!` / `try`).
 - **Regexp Support:** Built-in `re` module with a custom NFA-based regex engine.
-- **Modules:** Native modules (`core`, `math`, `io`, `str`, `re`) and local Liss file imports.
+- **Modules:** Native modules (`core`, `list`, `math`, `io`, `str`, `re`) and local Liss file imports.
 - **REPL:** Interactive Read-Eval-Print Loop.
 - **Mark-and-Sweep GC:** Incremental garbage collector with configurable heap growth.
 
@@ -141,6 +141,8 @@ make DEBUG=1 SANITIZE=1
 | `is_empty? v` | True if string, list, or dict is empty |
 | `get coll key` | Index into list, dict, or string |
 | `pair a b` | Construct a dotted pair |
+| `fst p` | First element of a pair |
+| `snd p` | Second element of a pair |
 | `dict pairs...` | Construct a persistent dict from pairs |
 | `put d k v` | Return new dict with key added/updated |
 | `del d k` | Return new dict with key removed |
@@ -152,7 +154,12 @@ make DEBUG=1 SANITIZE=1
 | `cons lst elem` | Prepend element, return new list |
 | `push lst elem` | Append element, return new list |
 | `append lst1 lst2` | Concatenate two lists |
-| `str v` | Convert value to string |
+| `sort lst` | Sort a list of ints, reals, or strings in natural ascending order |
+| `sort_by lst cmp` | Sort with a custom comparator — `cmp` returns true if its first arg comes before its second |
+| `str v` | Convert any value to its string representation |
+| `to_int v` | Convert int or real to int (truncates toward zero) |
+| `to_real v` | Convert int or real to real |
+| `inspect v` | Return a string describing the type and value — useful for debugging |
 
 ## References
 
