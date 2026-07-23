@@ -320,35 +320,35 @@ static Value joinNative(VM* vm, int argc, Value* argv) {
     return OBJ_VAL(takeString(vm, buf, total));
 }
 
-static Value toIntNative(VM* vm, int argc, Value* argv) {
+static Value parseIntNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_STRING(argv[0])) {
-        RUNTIME_ERR(vm, "to_int expects a string");
+        RUNTIME_ERR(vm, "parse_int expects a string");
         return NIL_VAL;
     }
     ObjString* s = AS_STRING(argv[0]);
-    if (s->length == 0) return OBJ_VAL(newError(vm, "to_int: empty string"));
+    if (s->length == 0) return OBJ_VAL(newError(vm, "parse_int: empty string"));
 
     char* end;
     long long val = strtoll(s->chars, &end, 10);
     if (end != s->chars + s->length)
-        return OBJ_VAL(newError(vm, "to_int: invalid integer"));
+        return OBJ_VAL(newError(vm, "parse_int: invalid integer"));
     return INT_VAL((int64_t)val);
 }
 
-static Value toRealNative(VM* vm, int argc, Value* argv) {
+static Value parseRealNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_STRING(argv[0])) {
-        RUNTIME_ERR(vm, "to_real expects a string");
+        RUNTIME_ERR(vm, "parse_real expects a string");
         return NIL_VAL;
     }
     ObjString* s = AS_STRING(argv[0]);
-    if (s->length == 0) return OBJ_VAL(newError(vm, "to_real: empty string"));
+    if (s->length == 0) return OBJ_VAL(newError(vm, "parse_real: empty string"));
 
     char* end;
     double val = strtod(s->chars, &end);
     if (end != s->chars + s->length)
-        return OBJ_VAL(newError(vm, "to_real: invalid real"));
+        return OBJ_VAL(newError(vm, "parse_real: invalid real"));
     return REAL_VAL((double)val);
 }
 
@@ -365,8 +365,8 @@ static const NativeReg str_functions[] = {
     {"replace_all", 3, replaceAllNative},
     {"split", 2, splitNative},
     {"join", 2, joinNative},
-    {"to_int", 1, toIntNative},
-    {"to_real", 1, toRealNative},
+    {"parse_int", 1, parseIntNative},
+    {"parse_real", 1, parseRealNative},
     {NULL, 0, NULL},
 };
 

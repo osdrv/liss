@@ -90,9 +90,9 @@ make DEBUG=1 SANITIZE=1
 
 ```lisp
 (import io ["println"])
-(import str ["split" "to_int"])
+(import str ["split" "parse_int"])
 
-(switch (-> "42:hello:world" (str:split ":") (get 0) str:to_int)
+(switch (-> "42:hello:world" (str:split ":") (get 0) str:parse_int)
     [(err msg) (println "parse error:" msg)]
     [n         (println "got:" n)])
 ```
@@ -159,6 +159,8 @@ make DEBUG=1 SANITIZE=1
 | `str v` | Convert any value to its string representation |
 | `to_int v` | Convert int or real to int (truncates toward zero) |
 | `to_real v` | Convert int or real to real |
+| `str:parse_int s` | Parse a string as an integer — returns `err` on failure |
+| `str:parse_real s` | Parse a string as a real — returns `err` on failure |
 | `inspect v` | Return a string describing the type and value — useful for debugging |
 
 ## References

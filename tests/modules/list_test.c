@@ -176,7 +176,7 @@ static char *test_list_map(void) {
          .expected_str = "[25]",
          .expected_type = EXPECT_LIST},
         {.name = "map with native function",
-         .src = "(import list [map]) (import str [to_int]) (map to_int [\"1\" \"2\" \"3\"])",
+         .src = "(import list [map]) (import str [parse_int]) (map parse_int [\"1\" \"2\" \"3\"])",
          .expected_str = "[1 2 3]",
          .expected_type = EXPECT_LIST},
     };
