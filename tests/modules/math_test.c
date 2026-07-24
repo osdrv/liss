@@ -243,6 +243,68 @@ static char *test_math_constants(void) {
     return run_tests(tests, sizeof(tests) / sizeof(tests[0]));
 }
 
+static char *test_math_min_max(void) {
+    TestCase tests[] = {
+        {.name = "max of two ints returns int",
+         .src = "(import math [max]) (max 3 5)",
+         .expected_str = "5",
+         .expected_type = EXPECT_INT},
+        {.name = "max picks larger int",
+         .src = "(import math [max]) (max 5 3)",
+         .expected_str = "5",
+         .expected_type = EXPECT_INT},
+        {.name = "max of equal ints",
+         .src = "(import math [max]) (max 7 7)",
+         .expected_str = "7",
+         .expected_type = EXPECT_INT},
+        {.name = "max of negative ints",
+         .src = "(import math [max]) (max -1 -3)",
+         .expected_str = "-1",
+         .expected_type = EXPECT_INT},
+        {.name = "max of two reals returns real",
+         .src = "(import math [max]) (max 3.0 5.5)",
+         .expected_str = "5.5",
+         .expected_type = EXPECT_REAL},
+        {.name = "max of int and real returns real",
+         .src = "(import math [max]) (max 5 3.0)",
+         .expected_str = "5",
+         .expected_type = EXPECT_REAL},
+        {.name = "min of two ints returns int",
+         .src = "(import math [min]) (min 3 5)",
+         .expected_str = "3",
+         .expected_type = EXPECT_INT},
+        {.name = "min picks smaller int",
+         .src = "(import math [min]) (min 5 3)",
+         .expected_str = "3",
+         .expected_type = EXPECT_INT},
+        {.name = "min of equal ints",
+         .src = "(import math [min]) (min 7 7)",
+         .expected_str = "7",
+         .expected_type = EXPECT_INT},
+        {.name = "min of negative ints",
+         .src = "(import math [min]) (min -1 -3)",
+         .expected_str = "-3",
+         .expected_type = EXPECT_INT},
+        {.name = "min of two reals returns real",
+         .src = "(import math [min]) (min 3.0 5.5)",
+         .expected_str = "3",
+         .expected_type = EXPECT_REAL},
+        {.name = "min of int and real returns real",
+         .src = "(import math [min]) (min 3 5.0)",
+         .expected_str = "3",
+         .expected_type = EXPECT_REAL},
+        {.name = "max type error raises",
+         .src = "(import math [max]) (try (max \"a\" 1))",
+         .expected_str = "max takes int or real arguments",
+         .expected_type = EXPECT_ERROR},
+        {.name = "min type error raises",
+         .src = "(import math [min]) (try (min true 1))",
+         .expected_str = "min takes int or real arguments",
+         .expected_type = EXPECT_ERROR},
+    };
+    return run_tests(tests, sizeof(tests) / sizeof(tests[0]));
+}
+
 void modules_math_suite(void) {
     printf("--- Math Module Suite ---\n");
     mu_run_test(test_math_floor_ceil_round);
@@ -251,4 +313,5 @@ void modules_math_suite(void) {
     mu_run_test(test_math_log);
     mu_run_test(test_math_trig);
     mu_run_test(test_math_constants);
+    mu_run_test(test_math_min_max);
 }

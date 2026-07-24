@@ -331,6 +331,30 @@ static Value atan2Native(VM* vm, int argc, Value* argv) {
     return REAL_VAL(res);
 }
 
+static Value maxNative(VM* vm, int argc, Value* argv) {
+    if (argc != 2) return raiseErr(vm, "max takes exactly 2 arguments");
+    Value a = argv[0], b = argv[1];
+    if (!(IS_INT(a) || IS_REAL(a)) || !(IS_INT(b) || IS_REAL(b)))
+        return raiseErr(vm, "max takes int or real arguments");
+    if (IS_INT(a) && IS_INT(b))
+        return INT_VAL(AS_INT(a) >= AS_INT(b) ? AS_INT(a) : AS_INT(b));
+    double da = IS_INT(a) ? (double)AS_INT(a) : AS_REAL(a);
+    double db = IS_INT(b) ? (double)AS_INT(b) : AS_REAL(b);
+    return REAL_VAL(da >= db ? da : db);
+}
+
+static Value minNative(VM* vm, int argc, Value* argv) {
+    if (argc != 2) return raiseErr(vm, "min takes exactly 2 arguments");
+    Value a = argv[0], b = argv[1];
+    if (!(IS_INT(a) || IS_REAL(a)) || !(IS_INT(b) || IS_REAL(b)))
+        return raiseErr(vm, "min takes int or real arguments");
+    if (IS_INT(a) && IS_INT(b))
+        return INT_VAL(AS_INT(a) <= AS_INT(b) ? AS_INT(a) : AS_INT(b));
+    double da = IS_INT(a) ? (double)AS_INT(a) : AS_REAL(a);
+    double db = IS_INT(b) ? (double)AS_INT(b) : AS_REAL(b);
+    return REAL_VAL(da <= db ? da : db);
+}
+
 static const NativeReg math_functions[] = {
     {"floor", 1, floorNative}, {"ceil", 1, ceilNative},
     {"round", 1, roundNative}, {"abs", 1, absNative},
@@ -339,7 +363,9 @@ static const NativeReg math_functions[] = {
     {"log2", 1, log2Native},   {"log10",1, log10Native},
     {"exp", 1, expNative},     {"sin", 1, sinNative},
     {"cos", 1, cosNative},     {"tan", 1, tanNative},
-    {"atan2", 2, atan2Native}, {NULL, 0, NULL},  // Sentinel value
+    {"atan2", 2, atan2Native},
+    {"max", 2, maxNative},     {"min", 2, minNative},
+    {NULL, 0, NULL},
 };
 
 void registerMathNatives(VM* vm, ObjModule* module) {
