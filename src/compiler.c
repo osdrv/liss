@@ -118,11 +118,36 @@ static void patchJump(Compiler* compiler, int offset) {
     currentChunk(compiler)->code[offset + 1] = jump & 0xff;
 }
 
-static void maybePatchTailCall(Compiler* compiler) {
-    Chunk* chunk = currentChunk(compiler);
-    if (chunk->count >= 2 && chunk->code[chunk->count - 2] == OP_CALL) {
-        chunk->code[chunk->count - 2] = OP_TAIL_CALL;
-    }
+// Save/restore the scanner+bytecode state so we can reparse the last body
+// expression with is_tail=true. Single-pass compilers can't know which
+// expression is last before parsing it, so we compile with false first, then
+// rewind and recompile as tail if it turns out to be the final one.
+typedef struct {
+    Scanner scanner;
+    Token   current;
+    Token   next;
+    int     code_count;
+    int     const_count;
+} TailCheckpoint;
+
+static TailCheckpoint saveTailCheckpoint(Compiler* compiler) {
+    return (TailCheckpoint){
+        .scanner     = compiler->parser->scanner,
+        .current     = compiler->parser->current,
+        .next        = compiler->parser->next,
+        .code_count  = currentChunk(compiler)->count,
+        .const_count = currentChunk(compiler)->constants.count,
+    };
+}
+
+static void rewindToCheckpoint(Compiler* compiler, TailCheckpoint cp,
+                               int saved_locals) {
+    compiler->parser->scanner             = cp.scanner;
+    compiler->parser->current             = cp.current;
+    compiler->parser->next                = cp.next;
+    currentChunk(compiler)->count         = cp.code_count;
+    currentChunk(compiler)->constants.count = cp.const_count;
+    compiler->local_count                 = saved_locals;
 }
 
 static void initCompiler(Compiler* compiler, Compiler* enclosing,
@@ -442,6 +467,7 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
     bool is_empty_body = true;
     while (WILL_READ_BODY()) {
         int prev_locals = fn_compiler->local_count;
+        TailCheckpoint cp = saveTailCheckpoint(fn_compiler);
         parseExpression(fn_compiler, false);
         if (fn_compiler->parser->hadError) return NULL;
         is_empty_body = false;
@@ -450,7 +476,16 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
             // Don't pop a local let: its value on the stack IS the variable.
             if (!defined_local) emitByte(fn_compiler, OP_POP);
         } else {
-            maybePatchTailCall(fn_compiler);
+            // Last expression. If it ended with OP_CALL, reparse with
+            // is_tail=true so parseCond propagates OP_TAIL_CALL to ALL
+            // reachable branches (not just the final one in bytecode order).
+            Chunk* chunk = currentChunk(fn_compiler);
+            if (chunk->count >= 2 &&
+                chunk->code[chunk->count - 2] == OP_CALL) {
+                rewindToCheckpoint(fn_compiler, cp, prev_locals);
+                parseExpression(fn_compiler, true);
+                if (fn_compiler->parser->hadError) return NULL;
+            }
         }
     }
     if (is_empty_body) {
@@ -470,6 +505,7 @@ static void parsePairOrBlock(Compiler* compiler, bool is_tail) {
     bool last_was_let = false;
     while (compiler->parser->current.type != TOKEN_RPAREN) {
         int prev_locals = compiler->local_count;
+        TailCheckpoint cp = saveTailCheckpoint(compiler);
         parseExpression(compiler, false);
         if (compiler->parser->hadError) return;
         bool defined_local = (compiler->local_count > prev_locals);
@@ -487,7 +523,17 @@ static void parsePairOrBlock(Compiler* compiler, bool is_tail) {
             // Don't pop a local let: its value on the stack IS the variable.
             if (!defined_local) emitByte(compiler, OP_POP);
         } else if (is_tail) {
-            maybePatchTailCall(compiler);
+            // Last expression of a tail-position block. Same reparse logic as
+            // in compileFunction: only reparse if it ended with OP_CALL.
+            Chunk* chunk = currentChunk(compiler);
+            if (chunk->count >= 2 &&
+                chunk->code[chunk->count - 2] == OP_CALL) {
+                rewindToCheckpoint(compiler, cp, prev_locals);
+                parseExpression(compiler, true);
+                if (compiler->parser->hadError) return;
+                defined_local = (compiler->local_count > prev_locals);
+                last_was_let = defined_local;
+            }
         }
     }
     endScope(compiler, last_was_let);
@@ -1018,7 +1064,7 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                     }
                     // Otherwise, it's a block
                 default:
-                    parsePairOrBlock(compiler, false);
+                    parsePairOrBlock(compiler, is_tail);
                     goto END_PARSE_GROUPING;
             }
 
@@ -1190,12 +1236,20 @@ ObjFunction* compile(VM* vm, const char* source, ObjModule* module) {
 #define WILL_READ_BODY() (compiler.parser->current.type != TOKEN_EOF)
 
     do {
+        int prev_locals = compiler.local_count;
+        TailCheckpoint cp = saveTailCheckpoint(&compiler);
         parseExpression(&compiler, false);
         if (compiler.parser->hadError) break;
         if (WILL_READ_BODY()) {
             emitByte(&compiler, OP_POP);
         } else {
-            maybePatchTailCall(&compiler);
+            Chunk* chunk = currentChunk(&compiler);
+            if (chunk->count >= 2 &&
+                chunk->code[chunk->count - 2] == OP_CALL) {
+                rewindToCheckpoint(&compiler, cp, prev_locals);
+                parseExpression(&compiler, true);
+                if (compiler.parser->hadError) break;
+            }
         }
     } while (WILL_READ_BODY());
 

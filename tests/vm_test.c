@@ -549,13 +549,29 @@ static VMTestCase interpret_tests[] = {
         .expected_value = {EXPECT_INT, .as.integer = 10},
     },
     {
-        .name = "tail call optimization",
+        .name = "tail call optimization - else branch",
         .src = "(let count_down (fn [n]"
                "  (cond (= n 0) \"done\""
                "    (count_down (- n 1)))))"
                "(count_down 100000)",
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_STRING, .as.string = "done"},
+    },
+    {
+        // Regression: before the fix, cond then-branches emitted OP_CALL (not
+        // OP_TAIL_CALL), so only the else branch was TCO'd. This test recurses
+        // exclusively through the then branch and would overflow frames_max=32
+        // without proper TCO on both branches.
+        .name = "tail call optimization - then branch of nested cond",
+        .src = "(fn count [n acc]"
+               "  (cond (= n 0)"
+               "    acc"
+               "    (cond (> n 0)"
+               "      (count (- n 1) (+ acc 1))"
+               "      (count (+ n 1) (- acc 1)))))"
+               "(count 100000 0)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 100000},
     },
     {
         .name = "unhandled raise! should cause a runtime error",
