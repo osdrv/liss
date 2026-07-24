@@ -17,7 +17,7 @@ This is the C implementation of Liss, built as a systems programming exercise. T
 - **Direct-threaded VM:** One-pass compiler emitting bytecode, executed by a direct-threaded interpreter.
 - **Pattern Matching:** `switch` with structural destructuring.
 - **Pipe Operator:** `->` threads a value left-to-right, short-circuiting on `err`.
-- **Error Handling:** Value-level errors (`err` / `is_err?`) and stack-unwinding exceptions (`raise!` / `try`).
+- **Error Handling:** Value-level errors (`err` / `is-err?`) and stack-unwinding exceptions (`raise!` / `try`).
 - **Regexp Support:** Built-in `re` module with a custom NFA-based regex engine.
 - **Modules:** Native modules (`core`, `list`, `math`, `io`, `str`, `re`) and local Liss file imports.
 - **REPL:** Interactive Read-Eval-Print Loop.
@@ -64,7 +64,7 @@ make DEBUG=1 SANITIZE=1
 
 (fn sum [lst]
     (fn loop [acc l]
-        (cond (is_empty? l) acc
+        (cond (is-empty? l) acc
               (loop (+ acc (head l)) (tail l))))
     (loop 0 lst))
 
@@ -90,9 +90,9 @@ make DEBUG=1 SANITIZE=1
 
 ```lisp
 (import io ["println"])
-(import str ["split" "parse_int"])
+(import str ["split" "parse-int"])
 
-(switch (-> "42:hello:world" (str:split ":") (get 0) str:parse_int)
+(switch (-> "42:hello:world" (str:split ":") (get 0) str:parse-int)
     [(err msg) (println "parse error:" msg)]
     [n         (println "got:" n)])
 ```
@@ -135,10 +135,10 @@ make DEBUG=1 SANITIZE=1
 | Function | Description |
 |---|---|
 | `err msg` | Construct an error value |
-| `is_err? v` | Test whether a value is an error |
+| `is-err? v` | Test whether a value is an error |
 | `raise! e` | Throw an error, unwind to nearest `try` |
 | `len v` | Length of string, list, or dict |
-| `is_empty? v` | True if string, list, or dict is empty |
+| `is-empty? v` | True if string, list, or dict is empty |
 | `get coll key` | Index into list, dict, or string |
 | `pair a b` | Construct a dotted pair |
 | `fst p` | First element of a pair |
@@ -155,12 +155,12 @@ make DEBUG=1 SANITIZE=1
 | `push lst elem` | Append element, return new list |
 | `append lst1 lst2` | Concatenate two lists |
 | `sort lst` | Sort a list of ints, reals, or strings in natural ascending order |
-| `sort_by lst cmp` | Sort with a custom comparator — `cmp` returns true if its first arg comes before its second |
+| `sort-by lst cmp` | Sort with a custom comparator — `cmp` returns true if its first arg comes before its second |
 | `str v` | Convert any value to its string representation |
-| `to_int v` | Convert int or real to int (truncates toward zero) |
-| `to_real v` | Convert int or real to real |
-| `str:parse_int s` | Parse a string as an integer — returns `err` on failure |
-| `str:parse_real s` | Parse a string as a real — returns `err` on failure |
+| `to-int v` | Convert int or real to int (truncates toward zero) |
+| `to-real v` | Convert int or real to real |
+| `str:parse-int s` | Parse a string as an integer — returns `err` on failure |
+| `str:parse-real s` | Parse a string as a real — returns `err` on failure |
 | `inspect v` | Return a string describing the type and value — useful for debugging |
 
 ## References

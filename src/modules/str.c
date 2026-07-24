@@ -77,7 +77,7 @@ static Value containsNative(VM* vm, int argc, Value* argv) {
 static Value startsWithNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_STRING(argv[0]) || !IS_STRING(argv[1])) {
-        RUNTIME_ERR(vm, "starts_with? expects exactly 2 strings");
+        RUNTIME_ERR(vm, "starts-with? expects exactly 2 strings");
         return NIL_VAL;
     }
     ObjString* haystack = AS_STRING(argv[0]);
@@ -89,7 +89,7 @@ static Value startsWithNative(VM* vm, int argc, Value* argv) {
 static Value endsWithNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_STRING(argv[0]) || !IS_STRING(argv[1])) {
-        RUNTIME_ERR(vm, "starts_with? expects exactly 2 strings");
+        RUNTIME_ERR(vm, "starts-with? expects exactly 2 strings");
         return NIL_VAL;
     }
     ObjString* haystack = AS_STRING(argv[0]);
@@ -104,7 +104,7 @@ static Value endsWithNative(VM* vm, int argc, Value* argv) {
 static Value indexOfNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_STRING(argv[0]) || !IS_STRING(argv[1])) {
-        RUNTIME_ERR(vm, "index_of expects exactly 2 strings");
+        RUNTIME_ERR(vm, "index-of expects exactly 2 strings");
         return NIL_VAL;
     }
     ObjString* haystack = AS_STRING(argv[0]);
@@ -164,7 +164,7 @@ static Value replaceNative(VM* vm, int argc, Value* argv) {
 static Value replaceAllNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_STRING(argv[0]) || !IS_STRING(argv[1]) || !IS_STRING(argv[2])) {
-        RUNTIME_ERR(vm, "replace_all expects three strings");
+        RUNTIME_ERR(vm, "replace-all expects three strings");
         return NIL_VAL;
     }
     ObjString* s = AS_STRING(argv[0]);
@@ -323,32 +323,32 @@ static Value joinNative(VM* vm, int argc, Value* argv) {
 static Value parseIntNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_STRING(argv[0])) {
-        RUNTIME_ERR(vm, "parse_int expects a string");
+        RUNTIME_ERR(vm, "parse-int expects a string");
         return NIL_VAL;
     }
     ObjString* s = AS_STRING(argv[0]);
-    if (s->length == 0) return OBJ_VAL(newError(vm, "parse_int: empty string"));
+    if (s->length == 0) return OBJ_VAL(newError(vm, "parse-int: empty string"));
 
     char* end;
     long long val = strtoll(s->chars, &end, 10);
     if (end != s->chars + s->length)
-        return OBJ_VAL(newError(vm, "parse_int: invalid integer"));
+        return OBJ_VAL(newError(vm, "parse-int: invalid integer"));
     return INT_VAL((int64_t)val);
 }
 
 static Value parseRealNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_STRING(argv[0])) {
-        RUNTIME_ERR(vm, "parse_real expects a string");
+        RUNTIME_ERR(vm, "parse-real expects a string");
         return NIL_VAL;
     }
     ObjString* s = AS_STRING(argv[0]);
-    if (s->length == 0) return OBJ_VAL(newError(vm, "parse_real: empty string"));
+    if (s->length == 0) return OBJ_VAL(newError(vm, "parse-real: empty string"));
 
     char* end;
     double val = strtod(s->chars, &end);
     if (end != s->chars + s->length)
-        return OBJ_VAL(newError(vm, "parse_real: invalid real"));
+        return OBJ_VAL(newError(vm, "parse-real: invalid real"));
     return REAL_VAL((double)val);
 }
 
@@ -357,16 +357,16 @@ static const NativeReg str_functions[] = {
     {"lower", 1, lowerNative},
     {"trim", 1, trimNative},
     {"contains?", 2, containsNative},
-    {"starts_with?", 2, startsWithNative},
-    {"ends_with?", 2, endsWithNative},
-    {"index_of", 2, indexOfNative},
+    {"starts-with?", 2, startsWithNative},
+    {"ends-with?", 2, endsWithNative},
+    {"index-of", 2, indexOfNative},
     {"substr", 3, substrNative},
     {"replace", 3, replaceNative},
-    {"replace_all", 3, replaceAllNative},
+    {"replace-all", 3, replaceAllNative},
     {"split", 2, splitNative},
     {"join", 2, joinNative},
-    {"parse_int", 1, parseIntNative},
-    {"parse_real", 1, parseRealNative},
+    {"parse-int", 1, parseIntNative},
+    {"parse-real", 1, parseRealNative},
     {NULL, 0, NULL},
 };
 

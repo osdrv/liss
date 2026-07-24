@@ -72,7 +72,7 @@ static Value isEmptyNative(VM* vm, int argc, Value* argv) {
         return BOOL_VAL(AS_DICT(arg)->count == 0);
     }
 
-    return raiseErr(vm, "is_empty? takes a string, list, or dict argument");
+    return raiseErr(vm, "is-empty? takes a string, list, or dict argument");
 }
 
 static Value pairNative(VM* vm, int argc, Value* argv) {
@@ -319,16 +319,16 @@ static Value inspectNative(VM* vm, int argc, Value* argv) {
 }
 
 static const NativeReg core_functions[] = {
-    {"err", 1, errNative},      {"is_err?", 1, isErrNative},
+    {"err", 1, errNative},      {"is-err?", 1, isErrNative},
     {"raise!", 1, raiseNative}, {"noerr!", 1, noErrNative},
-    {"len", 1, lenNative},      {"is_empty?", 1, isEmptyNative},
+    {"len", 1, lenNative},      {"is-empty?", 1, isEmptyNative},
     {"pair", 2, pairNative},    {"fst", 1, fstNative},
     {"snd", 1, sndNative},      {"dict", -1, dictNative},
     {"get", 2, getNative},      {"put", 3, putNative},
     {"has?", 2, hasNative},     {"del", 2, delNative},
     {"keys", 1, keysNative},    {"values", 1, valuesNative},
-    {"str", 1, strNative},      {"to_int", 1, toIntNative},
-    {"to_real", 1, toRealNative}, {"inspect", 1, inspectNative},
+    {"str", 1, strNative},      {"to-int", 1, toIntNative},
+    {"to-real", 1, toRealNative}, {"inspect", 1, inspectNative},
     {NULL, 0, NULL},  // Sentinel value
 };
 

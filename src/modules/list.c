@@ -294,11 +294,11 @@ static Value sortNative(VM* vm, int argc, Value* argv) {
 static Value sortByNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_LIST(argv[0]))
-        return raiseErr(vm, "list:sort_by: first argument must be a list");
+        return raiseErr(vm, "list:sort-by: first argument must be a list");
     Value fn = argv[1];
     if (!IS_OBJ(fn) ||
         (OBJ_TYPE(fn) != OBJ_CLOSURE && OBJ_TYPE(fn) != OBJ_NATIVE))
-        return raiseErr(vm, "list:sort_by: second argument must be a function");
+        return raiseErr(vm, "list:sort-by: second argument must be a function");
     return sortImpl(vm, argv[0], fn, true);
 }
 
@@ -307,7 +307,7 @@ static const NativeReg list_functions[] = {
     {"last", 1, lastNative}, {"cons", 2, consNative},
     {"push", 2, pushNative}, {"append", 2, appendNative},
     {"map", 2, mapNative},   {"reduce", 3, reduceNative},
-    {"sort", 1, sortNative}, {"sort_by", 2, sortByNative},
+    {"sort", 1, sortNative}, {"sort-by", 2, sortByNative},
     {NULL, 0, NULL},
 };
 
