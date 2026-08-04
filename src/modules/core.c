@@ -5,6 +5,7 @@
 
 #include "hamt.h"
 #include "object.h"
+#include "utf8.h"
 #include "value.h"
 #include "vm.h"
 
@@ -51,7 +52,8 @@ static Value lenNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     Value arg = argv[0];
     if (IS_STRING(arg)) {
-        return INT_VAL(AS_STRING(arg)->length);
+        ObjString* s = AS_STRING(arg);
+        return INT_VAL(utf8_strlen(s->chars, s->length));
     } else if (IS_LIST(arg)) {
         return INT_VAL(AS_LIST(arg)->len);
     } else if (IS_DICT(arg)) {
@@ -137,10 +139,12 @@ static Value getNative(VM* vm, int argc, Value* argv) {
         }
         int64_t ix = AS_INT(key);
         ObjString* str = AS_STRING(box);
-        if (ix < 0 || ix >= str->length) {
+        int byte_off = utf8_byte_offset(str->chars, str->length, (int)ix);
+        if (byte_off == -1) {
             return raiseErr(vm, "string index out of bounds");
         }
-        return OBJ_VAL(copyString(vm, &str->chars[ix], 1));
+        int char_len = utf8_char_len(str->chars + byte_off);
+        return OBJ_VAL(copyString(vm, str->chars + byte_off, char_len));
     }
 
     return raiseErr(vm, "get argument must be a dict, list or string");
@@ -252,26 +256,42 @@ static Value toRealNative(VM* vm, int argc, Value* argv) {
 
 static const char* valTypeName(Value v) {
     switch (v.type) {
-        case VAL_INT:  return "int";
-        case VAL_REAL: return "real";
-        case VAL_BOOL: return "bool";
-        case VAL_NIL:  return "nil";
+        case VAL_INT:
+            return "int";
+        case VAL_REAL:
+            return "real";
+        case VAL_BOOL:
+            return "bool";
+        case VAL_NIL:
+            return "nil";
         case VAL_OBJ:
             switch (OBJ_TYPE(v)) {
-                case OBJ_STRING:   return "string";
-                case OBJ_LIST:     return "list";
-                case OBJ_PAIR:     return "pair";
-                case OBJ_DICT:     return "dict";
+                case OBJ_STRING:
+                    return "string";
+                case OBJ_LIST:
+                    return "list";
+                case OBJ_PAIR:
+                    return "pair";
+                case OBJ_DICT:
+                    return "dict";
                 case OBJ_CLOSURE:
-                case OBJ_FUNCTION: return "fn";
-                case OBJ_NATIVE:   return "native-fn";
-                case OBJ_ERROR:    return "error";
-                case OBJ_RE:       return "re";
-                case OBJ_MODULE:   return "module";
-                case OBJ_FILE:     return "file";
-                default:           return "obj";
+                case OBJ_FUNCTION:
+                    return "fn";
+                case OBJ_NATIVE:
+                    return "native-fn";
+                case OBJ_ERROR:
+                    return "error";
+                case OBJ_RE:
+                    return "re";
+                case OBJ_MODULE:
+                    return "module";
+                case OBJ_FILE:
+                    return "file";
+                default:
+                    return "obj";
             }
-        default: return "?";
+        default:
+            return "?";
     }
 }
 
@@ -279,8 +299,7 @@ static Value inspectNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     Value v = argv[0];
 
-    if (IS_NIL(v))
-        return OBJ_VAL(copyString(vm, "nil", 3));
+    if (IS_NIL(v)) return OBJ_VAL(copyString(vm, "nil", 3));
 
     const char* type = valTypeName(v);
     char* buf;
@@ -319,16 +338,26 @@ static Value inspectNative(VM* vm, int argc, Value* argv) {
 }
 
 static const NativeReg core_functions[] = {
-    {"err", 1, errNative},      {"is-err?", 1, isErrNative},
-    {"raise!", 1, raiseNative}, {"noerr!", 1, noErrNative},
-    {"len", 1, lenNative},      {"is-empty?", 1, isEmptyNative},
-    {"pair", 2, pairNative},    {"fst", 1, fstNative},
-    {"snd", 1, sndNative},      {"dict", -1, dictNative},
-    {"get", 2, getNative},      {"put", 3, putNative},
-    {"has?", 2, hasNative},     {"del", 2, delNative},
-    {"keys", 1, keysNative},    {"values", 1, valuesNative},
-    {"str", 1, strNative},      {"to-int", 1, toIntNative},
-    {"to-real", 1, toRealNative}, {"inspect", 1, inspectNative},
+    {"err", 1, errNative},
+    {"is-err?", 1, isErrNative},
+    {"raise!", 1, raiseNative},
+    {"noerr!", 1, noErrNative},
+    {"len", 1, lenNative},
+    {"is-empty?", 1, isEmptyNative},
+    {"pair", 2, pairNative},
+    {"fst", 1, fstNative},
+    {"snd", 1, sndNative},
+    {"dict", -1, dictNative},
+    {"get", 2, getNative},
+    {"put", 3, putNative},
+    {"has?", 2, hasNative},
+    {"del", 2, delNative},
+    {"keys", 1, keysNative},
+    {"values", 1, valuesNative},
+    {"str", 1, strNative},
+    {"to-int", 1, toIntNative},
+    {"to-real", 1, toRealNative},
+    {"inspect", 1, inspectNative},
     {NULL, 0, NULL},  // Sentinel value
 };
 

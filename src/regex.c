@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "utf8.h"
+
 typedef struct PtrList PtrList;
 struct PtrList {
     int* field;
@@ -70,7 +72,7 @@ char* addConcat(const char* re) {
     int j = 0;
 
     for (int i = 0; i < len; i++) {
-        char c1 = re[i];
+        unsigned char c1 = re[i];
         char emit;
 
         if (c1 == '\\' && i + 1 < len) {
@@ -108,6 +110,28 @@ char* addConcat(const char* re) {
                     break;
             }
         } else {
+            if (c1 >= 0xC0) {
+                int char_len = utf8_char_len(re + i);
+                for (int k = 0; k < char_len; k++) {
+                    res[j++] = re[i + k];
+                }
+                i += char_len - 1;  // i++ will move to the next char naturally
+                if (i + 1 < len) {
+                    char c2 = re[i + 1];
+                    switch (c2) {
+                        case ')':
+                        case '|':
+                        case '*':
+                        case '+':
+                        case '?':
+                            break;
+                        default:
+                            res[j++] = '@';
+                            break;
+                    }
+                }
+                continue;
+            }
             emit = c1;
         }
 
@@ -253,7 +277,7 @@ static char* replaceBrackets(const char* re, ReProgram* prog) {
             cs->bits[0] &= ~1u;  // never match '\0'
         }
 
-        out[j++] = (char)(128 + prog->num_charsets);
+        out[j++] = (char)(RE_BRACKET_BASE + prog->num_charsets);
         prog->num_charsets++;
         i = end;  // skip past ']'
     }
@@ -448,10 +472,11 @@ ReProgram* compileRegex(const char* postfix) {
             }
             default: {
                 unsigned char uc = (unsigned char)*p;
-                if (uc >= 128) {
-                    // bracket class sentinel: index = uc - 128
+                if (uc >= RE_BRACKET_BASE &&
+                    uc < RE_BRACKET_BASE + MAX_CHARSETS) {
                     int i = prog->size++;
-                    prog->instrs[i] = (ReInstr){RE_BRACKET, uc - 128, 0, 0};
+                    prog->instrs[i] =
+                        (ReInstr){RE_BRACKET, uc - RE_BRACKET_BASE, 0, 0};
                     stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
                 } else if (*p >= 1 && *p <= 9) {
                     int g = *p;
@@ -464,6 +489,13 @@ ReProgram* compileRegex(const char* postfix) {
                     patch(e.out, s_end);
                     stack[++top] =
                         (Frag){s_start, list1(&prog->instrs[s_end].s1)};
+                } else if (uc >= 0xC0) {
+                    const char* q = p;
+                    uint32_t codepoint = utf8_decode(&q);
+                    int i = prog->size++;
+                    prog->instrs[i] = (ReInstr){RE_CHAR, (int)codepoint, 0, 0};
+                    stack[++top] = (Frag){i, list1(&prog->instrs[i].s1)};
+                    p = q - 1;  // p++ will step past the codepoint
                 } else {
                     int i = prog->size++;
                     prog->instrs[i] = (ReInstr){RE_CHAR, *p, 0, 0};
@@ -526,7 +558,8 @@ bool matchGroups(ReProgram* prog, const char* text,
             bool is_word = isalnum(ch) || *sp == '_';
             bool advance =
                 instr->type == RE_ANY ||
-                (instr->type == RE_CHAR && instr->c == *sp) ||
+                (instr->type == RE_CHAR &&
+                 instr->c == (int)utf8_decode_peek(sp)) ||
                 (instr->type == RE_CLASS && instr->c == 'd' && isdigit(ch)) ||
                 (instr->type == RE_CLASS && instr->c == 'w' && is_word) ||
                 (instr->type == RE_CLASS && instr->c == 'W' && !is_word) ||
@@ -536,7 +569,7 @@ bool matchGroups(ReProgram* prog, const char* text,
                  (prog->charsets[instr->c].bits[ch / 8] >> (ch % 8) & 1));
             if (advance) {
                 addstate(&nlist, instr->s1, prog, generation, last_visited,
-                         clist.thread[j].submatch, sp + 1, text);
+                         clist.thread[j].submatch, sp + utf8_char_len(sp), text);
             }
         }
         // Always try starting a fresh match at the next position so the
@@ -544,13 +577,13 @@ bool matchGroups(ReProgram* prog, const char* text,
         // threads are advanced first (above), so leftmost wins when two
         // threads compete for the same NFA state in this generation.
         addstate(&nlist, prog->start, prog, generation, last_visited,
-                 init_submatch, sp + 1, text);
+                 init_submatch, sp + utf8_char_len(sp), text);
 
         ThreadList tmp = clist;
         clist = nlist;
         nlist = tmp;
         generation++;
-        sp++;
+        sp += utf8_char_len(sp);
 
         if (clist.size == 0) break;
     }

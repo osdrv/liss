@@ -275,10 +275,56 @@ static char* test_bracket_classes() {
     return NULL;
 }
 
+static char* test_unicode_match() {
+    ClassMatchTest tests[] = {
+        // literal 2-byte codepoint (é = U+00E9)
+        {.pattern = "\xC3\xA9",           .text = "\xC3\xA9",                         .expected = true},
+        {.pattern = "\xC3\xA9",           .text = "e",                                .expected = false},
+        // quantifier over a multibyte codepoint
+        {.pattern = "\xC3\xA9+",          .text = "\xC3\xA9\xC3\xA9",                .expected = true},
+        {.pattern = "\xC3\xA9+",          .text = "ee",                               .expected = false},
+        // mixed ASCII + Unicode literal
+        {.pattern = "caf\xC3\xA9",        .text = "caf\xC3\xA9",                     .expected = true},
+        {.pattern = "caf\xC3\xA9",        .text = "cafe",                             .expected = false},
+        // anchored
+        {.pattern = "^caf\xC3\xA9$",      .text = "caf\xC3\xA9",                     .expected = true},
+        {.pattern = "^caf\xC3\xA9$",      .text = "caf\xC3\xA9x",                    .expected = false},
+        // . matches a full codepoint, not just the first byte
+        {.pattern = "c.f",                .text = "c\xC3\xA9" "f",                    .expected = true},
+        {.pattern = ".+",                 .text = "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E", .expected = true},
+        // alternation between Unicode literals (é | à)
+        {.pattern = "\xC3\xA9|\xC3\xA0",  .text = "\xC3\xA9",                         .expected = true},
+        {.pattern = "\xC3\xA9|\xC3\xA0",  .text = "\xC3\xA0",                         .expected = true},
+        {.pattern = "\xC3\xA9|\xC3\xA0",  .text = "e",                                .expected = false},
+        // 3-byte codepoint (日 = U+65E5, 本 = U+672C)
+        {.pattern = "\xE6\x97\xA5",        .text = "\xE6\x97\xA5",                    .expected = true},
+        {.pattern = "\xE6\x97\xA5",        .text = "\xE6\x9C\xAC",                    .expected = false},
+    };
+
+    for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+        ReProgram* prog = compilePattern(tests[i].pattern);
+        mu_assert("compilePattern returned NULL", prog != NULL);
+
+        bool got = match(prog, tests[i].text);
+        if (got != tests[i].expected) {
+            printf("FAIL: pattern='%s' text='%s' expected=%s got=%s\n",
+                   tests[i].pattern, tests[i].text,
+                   tests[i].expected ? "match" : "no-match",
+                   got ? "match" : "no-match");
+            mu_assert("unicode match mismatch", false);
+        }
+
+        free(prog->instrs);
+        free(prog);
+    }
+    return NULL;
+}
+
 void regex_suite() {
     printf("\n--- Regex Suite ---\n");
     mu_run_test(test_re2postfix);
     mu_run_test(test_match_groups);
     mu_run_test(test_char_classes);
     mu_run_test(test_bracket_classes);
+    mu_run_test(test_unicode_match);
 }

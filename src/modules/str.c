@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "object.h"
+#include "utf8.h"
 #include "value.h"
 #include "vm.h"
 
@@ -111,7 +112,8 @@ static Value indexOfNative(VM* vm, int argc, Value* argv) {
     ObjString* needle = AS_STRING(argv[1]);
     char* found = strstr(haystack->chars, needle->chars);
     if (found == NULL) return INT_VAL(-1);
-    return INT_VAL((int64_t)(found - haystack->chars));
+    int byte_offset = (int)(found - haystack->chars);
+    return INT_VAL(utf8_strlen(haystack->chars, byte_offset));
 }
 
 static Value substrNative(VM* vm, int argc, Value* argv) {
@@ -123,14 +125,21 @@ static Value substrNative(VM* vm, int argc, Value* argv) {
     ObjString* s = AS_STRING(argv[0]);
     int64_t start = AS_INT(argv[1]);
     int64_t len = AS_INT(argv[2]);
-    if (start < 0 || start > s->length) {
+    int str_len = utf8_strlen(s->chars, s->length);
+    if (start < 0 || start > str_len) {
         return OBJ_VAL(newError(vm, "substr: start out of bounds"));
     }
     if (len < 0) {
         return OBJ_VAL(newError(vm, "substr: length must be non-negative"));
     }
-    if (start + len > s->length) len = s->length - start;
-    return OBJ_VAL(copyString(vm, s->chars + (int)start, (int)len));
+    if (start + len > str_len) len = str_len - start;
+    int byte_start = utf8_byte_offset(s->chars, s->length, (int)start);
+    int byte_end =
+        (start + len == str_len)
+            ? s->length
+            : utf8_byte_offset(s->chars, s->length, (int)(start + len));
+    return OBJ_VAL(
+        copyString(vm, s->chars + byte_start, byte_end - byte_start));
 }
 
 static Value replaceNative(VM* vm, int argc, Value* argv) {
@@ -225,7 +234,8 @@ static Value splitNative(VM* vm, int argc, Value* argv) {
             p += delim->length;
         }
     } else {
-        cnt = s->length;  // empty delim → one char per segment
+        // empty delim → one codepoint per segment
+        cnt = utf8_strlen(s->chars, s->length);
     }
 
     Seg* segs = malloc(cnt * sizeof(Seg));
@@ -235,7 +245,12 @@ static Value splitNative(VM* vm, int argc, Value* argv) {
     }
 
     if (delim->length == 0) {
-        for (int i = 0; i < cnt; i++) segs[i] = (Seg){s->chars + i, 1};
+        int off = 0;
+        for (int i = 0; i < cnt; i++) {
+            int bs = utf8_char_len(s->chars + off);
+            segs[i] = (Seg){s->chars + off, bs};
+            off += bs;
+        }
     } else {
         int ix = 0;
         const char* cur = s->chars;
@@ -343,7 +358,8 @@ static Value parseRealNative(VM* vm, int argc, Value* argv) {
         return NIL_VAL;
     }
     ObjString* s = AS_STRING(argv[0]);
-    if (s->length == 0) return OBJ_VAL(newError(vm, "parse-real: empty string"));
+    if (s->length == 0)
+        return OBJ_VAL(newError(vm, "parse-real: empty string"));
 
     char* end;
     double val = strtod(s->chars, &end);

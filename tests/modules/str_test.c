@@ -195,6 +195,14 @@ static char *test_str_search(void) {
          .src = "(import str [\"index-of\"]) (index-of \"hello\" \"lo\")",
          .expected_str = "3",
          .expected_type = EXPECT_INT},
+        {.name = "index-of multibyte needle",
+         .src = "(import str [\"index-of\"]) (index-of \"caf\xC3\xA9\" \"\xC3\xA9\")",
+         .expected_str = "3",
+         .expected_type = EXPECT_INT},
+        {.name = "index-of needle after multibyte char",
+         .src = "(import str [\"index-of\"]) (index-of \"h\xC3\xA9llo\" \"l\")",
+         .expected_str = "2",  // byte offset 3, codepoint index 2
+         .expected_type = EXPECT_INT},
     };
     return run_str_tests(tests, sizeof(tests) / sizeof(tests[0]));
 }
@@ -225,6 +233,27 @@ static char *test_str_substr(void) {
          .src = "(import str [\"substr\"]) (substr \"hello\" 1 -1)",
          .expected_str = "substr: length must be non-negative",
          .expected_type = EXPECT_ERROR},
+        // unicode cases
+        {.name = "substr multibyte full string",
+         .src = "(import str [\"substr\"]) (substr \"caf\xC3\xA9\" 0 4)",
+         .expected_str = "\"caf\xC3\xA9\"",
+         .expected_type = EXPECT_STRING},
+        {.name = "substr multibyte to end via clamp",
+         .src = "(import str [\"substr\"]) (substr \"caf\xC3\xA9\" 2 100)",
+         .expected_str = "\"f\xC3\xA9\"",
+         .expected_type = EXPECT_STRING},
+        {.name = "substr multibyte char only",
+         .src = "(import str [\"substr\"]) (substr \"caf\xC3\xA9\" 3 1)",
+         .expected_str = "\"\xC3\xA9\"",
+         .expected_type = EXPECT_STRING},
+        {.name = "substr multibyte excludes last char",
+         .src = "(import str [\"substr\"]) (substr \"caf\xC3\xA9\" 0 3)",
+         .expected_str = "\"caf\"",
+         .expected_type = EXPECT_STRING},
+        {.name = "substr three-byte codepoints",
+         .src = "(import str [\"substr\"]) (substr \"\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E\" 1 1)",
+         .expected_str = "\"\xE6\x9C\xAC\"",
+         .expected_type = EXPECT_STRING},
     };
     return run_str_tests(tests, sizeof(tests) / sizeof(tests[0]));
 }
@@ -307,6 +336,19 @@ static char *test_str_split(void) {
          .src = "(import str [\"split\"]) (split \"a,\" \",\")",
          .expected_str = "[\"a\" \"\"]",
          .expected_type = EXPECT_LIST},
+        // unicode cases
+        {.name = "split empty delimiter on multibyte string",
+         .src = "(import str [\"split\"]) (split \"caf\xC3\xA9\" \"\")",
+         .expected_str = "[\"c\" \"a\" \"f\" \"\xC3\xA9\"]",
+         .expected_type = EXPECT_LIST},
+        {.name = "split multibyte delimiter",
+         .src = "(import str [\"split\"]) (split \"a\xC3\xA9""b\xC3\xA9""c\" \"\xC3\xA9\")",
+         .expected_str = "[\"a\" \"b\" \"c\"]",
+         .expected_type = EXPECT_LIST},
+        {.name = "split preserves multibyte segments",
+         .src = "(import str [\"split\"]) (split \"\xE6\x97\xA5,\xE6\x9C\xAC\" \",\")",
+         .expected_str = "[\"\xE6\x97\xA5\" \"\xE6\x9C\xAC\"]",
+         .expected_type = EXPECT_LIST},
     };
     return run_str_tests(tests, sizeof(tests) / sizeof(tests[0]));
 }
@@ -384,6 +426,50 @@ static char *test_str_convert(void) {
     return run_str_tests(tests, sizeof(tests) / sizeof(tests[0]));
 }
 
+static char *test_core_unicode(void) {
+    StrTestCase tests[] = {
+        // len — codepoint count, not byte count
+        {.name = "len ascii string",
+         .src = "(len \"hello\")",
+         .expected_str = "5",
+         .expected_type = EXPECT_INT},
+        {.name = "len multibyte string",
+         .src = "(len \"caf\xC3\xA9\")",  // café: 4 codepoints, 5 bytes
+         .expected_str = "4",
+         .expected_type = EXPECT_INT},
+        {.name = "len three-byte codepoints",
+         .src = "(len \"\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E\")",  // 日本語
+         .expected_str = "3",
+         .expected_type = EXPECT_INT},
+        {.name = "len empty string",
+         .src = "(len \"\")",
+         .expected_str = "0",
+         .expected_type = EXPECT_INT},
+        // get — returns single-codepoint substring
+        {.name = "get ascii char",
+         .src = "(get \"hello\" 1)",
+         .expected_str = "\"e\"",
+         .expected_type = EXPECT_STRING},
+        {.name = "get first char of multibyte string",
+         .src = "(get \"caf\xC3\xA9\" 0)",
+         .expected_str = "\"c\"",
+         .expected_type = EXPECT_STRING},
+        {.name = "get multibyte char",
+         .src = "(get \"caf\xC3\xA9\" 3)",  // é is 2 bytes
+         .expected_str = "\"\xC3\xA9\"",
+         .expected_type = EXPECT_STRING},
+        {.name = "get three-byte char",
+         .src = "(get \"\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E\" 1)",  // 本
+         .expected_str = "\"\xE6\x9C\xAC\"",
+         .expected_type = EXPECT_STRING},
+        {.name = "get out of bounds",
+         .src = "(try (get \"caf\xC3\xA9\" 4))",
+         .expected_str = "string index out of bounds",
+         .expected_type = EXPECT_ERROR},
+    };
+    return run_str_tests(tests, sizeof(tests) / sizeof(tests[0]));
+}
+
 static char *test_core_str(void) {
     StrTestCase tests[] = {
         {.name = "str passthrough on string",
@@ -412,6 +498,7 @@ static char *test_core_str(void) {
 
 void str_suite(void) {
     printf("--- Str Module Suite ---\n");
+    mu_run_test(test_core_unicode);
     mu_run_test(test_str_case);
     mu_run_test(test_str_trim);
     mu_run_test(test_str_search);

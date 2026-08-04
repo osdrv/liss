@@ -124,30 +124,30 @@ static void patchJump(Compiler* compiler, int offset) {
 // rewind and recompile as tail if it turns out to be the final one.
 typedef struct {
     Scanner scanner;
-    Token   current;
-    Token   next;
-    int     code_count;
-    int     const_count;
+    Token current;
+    Token next;
+    int code_count;
+    int const_count;
 } TailCheckpoint;
 
 static TailCheckpoint saveTailCheckpoint(Compiler* compiler) {
     return (TailCheckpoint){
-        .scanner     = compiler->parser->scanner,
-        .current     = compiler->parser->current,
-        .next        = compiler->parser->next,
-        .code_count  = currentChunk(compiler)->count,
+        .scanner = compiler->parser->scanner,
+        .current = compiler->parser->current,
+        .next = compiler->parser->next,
+        .code_count = currentChunk(compiler)->count,
         .const_count = currentChunk(compiler)->constants.count,
     };
 }
 
 static void rewindToCheckpoint(Compiler* compiler, TailCheckpoint cp,
                                int saved_locals) {
-    compiler->parser->scanner             = cp.scanner;
-    compiler->parser->current             = cp.current;
-    compiler->parser->next                = cp.next;
-    currentChunk(compiler)->count         = cp.code_count;
+    compiler->parser->scanner = cp.scanner;
+    compiler->parser->current = cp.current;
+    compiler->parser->next = cp.next;
+    currentChunk(compiler)->count = cp.code_count;
     currentChunk(compiler)->constants.count = cp.const_count;
-    compiler->local_count                 = saved_locals;
+    compiler->local_count = saved_locals;
 }
 
 static void initCompiler(Compiler* compiler, Compiler* enclosing,
@@ -480,8 +480,7 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
             // is_tail=true so parseCond propagates OP_TAIL_CALL to ALL
             // reachable branches (not just the final one in bytecode order).
             Chunk* chunk = currentChunk(fn_compiler);
-            if (chunk->count >= 2 &&
-                chunk->code[chunk->count - 2] == OP_CALL) {
+            if (chunk->count >= 2 && chunk->code[chunk->count - 2] == OP_CALL) {
                 rewindToCheckpoint(fn_compiler, cp, prev_locals);
                 parseExpression(fn_compiler, true);
                 if (fn_compiler->parser->hadError) return NULL;
@@ -526,8 +525,7 @@ static void parsePairOrBlock(Compiler* compiler, bool is_tail) {
             // Last expression of a tail-position block. Same reparse logic as
             // in compileFunction: only reparse if it ended with OP_CALL.
             Chunk* chunk = currentChunk(compiler);
-            if (chunk->count >= 2 &&
-                chunk->code[chunk->count - 2] == OP_CALL) {
+            if (chunk->count >= 2 && chunk->code[chunk->count - 2] == OP_CALL) {
                 rewindToCheckpoint(compiler, cp, prev_locals);
                 parseExpression(compiler, true);
                 if (compiler->parser->hadError) return;
@@ -1087,6 +1085,7 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
     }
 
 END_PARSE_GROUPING:
+    if (compiler->parser->hadError) return;
     consume(compiler, TOKEN_RPAREN, "expect ')' after expression");
 }
 
@@ -1244,8 +1243,7 @@ ObjFunction* compile(VM* vm, const char* source, ObjModule* module) {
             emitByte(&compiler, OP_POP);
         } else {
             Chunk* chunk = currentChunk(&compiler);
-            if (chunk->count >= 2 &&
-                chunk->code[chunk->count - 2] == OP_CALL) {
+            if (chunk->count >= 2 && chunk->code[chunk->count - 2] == OP_CALL) {
                 rewindToCheckpoint(&compiler, cp, prev_locals);
                 parseExpression(&compiler, true);
                 if (compiler.parser->hadError) break;

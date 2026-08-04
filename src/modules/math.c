@@ -360,12 +360,11 @@ static const NativeReg math_functions[] = {
     {"round", 1, roundNative}, {"abs", 1, absNative},
     {"sqrt", 1, sqrtNative},   {"pow", 2, powNative},
     {"fmod", 2, fmodNative},   {"log", 1, logNative},
-    {"log2", 1, log2Native},   {"log10",1, log10Native},
+    {"log2", 1, log2Native},   {"log10", 1, log10Native},
     {"exp", 1, expNative},     {"sin", 1, sinNative},
     {"cos", 1, cosNative},     {"tan", 1, tanNative},
-    {"atan2", 2, atan2Native},
-    {"max", 2, maxNative},     {"min", 2, minNative},
-    {NULL, 0, NULL},
+    {"atan2", 2, atan2Native}, {"max", 2, maxNative},
+    {"min", 2, minNative},     {NULL, 0, NULL},
 };
 
 void registerMathNatives(VM* vm, ObjModule* module) {

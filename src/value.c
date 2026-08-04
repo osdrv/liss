@@ -1,5 +1,6 @@
 #include "value.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,7 +117,7 @@ char* sprintValue(Value value) {
             APPEND_TO_BUFFER("null");
             break;
         case VAL_INT: {
-            APPEND_TO_BUFFER("%i", AS_INT(value));
+            APPEND_TO_BUFFER("%" PRId64, AS_INT(value));
             break;
         }
         case VAL_REAL: {
