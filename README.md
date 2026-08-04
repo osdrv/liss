@@ -18,7 +18,8 @@ This is the C implementation of Liss, built as a systems programming exercise. T
 - **Pattern Matching:** `switch` with structural destructuring.
 - **Pipe Operator:** `->` threads a value left-to-right, short-circuiting on `err`.
 - **Error Handling:** Value-level errors (`err` / `is-err?`) and stack-unwinding exceptions (`raise!` / `try`).
-- **Regexp Support:** Built-in `re` module with a custom NFA-based regex engine.
+- **Unicode:** Full UTF-8 support throughout — string `len`, `get`, `substr`, `index-of`, `split` operate on codepoints; the regex engine matches literal Unicode characters and `.` skips full codepoints.
+- **Regexp Support:** Built-in `re` module with a custom NFA-based regex engine with Unicode support.
 - **Modules:** Native modules (`core`, `list`, `math`, `io`, `str`, `re`) and local Liss file imports.
 - **REPL:** Interactive Read-Eval-Print Loop.
 - **Mark-and-Sweep GC:** Incremental garbage collector with configurable heap growth.
@@ -108,6 +109,19 @@ make DEBUG=1 SANITIZE=1
 (println (len d))   ; 2 — original unchanged
 (println (len d2))  ; 3
 (println (get d2 "c"))
+```
+
+### Unicode Strings
+
+```lisp
+(import io ["println"])
+(import str ["split" "substr"])
+
+(let s "🦊🌲⭐")
+(println (len s))           ; 3  — codepoints, not bytes
+(println (get s 1))         ; 🌲
+(println (substr s 0 2))    ; 🦊🌲
+(println (str:split s ""))  ; ("🦊" "🌲" "⭐")
 ```
 
 ### Regular Expressions
