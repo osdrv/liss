@@ -16,7 +16,7 @@ This is the C implementation of Liss, built as a systems programming exercise. T
 - **Persistent Data Structures:** Dicts backed by a Hash Array Mapped Trie (HAMT); lists via persistent cons cells.
 - **Direct-threaded VM:** One-pass compiler emitting bytecode, executed by a direct-threaded interpreter.
 - **Pattern Matching:** `switch` with structural destructuring.
-- **Pipe Operator:** `->` threads a value left-to-right, short-circuiting on `err`.
+- **Pipe Operator:** `|` infix threads a value left-to-right through parenthesised steps, short-circuiting on `err`; prefix `|` is logical OR.
 - **Error Handling:** Value-level errors (`err` / `is-err?`) and stack-unwinding exceptions (`raise!` / `try`).
 - **Unicode:** Full UTF-8 support throughout — string `len`, `get`, `substr`, `index-of`, `split` operate on codepoints; the regex engine matches literal Unicode characters and `.` skips full codepoints.
 - **Regexp Support:** Built-in `re` module with a custom NFA-based regex engine with Unicode support.
@@ -93,7 +93,7 @@ make DEBUG=1 SANITIZE=1
 (import io ["println"])
 (import str ["split" "parse-int"])
 
-(switch (-> "42:hello:world" (str:split ":") (get 0) str:parse-int)
+(switch ("42:hello:world" | (str:split ":") | (get 0) | (str:parse-int))
     [(err msg) (println "parse error:" msg)]
     [n         (println "got:" n)])
 ```
@@ -142,7 +142,7 @@ make DEBUG=1 SANITIZE=1
 `fn` `let` `cond` `switch` `import` `try` `and` `or` `not`
 `true` `false` `null` `eq` `ne` `lt` `lte` `gt` `gte`
 `div` `mul` `mod` `band` `bor` `bxor` `bnot` `bsl` `bsr`
-`as` `->`
+`as`
 
 ### Core Functions
 

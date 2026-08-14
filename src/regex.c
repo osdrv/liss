@@ -569,7 +569,8 @@ bool matchGroups(ReProgram* prog, const char* text,
                  (prog->charsets[instr->c].bits[ch / 8] >> (ch % 8) & 1));
             if (advance) {
                 addstate(&nlist, instr->s1, prog, generation, last_visited,
-                         clist.thread[j].submatch, sp + utf8_char_len(sp), text);
+                         clist.thread[j].submatch, sp + utf8_char_len(sp),
+                         text);
             }
         }
         // Always try starting a fresh match at the next position so the

@@ -278,27 +278,32 @@ static char* test_bracket_classes() {
 static char* test_unicode_match() {
     ClassMatchTest tests[] = {
         // literal 2-byte codepoint (é = U+00E9)
-        {.pattern = "\xC3\xA9",           .text = "\xC3\xA9",                         .expected = true},
-        {.pattern = "\xC3\xA9",           .text = "e",                                .expected = false},
+        {.pattern = "\xC3\xA9", .text = "\xC3\xA9", .expected = true},
+        {.pattern = "\xC3\xA9", .text = "e", .expected = false},
         // quantifier over a multibyte codepoint
-        {.pattern = "\xC3\xA9+",          .text = "\xC3\xA9\xC3\xA9",                .expected = true},
-        {.pattern = "\xC3\xA9+",          .text = "ee",                               .expected = false},
+        {.pattern = "\xC3\xA9+", .text = "\xC3\xA9\xC3\xA9", .expected = true},
+        {.pattern = "\xC3\xA9+", .text = "ee", .expected = false},
         // mixed ASCII + Unicode literal
-        {.pattern = "caf\xC3\xA9",        .text = "caf\xC3\xA9",                     .expected = true},
-        {.pattern = "caf\xC3\xA9",        .text = "cafe",                             .expected = false},
+        {.pattern = "caf\xC3\xA9", .text = "caf\xC3\xA9", .expected = true},
+        {.pattern = "caf\xC3\xA9", .text = "cafe", .expected = false},
         // anchored
-        {.pattern = "^caf\xC3\xA9$",      .text = "caf\xC3\xA9",                     .expected = true},
-        {.pattern = "^caf\xC3\xA9$",      .text = "caf\xC3\xA9x",                    .expected = false},
+        {.pattern = "^caf\xC3\xA9$", .text = "caf\xC3\xA9", .expected = true},
+        {.pattern = "^caf\xC3\xA9$", .text = "caf\xC3\xA9x", .expected = false},
         // . matches a full codepoint, not just the first byte
-        {.pattern = "c.f",                .text = "c\xC3\xA9" "f",                    .expected = true},
-        {.pattern = ".+",                 .text = "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E", .expected = true},
+        {.pattern = "c.f",
+         .text = "c\xC3\xA9"
+                 "f",
+         .expected = true},
+        {.pattern = ".+",
+         .text = "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E",
+         .expected = true},
         // alternation between Unicode literals (é | à)
-        {.pattern = "\xC3\xA9|\xC3\xA0",  .text = "\xC3\xA9",                         .expected = true},
-        {.pattern = "\xC3\xA9|\xC3\xA0",  .text = "\xC3\xA0",                         .expected = true},
-        {.pattern = "\xC3\xA9|\xC3\xA0",  .text = "e",                                .expected = false},
+        {.pattern = "\xC3\xA9|\xC3\xA0", .text = "\xC3\xA9", .expected = true},
+        {.pattern = "\xC3\xA9|\xC3\xA0", .text = "\xC3\xA0", .expected = true},
+        {.pattern = "\xC3\xA9|\xC3\xA0", .text = "e", .expected = false},
         // 3-byte codepoint (日 = U+65E5, 本 = U+672C)
-        {.pattern = "\xE6\x97\xA5",        .text = "\xE6\x97\xA5",                    .expected = true},
-        {.pattern = "\xE6\x97\xA5",        .text = "\xE6\x9C\xAC",                    .expected = false},
+        {.pattern = "\xE6\x97\xA5", .text = "\xE6\x97\xA5", .expected = true},
+        {.pattern = "\xE6\x97\xA5", .text = "\xE6\x9C\xAC", .expected = false},
     };
 
     for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {

@@ -498,6 +498,36 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
     return function;
 }
 
+static void parsePipeSteps(Compiler* compiler, bool is_tail) {
+    int end_jumps[64];
+    int end_jump_cnt = 0;
+
+    while (compiler->parser->current.type == TOKEN_OR_OP) {
+        advance(compiler);  // consume '|'
+        if (compiler->parser->current.type != TOKEN_LPAREN) {
+            COMPILE_ERR(
+                compiler,
+                "pipe step must be a parenthesized call: (f) or (f arg ...)");
+            return;
+        }
+        end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP_IF_ERR);
+        advance(compiler);  // consume '('
+        parseExpression(compiler, false);
+        if (compiler->parser->hadError) return;
+        emitByte(compiler, OP_SWAP);
+        int extra = 0;
+        while (compiler->parser->current.type != TOKEN_RPAREN &&
+               compiler->parser->current.type != TOKEN_EOF) {
+            parseExpression(compiler, false);
+            if (compiler->parser->hadError) return;
+            extra++;
+        }
+        consume(compiler, TOKEN_RPAREN, "expect ')' after pipe step");
+        emitBytes(compiler, OP_CALL, (uint8_t)(extra + 1));
+    }
+    for (int i = 0; i < end_jump_cnt; i++) patchJump(compiler, end_jumps[i]);
+}
+
 static void parsePairOrBlock(Compiler* compiler, bool is_tail) {
     beginScope(compiler);
     bool first_expr = true;
@@ -514,6 +544,11 @@ static void parsePairOrBlock(Compiler* compiler, bool is_tail) {
             parseExpression(compiler, false);
             if (compiler->parser->hadError) return;
             emitByte(compiler, OP_PAIR);
+            last_was_let = false;
+            break;
+        }
+        if (first_expr && compiler->parser->current.type == TOKEN_OR_OP) {
+            parsePipeSteps(compiler, is_tail);
             last_was_let = false;
             break;
         }
@@ -658,41 +693,42 @@ static void parseImport(Compiler* compiler) {
     emitByte(compiler, OP_TRUE);
 }
 
-static void parsePipe(Compiler* compiler, bool is_tail) {
-    parseExpression(compiler, false);
-    if (compiler->parser->hadError) return;
-
-    int end_jumps[64];
-    int end_jump_cnt = 0;
-
-    while (compiler->parser->current.type != TOKEN_RPAREN &&
-           compiler->parser->current.type != TOKEN_EOF) {
-        if (compiler->parser->current.type != TOKEN_LPAREN) {
-            COMPILE_ERR(
-                compiler,
-                "pipe step must be a parenthesized call: (f) or (f arg ...)");
-            return;
-        }
-        end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP_IF_ERR);
-        advance(compiler);
-        parseExpression(compiler, false);
-        if (compiler->parser->hadError) return;
-        emitByte(compiler, OP_SWAP);
-        int extra = 0;
-        while (compiler->parser->current.type != TOKEN_RPAREN &&
-               compiler->parser->current.type != TOKEN_EOF) {
-            parseExpression(compiler, false);
-            if (compiler->parser->hadError) return;
-            extra++;
-        }
-        consume(compiler, TOKEN_RPAREN, "expect ')' after pipe step");
-        emitBytes(compiler, OP_CALL, (uint8_t)(extra + 1));
-    }
-
-    for (int i = 0; i < end_jump_cnt; i++) {
-        patchJump(compiler, end_jumps[i]);
-    }
-}
+// static void parsePipe(Compiler* compiler, bool is_tail) {
+//     parseExpression(compiler, false);
+//     if (compiler->parser->hadError) return;
+//
+//     int end_jumps[64];
+//     int end_jump_cnt = 0;
+//
+//     while (compiler->parser->current.type != TOKEN_RPAREN &&
+//            compiler->parser->current.type != TOKEN_EOF) {
+//         if (compiler->parser->current.type != TOKEN_LPAREN) {
+//             COMPILE_ERR(
+//                 compiler,
+//                 "pipe step must be a parenthesized call: (f) or (f arg
+//                 ...)");
+//             return;
+//         }
+//         end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP_IF_ERR);
+//         advance(compiler);
+//         parseExpression(compiler, false);
+//         if (compiler->parser->hadError) return;
+//         emitByte(compiler, OP_SWAP);
+//         int extra = 0;
+//         while (compiler->parser->current.type != TOKEN_RPAREN &&
+//                compiler->parser->current.type != TOKEN_EOF) {
+//             parseExpression(compiler, false);
+//             if (compiler->parser->hadError) return;
+//             extra++;
+//         }
+//         consume(compiler, TOKEN_RPAREN, "expect ')' after pipe step");
+//         emitBytes(compiler, OP_CALL, (uint8_t)(extra + 1));
+//     }
+//
+//     for (int i = 0; i < end_jump_cnt; i++) {
+//         patchJump(compiler, end_jumps[i]);
+//     }
+// }
 
 static void parseSwitch(Compiler* compiler, bool is_tail) {
     parseExpression(compiler, false);
@@ -818,10 +854,12 @@ static void parseSwitch(Compiler* compiler, bool is_tail) {
 
 static void parseGrouping(Compiler* compiler, bool is_tail) {
     switch (compiler->parser->current.type) {
+        case TOKEN_AND_OP:
         case TOKEN_AND_KW:
             advance(compiler);
             parseAnd(compiler);
             break;
+        case TOKEN_OR_OP:
         case TOKEN_OR_KW:
             advance(compiler);
             parseOr(compiler);
@@ -896,10 +934,6 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
         case TOKEN_SWITCH_KW:
             advance(compiler);
             parseSwitch(compiler, is_tail);
-            break;
-        case TOKEN_ARROW_KW:
-            advance(compiler);
-            parsePipe(compiler, is_tail);
             break;
         case TOKEN_IMPORT_KW:
             advance(compiler);
@@ -1052,6 +1086,10 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                 case TOKEN_IDENTIFIER:
                     if (compiler->parser->next.type == TOKEN_DOT) {
                         parsePairOrBlock(compiler, false);
+                        goto END_PARSE_GROUPING;
+                    }
+                    if (compiler->parser->next.type == TOKEN_OR_OP) {
+                        parsePairOrBlock(compiler, is_tail);
                         goto END_PARSE_GROUPING;
                     }
                     break;  // It's a function call, we will parse it below
