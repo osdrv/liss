@@ -32,7 +32,7 @@ typedef struct {
 #define RE_ESC_NONSPACE 16
 #define RE_ESC_TAB 17
 #define RE_ESC_NEWLINE 18
-#define RE_BRACKET_BASE 20
+#define RE_BRACKET_BASE 128
 
 typedef struct {
     ReInstrType type;

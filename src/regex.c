@@ -221,7 +221,7 @@ char* infixToPostfix(const char* infix) {
     return postfix;
 }
 
-// Replaces each [...] in re with a sentinel byte (128 + charset_index),
+// Replaces each [...] in re with a sentinel byte (RE_BRACKET_BASE + charset_index),
 // parsing the charset bitmap into prog->charsets.  Returns a malloc'd string
 // the caller must free; returns NULL on parse error.
 static char* replaceBrackets(const char* re, ReProgram* prog) {

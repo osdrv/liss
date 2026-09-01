@@ -275,6 +275,45 @@ static char* test_bracket_classes() {
     return NULL;
 }
 
+static char* test_groups_and_mixed() {
+    ClassMatchTest tests[] = {
+        // regression: literal '-' between groups was misidentified as a bracket sentinel
+        {.pattern = "(\\d+)-(\\d+)",    .text = "123-456",     .expected = true},
+        {.pattern = "(\\d+)-(\\d+)",    .text = "123456",      .expected = false},
+        // other printable ASCII chars adjacent to groups
+        {.pattern = "(\\w+):(\\w+)",   .text = "foo:bar",    .expected = true},
+        {.pattern = "(\\w+)/(\\w+)",   .text = "foo/bar",    .expected = true},
+        {.pattern = "(\\d+):(\\d+):(\\d+)", .text = "12:34:56", .expected = true},
+        {.pattern = "(\\d+):(\\d+):(\\d+)", .text = "12:34",    .expected = false},
+        // bracket class adjacent to a literal char
+        {.pattern = "[a-z]+-[0-9]+",  .text = "foo-42",     .expected = true},
+        {.pattern = "[a-z]+-[0-9]+",  .text = "foo42",      .expected = false},
+        {.pattern = "[a-z]+:[0-9]+",  .text = "abc:007",    .expected = true},
+        {.pattern = "[a-z]+:[0-9]+",  .text = "abc007",     .expected = false},
+        // multiple bracket classes with literal separator
+        {.pattern = "[a-z]:[0-9]",    .text = "a:1",        .expected = true},
+        {.pattern = "[a-z]:[0-9]",    .text = "a1",         .expected = false},
+    };
+
+    for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+        ReProgram* prog = compilePattern(tests[i].pattern);
+        mu_assert("compilePattern returned NULL", prog != NULL);
+
+        bool got = match(prog, tests[i].text);
+        if (got != tests[i].expected) {
+            printf("FAIL: pattern='%s' text='%s' expected=%s got=%s\n",
+                   tests[i].pattern, tests[i].text,
+                   tests[i].expected ? "match" : "no-match",
+                   got ? "match" : "no-match");
+            mu_assert("groups and mixed match mismatch", false);
+        }
+
+        free(prog->instrs);
+        free(prog);
+    }
+    return NULL;
+}
+
 static char* test_unicode_match() {
     ClassMatchTest tests[] = {
         // literal 2-byte codepoint (é = U+00E9)
@@ -331,5 +370,6 @@ void regex_suite() {
     mu_run_test(test_match_groups);
     mu_run_test(test_char_classes);
     mu_run_test(test_bracket_classes);
+    mu_run_test(test_groups_and_mixed);
     mu_run_test(test_unicode_match);
 }
