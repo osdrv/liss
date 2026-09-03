@@ -693,43 +693,6 @@ static void parseImport(Compiler* compiler) {
     emitByte(compiler, OP_TRUE);
 }
 
-// static void parsePipe(Compiler* compiler, bool is_tail) {
-//     parseExpression(compiler, false);
-//     if (compiler->parser->hadError) return;
-//
-//     int end_jumps[64];
-//     int end_jump_cnt = 0;
-//
-//     while (compiler->parser->current.type != TOKEN_RPAREN &&
-//            compiler->parser->current.type != TOKEN_EOF) {
-//         if (compiler->parser->current.type != TOKEN_LPAREN) {
-//             COMPILE_ERR(
-//                 compiler,
-//                 "pipe step must be a parenthesized call: (f) or (f arg
-//                 ...)");
-//             return;
-//         }
-//         end_jumps[end_jump_cnt++] = emitJump(compiler, OP_JUMP_IF_ERR);
-//         advance(compiler);
-//         parseExpression(compiler, false);
-//         if (compiler->parser->hadError) return;
-//         emitByte(compiler, OP_SWAP);
-//         int extra = 0;
-//         while (compiler->parser->current.type != TOKEN_RPAREN &&
-//                compiler->parser->current.type != TOKEN_EOF) {
-//             parseExpression(compiler, false);
-//             if (compiler->parser->hadError) return;
-//             extra++;
-//         }
-//         consume(compiler, TOKEN_RPAREN, "expect ')' after pipe step");
-//         emitBytes(compiler, OP_CALL, (uint8_t)(extra + 1));
-//     }
-//
-//     for (int i = 0; i < end_jump_cnt; i++) {
-//         patchJump(compiler, end_jumps[i]);
-//     }
-// }
-
 static void parseSwitch(Compiler* compiler, bool is_tail) {
     parseExpression(compiler, false);
     if (compiler->parser->hadError) return;
@@ -850,6 +813,16 @@ static void parseSwitch(Compiler* compiler, bool is_tail) {
     for (int i = 0; i < end_jump_cnt; i++) {
         patchJump(compiler, end_jumps[i]);
     }
+}
+
+static Token peekNextNext(Compiler* compiler) {
+    Scanner saved = compiler->parser->scanner;
+    Token t;
+    do {
+        t = scanToken(&compiler->parser->scanner);
+    } while (t.type == TOKEN_ERROR);
+    compiler->parser->scanner = saved;
+    return t;
 }
 
 static void parseGrouping(Compiler* compiler, bool is_tail) {
@@ -1094,7 +1067,8 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
                     }
                     break;  // It's a function call, we will parse it below
                 case TOKEN_LPAREN:
-                    if (compiler->parser->next.type == TOKEN_FN_KW) {
+                    if (compiler->parser->next.type == TOKEN_FN_KW &&
+                        peekNextNext(compiler).type == TOKEN_LBRAKET) {
                         break;  // It's a function call with an anonymous
                                 // function callee
                     }

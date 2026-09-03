@@ -498,6 +498,29 @@ static VMTestCase interpret_tests[] = {
         .expected_value = {EXPECT_INT, .as.integer = 7},
     },
     {
+        // Regression: ( (fn name [...] body) expr ) was parsed as an anonymous
+        // function call instead of a block, because current=( + next=fn
+        // triggered the "anonymous fn callee" path regardless of whether fn was
+        // named. Fixed by peeking one token further: (fn [ = anonymous callee,
+        // (fn name [ = named fn definition -> block.
+        .name = "block starting with named fn definition",
+        .src = "(fn outer [acc]"
+               "  ("
+               "    (fn helper [a b] (+ a b))"
+               "    (helper acc 10)"
+               "  )"
+               ")"
+               "(outer 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 15},
+    },
+    {
+        .name = "anonymous function call",
+        .src = "((fn [x y] (+ x y)) 3 4)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 7},
+    },
+    {
         .name = "function call with parameters",
         .src = "(fn add [a b] (+ a b)) (add 10 20)",
         .expected_result = INTERPRET_OK,
