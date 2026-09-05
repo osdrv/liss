@@ -1246,7 +1246,7 @@ ObjFunction* compile(VM* vm, const char* source, ObjModule* module) {
 
 #define WILL_READ_BODY() (compiler.parser->current.type != TOKEN_EOF)
 
-    do {
+    while (WILL_READ_BODY()) {
         int prev_locals = compiler.local_count;
         TailCheckpoint cp = saveTailCheckpoint(&compiler);
         parseExpression(&compiler, false);
@@ -1261,7 +1261,10 @@ ObjFunction* compile(VM* vm, const char* source, ObjModule* module) {
                 if (compiler.parser->hadError) break;
             }
         }
-    } while (WILL_READ_BODY());
+    }
+
+    // Empty source: OP_RETURN pops a value, so give it something.
+    if (currentChunk(&compiler)->count == 0) emitByte(&compiler, OP_NULL);
 
 #undef WILL_READ_BODY
 
