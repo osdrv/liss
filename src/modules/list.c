@@ -302,12 +302,96 @@ static Value sortByNative(VM* vm, int argc, Value* argv) {
     return sortImpl(vm, argv[0], fn, true);
 }
 
+static Value rangeNative(VM* vm, int argc, Value* argv) {
+    int64_t from, to;
+    if (argc == 1) {
+        if (!IS_INT(argv[0]))
+            return raiseErr(vm, "list:range: argument must be an integer");
+        from = 0;
+        to = AS_INT(argv[0]);
+    } else if (argc == 2) {
+        if (!IS_INT(argv[0]) || !IS_INT(argv[1]))
+            return raiseErr(vm, "list:range: arguments must be integers");
+        from = AS_INT(argv[0]);
+        to = AS_INT(argv[1]);
+    } else {
+        return raiseErr(vm, "list:range: expects 1 or 2 arguments");
+    }
+
+    if (to <= from) return OBJ_VAL(newList(vm, 0, NIL_VAL));
+
+    int64_t len = to - from;
+    if (len > INT32_MAX) return raiseErr(vm, "list:range: range too large");
+
+    // Build chain right-to-left; head kept rooted at stack_top[-1].
+    push(vm, NIL_VAL);
+    for (int64_t i = to - 1; i >= from; i--) {
+        push(vm, INT_VAL(i));
+        vm->stack_top[-1] =
+            OBJ_VAL(newPair(vm, vm->stack_top[-1], vm->stack_top[-2]));
+        vm->stack_top[-2] = vm->stack_top[-1];
+        pop(vm);
+    }
+    Value result = OBJ_VAL(newList(vm, (uint32_t)len, vm->stack_top[-1]));
+    pop(vm);
+    return result;
+}
+
+static Value sliceNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_LIST(argv[0]))
+        return raiseErr(vm, "list:slice: first argument must be a list");
+    if (!IS_INT(argv[1]) || !IS_INT(argv[2]))
+        return raiseErr(vm, "list:slice: indices must be integers");
+
+    ObjList* list = AS_LIST(argv[0]);
+    int64_t from = AS_INT(argv[1]);
+    int64_t to = AS_INT(argv[2]);
+    int64_t len = (int64_t)list->len;
+
+    if (from < 0) from = 0;
+    if (to > len) to = len;
+    if (from >= to) return OBJ_VAL(newList(vm, 0, NIL_VAL));
+
+    int64_t slice_len = to - from;
+    Value* elems = malloc((size_t)slice_len * sizeof(Value));
+    if (!elems) return raiseErr(vm, "list:slice: allocation failed");
+
+    Value cur = list->head;
+    for (int64_t i = 0; i < from; i++) cur = AS_PAIR(cur)->second;
+    for (int64_t i = 0; i < slice_len; i++) {
+        elems[i] = AS_PAIR(cur)->first;
+        cur = AS_PAIR(cur)->second;
+    }
+
+    // Build chain right-to-left; head kept rooted at stack_top[-1].
+    push(vm, NIL_VAL);
+    for (int64_t i = slice_len - 1; i >= 0; i--) {
+        push(vm, elems[i]);
+        vm->stack_top[-1] =
+            OBJ_VAL(newPair(vm, vm->stack_top[-1], vm->stack_top[-2]));
+        vm->stack_top[-2] = vm->stack_top[-1];
+        pop(vm);
+    }
+    Value result = OBJ_VAL(newList(vm, (uint32_t)slice_len, vm->stack_top[-1]));
+    pop(vm);
+    free(elems);
+    return result;
+}
+
 static const NativeReg list_functions[] = {
-    {"head", 1, headNative}, {"tail", 1, tailNative},
-    {"last", 1, lastNative}, {"cons", 2, consNative},
-    {"push", 2, pushNative}, {"append", 2, appendNative},
-    {"map", 2, mapNative},   {"reduce", 3, reduceNative},
-    {"sort", 1, sortNative}, {"sort-by", 2, sortByNative},
+    {"head", 1, headNative},
+    {"tail", 1, tailNative},
+    {"last", 1, lastNative},
+    {"cons", 2, consNative},
+    {"push", 2, pushNative},
+    {"append", 2, appendNative},
+    {"map", 2, mapNative},
+    {"reduce", 3, reduceNative},
+    {"sort", 1, sortNative},
+    {"sort-by", 2, sortByNative},
+    {"range", -1, rangeNative},
+    {"slice", 3, sliceNative},
     {NULL, 0, NULL},
 };
 

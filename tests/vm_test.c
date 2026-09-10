@@ -498,6 +498,14 @@ static VMTestCase interpret_tests[] = {
         .expected_value = {EXPECT_INT, .as.integer = 7},
     },
     {
+        // Regression: isMidHyphen only allowed letters/_ after '-', so
+        // 'max-ix-1' was scanned as identifier 'max-ix' + number '-1'.
+        .name = "identifier with trailing hyphen-digit",
+        .src = "(let max-ix-1 42) max-ix-1",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 42},
+    },
+    {
         // Regression: ( (fn name [...] body) expr ) was parsed as an anonymous
         // function call instead of a block, because current=( + next=fn
         // triggered the "anonymous fn callee" path regardless of whether fn was
@@ -807,6 +815,42 @@ static VMTestCase interpret_tests[] = {
                "[* 0])",
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_INT, .as.integer = 0},
+    },
+    {
+        .name = "list:range single arg",
+        .src = "(import list [range])(range 5)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST, .as.string = "[0 1 2 3 4]"},
+    },
+    {
+        .name = "list:range two args",
+        .src = "(import list [range])(range 2 7)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST, .as.string = "[2 3 4 5 6]"},
+    },
+    {
+        .name = "list:range empty when from >= to",
+        .src = "(import list [range])(range 5 2)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST, .as.string = "[]"},
+    },
+    {
+        .name = "list:slice middle",
+        .src = "(import list [slice])(slice [0 1 2 3 4] 1 4)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST, .as.string = "[1 2 3]"},
+    },
+    {
+        .name = "list:slice clamps to end",
+        .src = "(import list [slice])(slice [0 1 2 3 4] 3 99)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST, .as.string = "[3 4]"},
+    },
+    {
+        .name = "list:slice empty when from >= to",
+        .src = "(import list [slice])(slice [0 1 2 3 4] 2 2)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_LIST, .as.string = "[]"},
     },
     {
         .name = "pipe single step",

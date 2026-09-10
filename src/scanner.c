@@ -50,7 +50,7 @@ static bool isMidHyphen(Scanner* scanner) {
     if (peek(scanner) != '-') return false;
     char next = peekNext(scanner);
     return (next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z') ||
-           next == '_';
+           next == '_' || (next >= '0' && next <= '9');
 }
 
 static bool isAnyChar(Scanner* scanner, const char* options) {
