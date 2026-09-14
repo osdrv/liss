@@ -39,12 +39,16 @@ bool valuesEqual(Value a, Value b) {
                         if (strA->length != strB->length) return false;
                         return memcmp(strA->chars, strB->chars, strA->length) ==
                                0;
+                    case OBJ_PAIR: {
+                        ObjPair* pairA = AS_PAIR(a);
+                        ObjPair* pairB = AS_PAIR(b);
+                        return valuesEqual(pairA->first, pairB->first) &&
+                               valuesEqual(pairA->second, pairB->second);
+                    }
                     default:
                         break;
                 }
-            // Fallback to pointer comparison for other object types (e.g.,
-            // functions).
-            return AS_OBJ(a) == AS_OBJ(b);  // Compare object pointers.
+            return AS_OBJ(a) == AS_OBJ(b);  // pointer identity for other objects
     }
 
     return false;  // Unreachable.

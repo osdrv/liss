@@ -34,11 +34,16 @@ static size_t hashValue(Value value) {
                         ObjString* string = AS_STRING(value);
                         return string->hash;
                     }
+                    case OBJ_PAIR: {
+                        ObjPair* pair = AS_PAIR(value);
+                        size_t h1 = hashValue(pair->first);
+                        size_t h2 = hashValue(pair->second);
+                        return h1 * 2654435761UL ^ (h2 * 40503UL);
+                    }
                     default:
                         break;
                 }
-            // TODO: Implement a better hash function for objects
-            return (size_t)AS_OBJ(value);  // Use pointer value as hash
+            return (size_t)AS_OBJ(value);  // pointer identity for other objects
         default:
             return 0;
     }

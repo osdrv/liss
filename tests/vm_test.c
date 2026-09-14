@@ -817,6 +817,23 @@ static VMTestCase interpret_tests[] = {
         .expected_value = {EXPECT_INT, .as.integer = 0},
     },
     {
+        // Regression: hamtHash used pointer identity for OBJ_PAIR, so a freshly
+        // constructed (k1 . k2) never matched the key stored during put.
+        // Fixed by adding structural hash/equality for OBJ_PAIR.
+        .name = "dict pair key lookup",
+        .src = "(let d (put (dict) (1 . 2) \"found\"))"
+               "(has? d (1 . 2))",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_BOOL, .as.boolean = true},
+    },
+    {
+        .name = "dict pair key get",
+        .src = "(let d (put (dict) (1 . 2) \"found\"))"
+               "(get d (1 . 2))",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_STRING, .as.string = "found"},
+    },
+    {
         .name = "list:range single arg",
         .src = "(import list [range])(range 5)",
         .expected_result = INTERPRET_OK,

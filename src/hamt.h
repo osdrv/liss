@@ -54,9 +54,13 @@ static inline uint64_t hamtHash(Value v) {
         }
         case VAL_OBJ: {
             if (OBJ_TYPE(v) == OBJ_STRING)
-                return AS_STRING(v)
-                    ->hash;  // A string is fnv-1a-hashed. It is good enough to
-                             // get a balanced hash value
+                return AS_STRING(v)->hash;
+            if (OBJ_TYPE(v) == OBJ_PAIR) {
+                ObjPair* pair = AS_PAIR(v);
+                uint64_t h1 = hamtHash(pair->first);
+                uint64_t h2 = hamtHash(pair->second);
+                return h1 ^ (h2 * 0xff51afd7ed558ccdull);
+            }
             return (uint64_t)(uintptr_t)AS_OBJ(v);
         }
     }
