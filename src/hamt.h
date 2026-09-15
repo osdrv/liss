@@ -37,15 +37,10 @@ static inline uint64_t hamtHash(Value v) {
             return AS_BOOL(v) ? 1 : 2;
         case VAL_INT: {
             uint64_t n = (uint64_t)AS_INT(v);
-            return n ^ (n >> 33) ^
-                   (n &
-                    0xff51afd7ed558ccdull);  // this constant is a murmurhash3
-                                             // hash finalizer: each input bit
-                                             // flip causes ~half of the output
-                                             // bits to flip (aka the avalanche
-                                             // effect) so the trie stays
-                                             // balanced rather than skewing
-                                             // left
+            n ^= n >> 33;
+            n *= 0xff51afd7ed558ccdull;
+            n ^= n >> 33;
+            return n;
         }
         case VAL_REAL: {
             uint64_t bits;

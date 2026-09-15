@@ -18,9 +18,11 @@ static size_t hashValue(Value value) {
         case VAL_NIL:
             return 0;
         case VAL_INT: {
-            int64_t num = AS_INT(value);
-            return (size_t)(num * 2654435761 %
-                            4294967296);  // Knuth's multiplicative hash
+            uint64_t n = (uint64_t)AS_INT(value);
+            n ^= n >> 33;
+            n *= 0xff51afd7ed558ccdull;
+            n ^= n >> 33;
+            return (size_t)n;
         }
         case VAL_REAL: {
             double num = AS_REAL(value);
