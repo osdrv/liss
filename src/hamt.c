@@ -12,8 +12,9 @@ static HamtNode* allocNode(VM* vm) {
     HamtNode* node = (HamtNode*)reallocate(vm, NULL, 0, sizeof(HamtNode));
     node->obj.type = OBJ_HAMT_NODE;
     node->obj.isMarked = false;
-    node->obj.next = vm->objects;
-    vm->objects = (Obj*)node;
+    node->obj.gen = GEN_NEW;
+    node->obj.next = vm->new_objs;
+    vm->new_objs = (Obj*)node;
     node->is_collision = false;
     node->data_map = 0;
     node->node_map = 0;

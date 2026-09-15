@@ -141,9 +141,9 @@ void markTable(VM* vm, Table* table) {
     }
 }
 
-void sweep(VM* vm) {
+static void sweepList(VM* vm, Obj** head) {
     Obj* previous = NULL;
-    Obj* object = vm->objects;
+    Obj* object = *head;
     while (object != NULL) {
         if (object->isMarked) {
             object->isMarked = false;
@@ -155,10 +155,9 @@ void sweep(VM* vm) {
             if (previous != NULL) {
                 previous->next = object;
             } else {
-                vm->objects = object;
+                *head = object;
             }
 
-            // Safety: if last_popped_value points to this object, clear it.
             if (IS_OBJ(vm->last_popped_value) &&
                 AS_OBJ(vm->last_popped_value) == unreached) {
                 vm->last_popped_value = NIL_VAL;
@@ -167,6 +166,11 @@ void sweep(VM* vm) {
             freeObject(vm, unreached);
         }
     }
+}
+
+void sweep(VM* vm) {
+    sweepList(vm, &vm->new_objs);
+    sweepList(vm, &vm->old_objs);
 }
 
 void freeObject(VM* vm, Obj* object) {

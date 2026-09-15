@@ -21,10 +21,10 @@ static Obj* allocateObject(VM* vm, size_t size, ObjType type) {
     }
     object->type = type;
     object->isMarked = false;
+    object->gen = GEN_NEW;
 
-    // Add to the VM's object list for GC tracking
-    object->next = vm->objects;
-    vm->objects = object;
+    object->next = vm->new_objs;
+    vm->new_objs = object;
 
     return object;
 }

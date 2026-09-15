@@ -52,7 +52,8 @@ typedef struct VM {
     Value* stack_top;
     InterpretResult last_result;  // Store the last interpret result
 
-    Obj* objects;  // Linked list of all heap-allocated objects for GC
+    Obj* new_objs;  // Newly allocated objects (gen == GEN_NEW)
+    Obj* old_objs;  // Promoted survivors (gen == GEN_OLD)
     Table strings;
     Table modules;
     ObjModule* core_module;  // The core module containing built-in functions

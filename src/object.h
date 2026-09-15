@@ -35,11 +35,13 @@ typedef enum {
     OBJ_HAMT_NODE,
 } ObjType;
 
+#define GEN_NEW 0
+#define GEN_OLD 1
+
 struct Obj {
     ObjType type;
     bool isMarked;  // For garbage collection
-    // 'next' field for the garbage collector to create a linked list of all
-    // objects.
+    uint8_t gen;    // GEN_NEW or GEN_OLD
     struct Obj* next;
 };
 

@@ -40,7 +40,8 @@ VM* newVM(VMOptions options) {
     vm->compiler = NULL;
     vm->core_module = NULL;
     vm->main_module = NULL;
-    vm->objects = NULL;
+    vm->new_objs = NULL;
+    vm->old_objs = NULL;
     vm->stack_top = vm->stack;
     vm->open_upvalues = NULL;
     vm->raise_value = NIL_VAL;
@@ -71,11 +72,14 @@ void destroyVM(VM* vm) {
     if (vm == NULL) return;
     freeTable(&vm->strings);
     freeTable(&vm->modules);
-    Obj* object = vm->objects;
-    while (object != NULL) {
-        Obj* next = object->next;
-        freeObject(vm, object);
-        object = next;
+    Obj* lists[] = {vm->new_objs, vm->old_objs};
+    for (int i = 0; i < 2; i++) {
+        Obj* object = lists[i];
+        while (object != NULL) {
+            Obj* next = object->next;
+            freeObject(vm, object);
+            object = next;
+        }
     }
     reallocate(vm, vm->frames, sizeof(CallFrame) * vm->frame_cap, 0);
     // Correctly free the VM struct and its flexible array member
