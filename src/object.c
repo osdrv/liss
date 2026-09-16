@@ -202,6 +202,7 @@ void defineNative(VM* vm, ObjModule* module, const char* name, int arity,
     ObjNative* native = newNative(vm, name, arity, function);
     push(vm, OBJ_VAL(native));
     tableInsert(&module->symbols, OBJ_VAL(str), OBJ_VAL(native));
+    WRITE_BARRIER(vm, (Obj*)module, OBJ_VAL(native));
     pop(vm);
     pop(vm);
 }
@@ -218,6 +219,7 @@ void defineConst(VM* vm, ObjModule* module, const char* name, Value value) {
     push(vm, OBJ_VAL(name_obj));
     push(vm, value);
     tableInsert(&module->symbols, OBJ_VAL(name_obj), value);
+    WRITE_BARRIER(vm, (Obj*)module, value);
     pop(vm);  // pop value
     pop(vm);  // pop name_obj
 }

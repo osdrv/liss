@@ -49,6 +49,10 @@ typedef struct VM {
     size_t new_bytes;  // bytes allocated in the new generation since the last
                        // minor GC
 
+    Obj** rmb_set;
+    size_t rmb_cnt;
+    size_t rmb_cap;
+
     CallFrame* frames;
     int frame_cnt;
     int frame_cap;

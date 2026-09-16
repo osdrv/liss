@@ -342,6 +342,26 @@ void hamtEach(HamtNode* node, void (*fn)(Value key, Value val, void* ctx),
     }
 }
 
+void hamtMarkNew(VM* vm, HamtNode* node) {
+    if (node == NULL) return;
+    if (node->is_collision) {
+        for (int i = 0; i < node->cnt; i++) {
+            markNewValue(vm, node->pairs[2 * i]);
+            markNewValue(vm, node->pairs[2 * i + 1]);
+        }
+        return;
+    }
+    int dc = __builtin_popcount(node->data_map);
+    for (int i = 0; i < dc; i++) {
+        markNewValue(vm, node->data[2 * i]);
+        markNewValue(vm, node->data[2 * i + 1]);
+    }
+    int nc = __builtin_popcount(node->node_map);
+    for (int i = 0; i < nc; i++) {
+        markNewObject(vm, (Obj*)node->nodes[i]);
+    }
+}
+
 void hamtMark(VM* vm, HamtNode* node) {
     if (node == NULL) return;
     if (node->is_collision) {

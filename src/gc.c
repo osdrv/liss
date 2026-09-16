@@ -11,8 +11,125 @@
 #include "value.h"
 #include "vm.h"
 
+void rememberObject(VM* vm, Obj* obj) {
+    if (vm->rmb_cnt >= vm->rmb_cap) {
+        size_t old_cap = vm->rmb_cap;
+        vm->rmb_cap = old_cap < 8 ? 8 : old_cap * 2;
+        vm->rmb_set = (Obj**)reallocate(vm, vm->rmb_set, sizeof(Obj*) * old_cap,
+                                        sizeof(Obj*) * vm->rmb_cap);
+    }
+    vm->rmb_set[vm->rmb_cnt++] = obj;
+}
+
+static void markNewChildren(VM* vm, Obj* object) {
+    switch (object->type) {
+        case OBJ_FUNCTION: {
+            ObjFunction* function = (ObjFunction*)object;
+            markNewObject(vm, (Obj*)function->name);
+            markNewObject(vm, (Obj*)function->module);
+            for (int i = 0; i < function->chunk.constants.count; i++) {
+                markNewValue(vm, function->chunk.constants.values[i]);
+            }
+            break;
+        }
+        case OBJ_STRING:
+            // Strings have no references to other objects.
+            break;
+        case OBJ_CLOSURE: {
+            ObjClosure* closure = (ObjClosure*)object;
+            markNewObject(vm, (Obj*)closure->function);
+            for (int i = 0; i < closure->upvalue_cnt; i++) {
+                markNewObject(vm, (Obj*)closure->upvalues[i]);
+            }
+            break;
+        }
+        case OBJ_UPVALUE: {
+            ObjUpvalue* upvalue = (ObjUpvalue*)object;
+            markNewValue(vm, upvalue->closed);
+            break;
+        }
+        case OBJ_ERROR: {
+            ObjError* error = (ObjError*)object;
+            markNewObject(vm, (Obj*)error->message);
+            break;
+        }
+        case OBJ_NATIVE:
+            ObjNative* native = (ObjNative*)object;
+            markNewObject(vm, (Obj*)native->name);
+            break;
+        case OBJ_PAIR: {
+            ObjPair* pair = (ObjPair*)object;
+            markNewValue(vm, pair->first);
+            markNewValue(vm, pair->second);
+            break;
+        }
+        case OBJ_LIST: {
+            ObjList* list = (ObjList*)object;
+            markNewValue(vm, list->head);
+            break;
+        }
+        case OBJ_DICT: {
+            ObjDict* dict = (ObjDict*)object;
+            markNewObject(vm, (Obj*)dict->root);
+            break;
+        }
+        case OBJ_MODULE: {
+            ObjModule* module = (ObjModule*)object;
+            markNewObject(vm, (Obj*)module->name);
+            markNewTable(vm, &module->symbols);
+            markNewTable(vm, &module->imports);
+            break;
+        }
+        case OBJ_FILE: {
+            break;
+        }
+        case OBJ_RE: {
+            ObjRe* re = (ObjRe*)object;
+            markNewObject(vm, (Obj*)re->pattern);
+            break;
+        }
+        case OBJ_HAMT_NODE: {
+            HamtNode* node = (HamtNode*)object;
+            hamtMarkNew(vm, node);
+            break;
+        }
+    }
+}
+
+void markNewObject(VM* vm, Obj* object) {
+    if (object == NULL || object->isMarked) return;
+    if (object->gen == GEN_OLD) return;
+    object->isMarked = true;
+    markNewChildren(vm, object);
+}
+
+void markNewValue(VM* vm, Value value) {
+    if (IS_OBJ(value)) markNewObject(vm, AS_OBJ(value));
+}
+
+static void markNewRoots(VM* vm) {
+    for (Value* v = vm->stack; v < vm->stack_top; v++) {
+        markNewValue(vm, *v);
+    }
+    markNewValue(vm, vm->last_popped_value);
+    markNewValue(vm, vm->raise_value);
+
+    markNewTable(vm, &vm->strings);
+    markNewTable(vm, &vm->modules);
+
+    for (ObjUpvalue* uv = vm->open_upvalues; uv != NULL; uv = uv->next) {
+        markNewObject(vm, (Obj*)uv);
+    }
+
+    markCompilerRoots(vm);
+
+    for (size_t i = 0; i < vm->rmb_cnt; i++) {
+        markNewChildren(vm, vm->rmb_set[i]);
+    }
+}
+
 void minorGC(VM* vm) {
-    markRoots(vm);
+    markNewRoots(vm);
 
     Obj* obj = vm->new_objs;
     vm->new_objs = NULL;  // each object goes to old_objs or gets freed
@@ -37,6 +154,7 @@ void minorGC(VM* vm) {
         }
         obj = next;
     }
+    vm->rmb_cnt = 0;
     vm->new_bytes = 0;
 }
 
@@ -155,6 +273,17 @@ void markObject(VM* vm, Obj* object) {
             HamtNode* node = (HamtNode*)object;
             hamtMark(vm, node);
             break;
+        }
+    }
+}
+
+void markNewTable(VM* vm, Table* table) {
+    for (size_t i = 0; i < table->bucket_count; i++) {
+        TableEntry* entry = table->buckets[i];
+        while (entry != NULL) {
+            markNewValue(vm, entry->key);
+            markNewValue(vm, entry->value);
+            entry = entry->next;
         }
     }
 }

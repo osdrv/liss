@@ -46,6 +46,9 @@ VM* newVM(VMOptions options) {
     vm->open_upvalues = NULL;
     vm->raise_value = NIL_VAL;
     vm->last_popped_value = NIL_VAL;
+    vm->rmb_set = NULL;
+    vm->rmb_cnt = 0;
+    vm->rmb_cap = 0;
     initTable(&vm->strings);
 
     vm->options = options;
@@ -84,6 +87,7 @@ void destroyVM(VM* vm) {
     }
     reallocate(vm, vm->frames, sizeof(CallFrame) * vm->frame_cap, 0);
     // Correctly free the VM struct and its flexible array member
+    reallocate(vm, vm->rmb_set, sizeof(Obj*) * vm->rmb_cap, 0);
     reallocate(NULL, vm,
                sizeof(VM) + sizeof(Value) * vm->options.stack_capacity, 0);
 }
@@ -271,6 +275,7 @@ static void closeUpvalue(VM* vm, Value* last) {
     while (vm->open_upvalues != NULL && vm->open_upvalues->location >= last) {
         ObjUpvalue* upvalue = vm->open_upvalues;
         upvalue->closed = *upvalue->location;
+        WRITE_BARRIER(vm, (Obj*)upvalue, upvalue->closed);
         upvalue->location = &upvalue->closed;
         vm->open_upvalues = upvalue->next;
     }

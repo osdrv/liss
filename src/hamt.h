@@ -79,6 +79,7 @@ HamtNode* hamtDel(struct VM* vm, HamtNode* node, Value key, uint64_t hash,
                   int depth);
 void hamtEach(HamtNode* node, void (*fn)(Value key, Value val, void* ctx),
               void* ctx);
+void hamtMarkNew(struct VM* vm, HamtNode* node);
 void hamtMark(struct VM* vm, HamtNode* node);
 void hamtFree(struct VM* vm, HamtNode* node);
 
