@@ -37,13 +37,17 @@ typedef struct {
     size_t gc_threshold;
     size_t heap_growth_factor;
     size_t frames_max;
+    size_t young_threshold;  // trigger minor GC when new_bytes exceeds this
     bool stress_gc;  // If true, trigger GC on every allocation (for testing)
+    bool stress_minor_gc;  // trigger minor GC on every allocation (for testing)
 } VMOptions;
 
 typedef struct VM {
     VMOptions options;
     size_t bytes_allocated;
     size_t next_gc;
+    size_t new_bytes;  // bytes allocated in the new generation since the last
+                       // minor GC
 
     CallFrame* frames;
     int frame_cnt;
@@ -52,13 +56,13 @@ typedef struct VM {
     Value* stack_top;
     InterpretResult last_result;  // Store the last interpret result
 
-    Obj* new_objs;  // Newly allocated objects (gen == GEN_NEW)
-    Obj* old_objs;  // Promoted survivors (gen == GEN_OLD)
+    Obj* old_objs;
+    Obj* new_objs;
     Table strings;
     Table modules;
     ObjModule* core_module;  // The core module containing built-in functions
+                             // and constants
     ObjModule* main_module;
-    // and constants
 
     Value last_popped_value;    // Store the last popped value
     ObjUpvalue* open_upvalues;  // Linked list of open upvalues
@@ -77,10 +81,12 @@ typedef struct VM {
 static inline VMOptions defaultVMOptions() {
     VMOptions options = {
         .frames_max = 32,
-        .gc_threshold = 1024 * 1024,  // 1MB
+        .gc_threshold = 1024 * 1024,   // 1MB
+        .young_threshold = 64 * 1024,  // 64KB
         .heap_growth_factor = 2,
         .stack_capacity = 256,
         .stress_gc = false,
+        .stress_minor_gc = false,
     };
     return options;
 }

@@ -48,7 +48,8 @@ bool valuesEqual(Value a, Value b) {
                     default:
                         break;
                 }
-            return AS_OBJ(a) == AS_OBJ(b);  // pointer identity for other objects
+            return AS_OBJ(a) ==
+                   AS_OBJ(b);  // pointer identity for other objects
     }
 
     return false;  // Unreachable.

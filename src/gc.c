@@ -11,6 +11,35 @@
 #include "value.h"
 #include "vm.h"
 
+void minorGC(VM* vm) {
+    markRoots(vm);
+
+    Obj* obj = vm->new_objs;
+    vm->new_objs = NULL;  // each object goes to old_objs or gets freed
+
+    for (Obj* o = vm->old_objs; o != NULL; o = o->next) {
+        o->isMarked = false;
+    }
+
+    while (obj != NULL) {
+        Obj* next = obj->next;
+        if (obj->isMarked) {
+            obj->isMarked = false;
+            obj->gen = GEN_OLD;
+            obj->next = vm->old_objs;
+            vm->old_objs = obj;
+        } else {
+            if (IS_OBJ(vm->last_popped_value) &&
+                AS_OBJ(vm->last_popped_value) == obj) {
+                vm->last_popped_value = NIL_VAL;
+            }
+            freeObject(vm, obj);
+        }
+        obj = next;
+    }
+    vm->new_bytes = 0;
+}
+
 void gc(VM* vm) {
     DEBUG_LOG("--- GC Begin ---");
     markRoots(vm);

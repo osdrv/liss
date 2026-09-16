@@ -50,6 +50,7 @@ VM* newVM(VMOptions options) {
 
     vm->options = options;
     vm->bytes_allocated = 0;
+    vm->new_bytes = 0;
     vm->next_gc = options.gc_threshold;
     vm->last_result = INTERPRET_OK;
     vm->try_cnt = 0;

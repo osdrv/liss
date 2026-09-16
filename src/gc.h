@@ -5,6 +5,7 @@
 #include "value.h"
 #include "vm.h"
 
+void minorGC(VM* vm);
 void gc(VM* vm);
 void markObject(VM* vm, Obj* object);
 void markTable(VM* vm, Table* table);

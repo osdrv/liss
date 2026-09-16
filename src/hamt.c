@@ -15,6 +15,7 @@ static HamtNode* allocNode(VM* vm) {
     node->obj.gen = GEN_NEW;
     node->obj.next = vm->new_objs;
     vm->new_objs = (Obj*)node;
+    vm->new_bytes += sizeof(HamtNode);
     node->is_collision = false;
     node->data_map = 0;
     node->node_map = 0;

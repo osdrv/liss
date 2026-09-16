@@ -17,6 +17,10 @@ void* reallocate(VM* vm, void* pointer, size_t old_size, size_t new_size) {
     if (vm != NULL) {
         vm->bytes_allocated += new_size - old_size;
         if (new_size > old_size) {
+            if (vm->options.stress_minor_gc ||
+                vm->new_bytes > vm->options.young_threshold) {
+                minorGC(vm);
+            }
             if (vm->options.stress_gc || vm->bytes_allocated > vm->next_gc) {
                 gc(vm);
             }

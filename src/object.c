@@ -25,6 +25,7 @@ static Obj* allocateObject(VM* vm, size_t size, ObjType type) {
 
     object->next = vm->new_objs;
     vm->new_objs = object;
+    vm->new_bytes += size;
 
     return object;
 }

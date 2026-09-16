@@ -48,8 +48,7 @@ static inline uint64_t hamtHash(Value v) {
             return bits ^ (bits >> 33);
         }
         case VAL_OBJ: {
-            if (OBJ_TYPE(v) == OBJ_STRING)
-                return AS_STRING(v)->hash;
+            if (OBJ_TYPE(v) == OBJ_STRING) return AS_STRING(v)->hash;
             if (OBJ_TYPE(v) == OBJ_PAIR) {
                 ObjPair* pair = AS_PAIR(v);
                 uint64_t h1 = hamtHash(pair->first);
