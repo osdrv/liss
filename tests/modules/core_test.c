@@ -92,7 +92,7 @@ static char *test_core_containers(void) {
     DEBUG_LOG("Running test_containers test: %s", tests[i].name);
 
     VMOptions options = defaultVMOptions();
-    options.stress_gc = true;
+    options.stress_gc = true; options.stress_minor_gc = true;
     VM *vm = newVM(options);
 
     if (tests[i].debug) {

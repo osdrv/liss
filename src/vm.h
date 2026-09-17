@@ -86,7 +86,7 @@ static inline VMOptions defaultVMOptions() {
     VMOptions options = {
         .frames_max = 32,
         .gc_threshold = 1024 * 1024,   // 1MB
-        .young_threshold = 64 * 1024,  // 64KB
+        .young_threshold = 256 * 1024,  // 256KB
         .heap_growth_factor = 2,
         .stack_capacity = 256,
         .stress_gc = false,

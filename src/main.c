@@ -21,14 +21,18 @@ static VMOptions parseVMFlags(int argc, const char* argv[]) {
         if (!isFlag(argv[i])) {
             continue;
         }
-        if (strcmp(argv[i], "--stack-capacity") == 0) {
-            options.stack_capacity = (size_t)atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--gc-threshold") == 0) {
-            options.gc_threshold = (size_t)atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--heap-growth-factor") == 0) {
-            options.heap_growth_factor = atof(argv[++i]);
+        if (strncmp(argv[i], "--stack-capacity=", 17) == 0) {
+            options.stack_capacity = (size_t)atoi(argv[i] + 17);
+        } else if (strncmp(argv[i], "--gc-threshold=", 15) == 0) {
+            options.gc_threshold = (size_t)atoll(argv[i] + 15);
+        } else if (strncmp(argv[i], "--heap-growth-factor=", 21) == 0) {
+            options.heap_growth_factor = atof(argv[i] + 21);
         } else if (strcmp(argv[i], "--stress-gc") == 0) {
             options.stress_gc = true;
+        } else if (strcmp(argv[i], "--stress-minor-gc") == 0) {
+            options.stress_minor_gc = true;
+        } else if (strncmp(argv[i], "--young-threshold=", 18) == 0) {
+            options.young_threshold = (size_t)atoll(argv[i] + 18);
         } else {
             fprintf(stderr, "Unknown flag: %s\n", argv[i]);
             exit(64);

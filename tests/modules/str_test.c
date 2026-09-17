@@ -16,7 +16,7 @@ typedef struct {
 static char *run_str_tests(StrTestCase *tests, size_t count) {
     for (size_t i = 0; i < count; i++) {
         VMOptions options = defaultVMOptions();
-        options.stress_gc = true;
+        options.stress_gc = true; options.stress_minor_gc = true;
         VM *vm = newVM(options);
 
         InterpretResult result = interpret(vm, tests[i].src, NULL);

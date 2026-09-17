@@ -1054,7 +1054,9 @@ OP_LESS_IMPL: {
 OP_SET_GLOBAL_IMPL: {
     uint16_t const_ix = (uint16_t)READ_ARG();
     Value name = frame->closure->function->chunk.constants.values[const_ix];
-    tableInsert(&frame->closure->function->module->symbols, name, peek(vm, 0));
+    ObjModule* mod = frame->closure->function->module;
+    tableInsert(&mod->symbols, name, peek(vm, 0));
+    WRITE_BARRIER(vm, (Obj*)mod, peek(vm, 0));
     DISPATCH();
 }
 

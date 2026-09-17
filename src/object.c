@@ -215,11 +215,11 @@ void defineNatives(VM* vm, ObjModule* module, const NativeReg* registry) {
 }
 
 void defineConst(VM* vm, ObjModule* module, const char* name, Value value) {
+    push(vm, value);  // protect value before copyString can trigger GC
     ObjString* name_obj = copyString(vm, name, (int)strlen(name));
     push(vm, OBJ_VAL(name_obj));
-    push(vm, value);
     tableInsert(&module->symbols, OBJ_VAL(name_obj), value);
     WRITE_BARRIER(vm, (Obj*)module, value);
-    pop(vm);  // pop value
     pop(vm);  // pop name_obj
+    pop(vm);  // pop value
 }

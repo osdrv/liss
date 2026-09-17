@@ -67,7 +67,7 @@ static char* test_modules(void) {
             .stack_capacity = 64,
             .gc_threshold = 1024,
             .heap_growth_factor = 2,
-            .stress_gc = true,
+            .stress_gc = true, .stress_minor_gc = true,
             .frames_max = 32,
         };
         VM* vm = newVM(options);
