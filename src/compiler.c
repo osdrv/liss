@@ -476,15 +476,12 @@ static ObjFunction* compileFunction(Compiler* compiler, Compiler* fn_compiler) {
             // Don't pop a local let: its value on the stack IS the variable.
             if (!defined_local) emitByte(fn_compiler, OP_POP);
         } else {
-            // Last expression. If it ended with OP_CALL, reparse with
-            // is_tail=true so parseCond propagates OP_TAIL_CALL to ALL
-            // reachable branches (not just the final one in bytecode order).
-            Chunk* chunk = currentChunk(fn_compiler);
-            if (chunk->count >= 2 && chunk->code[chunk->count - 2] == OP_CALL) {
-                rewindToCheckpoint(fn_compiler, cp, prev_locals);
-                parseExpression(fn_compiler, true);
-                if (fn_compiler->parser->hadError) return NULL;
-            }
+            // Last expression: always reparse with is_tail=true so
+            // parseCond/switch propagates OP_TAIL_CALL to ALL reachable call
+            // sites (not just the final one in bytecode order).
+            rewindToCheckpoint(fn_compiler, cp, prev_locals);
+            parseExpression(fn_compiler, true);
+            if (fn_compiler->parser->hadError) return NULL;
         }
     }
     if (is_empty_body) {
@@ -557,16 +554,11 @@ static void parsePairOrBlock(Compiler* compiler, bool is_tail) {
             // Don't pop a local let: its value on the stack IS the variable.
             if (!defined_local) emitByte(compiler, OP_POP);
         } else if (is_tail) {
-            // Last expression of a tail-position block. Same reparse logic as
-            // in compileFunction: only reparse if it ended with OP_CALL.
-            Chunk* chunk = currentChunk(compiler);
-            if (chunk->count >= 2 && chunk->code[chunk->count - 2] == OP_CALL) {
-                rewindToCheckpoint(compiler, cp, prev_locals);
-                parseExpression(compiler, true);
-                if (compiler->parser->hadError) return;
-                defined_local = (compiler->local_count > prev_locals);
-                last_was_let = defined_local;
-            }
+            rewindToCheckpoint(compiler, cp, prev_locals);
+            parseExpression(compiler, true);
+            if (compiler->parser->hadError) return;
+            defined_local = (compiler->local_count > prev_locals);
+            last_was_let = defined_local;
         }
     }
     endScope(compiler, last_was_let);
