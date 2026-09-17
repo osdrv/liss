@@ -49,12 +49,18 @@ typedef struct {
 #define REAL_VAL(value) ((Value){VAL_REAL, {.real = value}})
 #define OBJ_VAL(object) ((Value){VAL_OBJ, {.obj = (Obj*)object}})
 
+#ifdef LISS_DEBUG_BUILD
 #define DEBUG_VALUE(fmt, value)          \
     do {                                 \
         char* strv = sprintValue(value); \
         DEBUG_LOG(fmt, strv);            \
         free(strv);                      \
     } while (0)
+#else
+#define DEBUG_VALUE(fmt, value) \
+    do {                        \
+    } while (0)
+#endif
 
 bool valuesEqual(Value a, Value b);
 
