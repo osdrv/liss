@@ -580,6 +580,51 @@ static VMTestCase interpret_tests[] = {
         .expected_value = {EXPECT_INT, .as.integer = 10},
     },
     {
+        // Regression: OP_SLIDE (emitted by endScope to drop a nested block's
+        // locals, keeping only the trailing expression) used to discard the
+        // block-local stack slots without closing any open upvalues pointing
+        // into them first. The slide's pop/push sequence writes the trailing
+        // result into the FIRST discarded slot, so a closure capturing a
+        // block-local `let` (as opposed to a function's own top-level local,
+        // which is only cleaned up at OP_RETURN — already correct) ended up
+        // reading itself back instead of the captured value. Without the fix
+        // this returns the closure object (a type error on `+`) instead of 6.
+        .name = "closure over a nested-block local survives block scope exit",
+        .src = "(fn make []"
+               "  ("
+               "    (let x 6)"
+               "    (fn [] x)"
+               "  )"
+               ")"
+               "(let f (make))"
+               "(f)",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 6},
+    },
+    {
+        // Regression: same bug, but with multiple block-locals and two sibling
+        // calls so a stale-but-still-correct-by-luck slot (the ones after the
+        // first, never overwritten by that particular OP_SLIDE) can't hide the
+        // fix. If upvalues aren't actually closed to the heap, f1's captured
+        // a/b/c are dangling pointers into stack slots that the second call to
+        // `make` reuses for its own a/b/c (100/200/300), so calling f1 after
+        // f2 exists would read the wrong values.
+        .name = "closures over nested-block locals stay isolated across sibling calls",
+        .src = "(fn make [x y z]"
+               "  ("
+               "    (let a x)"
+               "    (let b y)"
+               "    (let c z)"
+               "    (fn [] (+ a (+ b c)))"
+               "  )"
+               ")"
+               "(let f1 (make 10 20 30))"
+               "(let f2 (make 100 200 300))"
+               "(+ (f1) (f2))",
+        .expected_result = INTERPRET_OK,
+        .expected_value = {EXPECT_INT, .as.integer = 660},
+    },
+    {
         .name = "tail call optimization - else branch",
         .src = "(let count_down (fn [n]"
                "  (cond (= n 0) \"done\""

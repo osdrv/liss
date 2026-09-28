@@ -1167,6 +1167,7 @@ OP_CLOSURE_IMPL: {
         } else {
             closure->upvalues[i] = frame->closure->upvalues[index];
         }
+        WRITE_BARRIER(vm, (Obj*)closure, OBJ_VAL(closure->upvalues[i]));
     }
     DISPATCH();
 }
@@ -1182,6 +1183,7 @@ OP_SET_UPVALUE_IMPL: {
     uint8_t slot = (uint8_t)READ_ARG();
     ObjUpvalue* upvalue = frame->closure->upvalues[slot];
     *upvalue->location = peek(vm, 0);
+    WRITE_BARRIER(vm, (Obj*)upvalue, peek(vm, 0));
     DISPATCH();
 }
 
@@ -1336,6 +1338,7 @@ OP_UNPACK_PAIR_IMPL: {
 OP_SLIDE_IMPL: {
     uint8_t n = (uint8_t)READ_ARG();
     Value res = pop(vm);
+    closeUpvalue(vm, vm->stack_top - n);
     for (uint8_t i = 0; i < n; i++) pop(vm);
     push(vm, res);
     DISPATCH();
