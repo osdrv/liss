@@ -112,18 +112,18 @@ static Value appendNative(VM* vm, int argc, Value* argv) {
 
 static Value mapNative(VM* vm, int argc, Value* argv) {
     (void)argc;
-    Value fn = argv[0];
+    if (!IS_LIST(argv[0]))
+        return raiseErr(vm, "list:map: first argument must be a list");
+    Value fn = argv[1];
     if (!IS_OBJ(fn) ||
         (OBJ_TYPE(fn) != OBJ_CLOSURE && OBJ_TYPE(fn) != OBJ_NATIVE))
-        return raiseErr(vm, "list:map: first argument must be a function");
-    if (!IS_LIST(argv[1]))
-        return raiseErr(vm, "list:map: second argument must be a list");
+        return raiseErr(vm, "list:map: second argument must be a function");
 
-    ObjList* list = AS_LIST(argv[1]);
+    ObjList* list = AS_LIST(argv[0]);
     uint32_t len = list->len;
-    if (len == 0) return argv[1];
+    if (len == 0) return argv[0];
 
-    // Collect elements from spine (all rooted through argv[1] on the VM stack).
+    // Collect elements from spine (all rooted through argv[0] on the VM stack).
     Value* elems = malloc(len * sizeof(Value));
     if (elems == NULL) return raiseErr(vm, "list:map: allocation failed");
     Value cur = list->head;
@@ -157,17 +157,17 @@ static Value mapNative(VM* vm, int argc, Value* argv) {
 
 static Value reduceNative(VM* vm, int argc, Value* argv) {
     (void)argc;
-    Value fn = argv[0];
+    if (!IS_LIST(argv[0]))
+        return raiseErr(vm, "list:reduce: first argument must be a list");
+    Value fn = argv[1];
     if (!IS_OBJ(fn) ||
         (OBJ_TYPE(fn) != OBJ_CLOSURE && OBJ_TYPE(fn) != OBJ_NATIVE))
-        return raiseErr(vm, "list:reduce: first argument must be a function");
-    if (!IS_LIST(argv[2]))
-        return raiseErr(vm, "list:reduce: third argument must be a list");
+        return raiseErr(vm, "list:reduce: second argument must be a function");
 
-    ObjList* list = AS_LIST(argv[2]);
+    ObjList* list = AS_LIST(argv[0]);
 
     // Keep accumulator rooted on the VM stack.
-    push(vm, argv[1]);
+    push(vm, argv[2]);
 
     Value cur = list->head;
     for (uint32_t i = 0; i < list->len; i++) {
@@ -337,6 +337,38 @@ static Value rangeNative(VM* vm, int argc, Value* argv) {
     return result;
 }
 
+static Value reverseNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_LIST(argv[0])) return raiseErr(vm, "list:reverse: expects a list");
+    ObjList* list = AS_LIST(argv[0]);
+    uint32_t len = list->len;
+    if (len <= 1) return argv[0];
+
+    Value* elems = malloc(len * sizeof(Value));
+    if (!elems) return raiseErr(vm, "list:reverse: allocation failed");
+
+    Value cur = list->head;
+    for (uint32_t i = 0; i < len; i++) {
+        elems[i] = AS_PAIR(cur)->first;
+        cur = AS_PAIR(cur)->second;
+    }
+
+    // Prepend elements in forward order → reversed spine.
+    push(vm, NIL_VAL);
+    for (uint32_t i = 0; i < len; i++) {
+        push(vm, elems[i]);
+        vm->stack_top[-1] =
+            OBJ_VAL(newPair(vm, vm->stack_top[-1], vm->stack_top[-2]));
+        vm->stack_top[-2] = vm->stack_top[-1];
+        pop(vm);
+    }
+
+    Value result = OBJ_VAL(newList(vm, len, vm->stack_top[-1]));
+    pop(vm);
+    free(elems);
+    return result;
+}
+
 static Value sliceNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_LIST(argv[0]))
@@ -391,6 +423,7 @@ static const NativeReg list_functions[] = {
     {"sort", 1, sortNative},
     {"sort-by", 2, sortByNative},
     {"range", -1, rangeNative},
+    {"reverse", 1, reverseNative},
     {"slice", 3, sliceNative},
     {NULL, 0, NULL},
 };

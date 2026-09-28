@@ -857,7 +857,7 @@ OP_RETURN_IMPL: {
     DEBUG_LOG(
         "OP_RETURN: FrameCount=%d (before decr), ret_val_type=%d ret_val=",
         vm->frame_cnt, res.type);
-    DEBUG_VALUE("%s", res);
+    // DEBUG_VALUE("%s", res);
     closeUpvalue(vm, frame->slots);
     vm->frame_cnt--;
 
@@ -1073,7 +1073,7 @@ OP_CALL_IMPL: {
         "[DEBUG] OP_CALL: FrameCount=%d, arg_count=%d, callee_type=%d, "
         "callee_value=",
         vm->frame_cnt, arg_count, callee.type);
-    DEBUG_VALUE("%s", callee);
+    // DEBUG_VALUE("%s", callee);
 
     if (IS_OBJ(callee) && OBJ_TYPE(callee) == OBJ_NATIVE) {
         ObjNative* native = AS_NATIVE(callee);
@@ -1101,6 +1101,7 @@ OP_CALL_IMPL: {
 
     if (!IS_OBJ(callee) || OBJ_TYPE(callee) != OBJ_CLOSURE) {
         ERROR_LOG("Runtime error: can only call functions");
+        DEBUG_VALUE("Got: %s", callee);
         printStack(vm);
         printConsts(&frame->closure->function->chunk);
         result = INTERPRET_RUNTIME_ERROR;

@@ -128,11 +128,11 @@ make DEBUG=1 SANITIZE=1
 
 ```lisp
 (import io ["println"])
-(import re ["match"])
+(import re ["re" "match"])
 
-(switch (re:match "^[0-9]+" "42abc")
-    [(err msg) (println "no match:" msg)]
-    [m         (println "matched:" m)])
+(switch (re:match "42abc" (re:re "^[0-9]+"))
+    [null (println "no match")]
+    [m    (println "matched:" m)])
 ```
 
 ## Language Reference

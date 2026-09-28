@@ -160,24 +160,28 @@ static char *test_list_append(void) {
 static char *test_list_map(void) {
     ListTestCase tests[] = {
         {.name = "map doubles each element",
-         .src = "(import list [map]) (map (fn [x] (* x 2)) [1 2 3])",
+         .src = "(import list [map]) (map [1 2 3] (fn [x] (* x 2)))",
          .expected_str = "[2 4 6]",
          .expected_type = EXPECT_LIST},
         {.name = "map over empty list returns empty",
-         .src = "(import list [map]) (is-empty? (map (fn [x] x) []))",
+         .src = "(import list [map]) (is-empty? (map [] (fn [x] x)))",
          .expected_str = "true",
          .expected_type = EXPECT_BOOL},
         {.name = "map preserves order",
-         .src = "(import list [map]) (map (fn [x] (- 10 x)) [1 2 3 4])",
+         .src = "(import list [map]) (map [1 2 3 4] (fn [x] (- 10 x)))",
          .expected_str = "[9 8 7 6]",
          .expected_type = EXPECT_LIST},
         {.name = "map over singleton",
-         .src = "(import list [map]) (map (fn [x] (* x x)) [5])",
+         .src = "(import list [map]) (map [5] (fn [x] (* x x)))",
          .expected_str = "[25]",
          .expected_type = EXPECT_LIST},
         {.name = "map with native function",
-         .src = "(import list [map]) (import str [parse-int]) (map parse-int [\"1\" \"2\" \"3\"])",
+         .src = "(import list [map]) (import str [parse-int]) (map [\"1\" \"2\" \"3\"] parse-int)",
          .expected_str = "[1 2 3]",
+         .expected_type = EXPECT_LIST},
+        {.name = "map is pipeable",
+         .src = "(import list [map]) ([1 2 3] | (map (fn [x] (* x 2))))",
+         .expected_str = "[2 4 6]",
          .expected_type = EXPECT_LIST},
     };
     return run_list_tests(tests, sizeof(tests) / sizeof(tests[0]));
@@ -186,25 +190,29 @@ static char *test_list_map(void) {
 static char *test_list_reduce(void) {
     ListTestCase tests[] = {
         {.name = "reduce sum",
-         .src = "(import list [reduce]) (reduce (fn [acc x] (+ acc x)) 0 [1 2 3 4 5])",
+         .src = "(import list [reduce]) (reduce [1 2 3 4 5] (fn [acc x] (+ acc x)) 0)",
          .expected_str = "15",
          .expected_type = EXPECT_INT},
         {.name = "reduce product",
-         .src = "(import list [reduce]) (reduce (fn [acc x] (* acc x)) 1 [1 2 3 4])",
+         .src = "(import list [reduce]) (reduce [1 2 3 4] (fn [acc x] (* acc x)) 1)",
          .expected_str = "24",
          .expected_type = EXPECT_INT},
         {.name = "reduce over empty list returns acc",
-         .src = "(import list [reduce]) (reduce (fn [acc x] (+ acc x)) 99 [])",
+         .src = "(import list [reduce]) (reduce [] (fn [acc x] (+ acc x)) 99)",
          .expected_str = "99",
          .expected_type = EXPECT_INT},
         {.name = "reduce over singleton",
-         .src = "(import list [reduce]) (reduce (fn [acc x] (+ acc x)) 10 [5])",
+         .src = "(import list [reduce]) (reduce [5] (fn [acc x] (+ acc x)) 10)",
          .expected_str = "15",
          .expected_type = EXPECT_INT},
         {.name = "reduce builds list in reverse (right fold via cons)",
-         .src = "(import list [reduce cons]) (reduce (fn [acc x] (cons acc x)) [] [1 2 3])",
+         .src = "(import list [reduce cons]) (reduce [1 2 3] (fn [acc x] (cons acc x)) [])",
          .expected_str = "[3 2 1]",
          .expected_type = EXPECT_LIST},
+        {.name = "reduce is pipeable",
+         .src = "(import list [reduce]) ([1 2 3 4 5] | (reduce (fn [acc x] (+ acc x)) 0))",
+         .expected_str = "15",
+         .expected_type = EXPECT_INT},
     };
     return run_list_tests(tests, sizeof(tests) / sizeof(tests[0]));
 }
@@ -212,7 +220,7 @@ static char *test_list_reduce(void) {
 static char *test_list_composition(void) {
     ListTestCase tests[] = {
         {.name = "map then reduce",
-         .src = "(import list [map reduce]) (reduce (fn [acc x] (+ acc x)) 0 (map (fn [x] (* x x)) [1 2 3]))",
+         .src = "(import list [map reduce]) (reduce (map [1 2 3] (fn [x] (* x x))) (fn [acc x] (+ acc x)) 0)",
          .expected_str = "14",
          .expected_type = EXPECT_INT},
         {.name = "recursive sum via head/tail",
@@ -228,6 +236,32 @@ static char *test_list_composition(void) {
         {.name = "append then len",
          .src = "(import list [append]) (len (append [1 2 3] [4 5]))",
          .expected_str = "5",
+         .expected_type = EXPECT_INT},
+    };
+    return run_list_tests(tests, sizeof(tests) / sizeof(tests[0]));
+}
+
+static char *test_list_reverse(void) {
+    ListTestCase tests[] = {
+        {.name = "reverse multi-element list",
+         .src = "(import list [reverse]) (reverse [1 2 3 4 5])",
+         .expected_str = "[5 4 3 2 1]",
+         .expected_type = EXPECT_LIST},
+        {.name = "reverse singleton is identity",
+         .src = "(import list [reverse]) (reverse [42])",
+         .expected_str = "[42]",
+         .expected_type = EXPECT_LIST},
+        {.name = "reverse empty list is empty",
+         .src = "(import list [reverse]) (is-empty? (reverse []))",
+         .expected_str = "true",
+         .expected_type = EXPECT_BOOL},
+        {.name = "reverse twice is identity",
+         .src = "(import list [reverse]) (reverse (reverse [1 2 3]))",
+         .expected_str = "[1 2 3]",
+         .expected_type = EXPECT_LIST},
+        {.name = "reverse is non-destructive",
+         .src = "(import list [reverse head]) (let l [1 2 3]) (reverse l) (head l)",
+         .expected_str = "1",
          .expected_type = EXPECT_INT},
     };
     return run_list_tests(tests, sizeof(tests) / sizeof(tests[0]));
@@ -283,5 +317,6 @@ void modules_list_suite(void) {
     mu_run_test(test_list_map);
     mu_run_test(test_list_reduce);
     mu_run_test(test_list_composition);
+    mu_run_test(test_list_reverse);
     mu_run_test(test_list_sort);
 }

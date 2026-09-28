@@ -332,7 +332,7 @@ void sweep(VM* vm) {
 }
 
 void freeObject(VM* vm, Obj* object) {
-    DEBUG_LOG("Freeing object %p type %d", (void*)object, object->type);
+    //DEBUG_LOG("Freeing object %p type %d", (void*)object, object->type);
 
     ObjType object_type = object->type;
     memset(object, 0xEF,

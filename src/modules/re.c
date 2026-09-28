@@ -21,12 +21,12 @@ static Value reNative(VM* vm, int argc, Value* argv) {
 
 static Value matchQuestNative(VM* vm, int argc, Value* argv) {
     (void)argc;
-    if (!IS_RE(argv[0]) || !IS_STRING(argv[1])) {
-        return raiseErr(vm, "re:match? expects a regex object and a string");
+    if (!IS_STRING(argv[0]) || !IS_RE(argv[1])) {
+        return raiseErr(vm, "re:match? expects a string and a regex object");
     }
 
-    ObjRe* re_obj = AS_RE(argv[0]);
-    const char* text = AS_CSTRING(argv[1]);
+    const char* text = AS_CSTRING(argv[0]);
+    ObjRe* re_obj = AS_RE(argv[1]);
 
     bool result = match((ReProgram*)re_obj->program, text);
     return BOOL_VAL(result);
@@ -34,12 +34,12 @@ static Value matchQuestNative(VM* vm, int argc, Value* argv) {
 
 static Value matchNative(VM* vm, int argc, Value* argv) {
     (void)argc;
-    if (!IS_RE(argv[0]) || !IS_STRING(argv[1])) {
-        return raiseErr(vm, "re:match expects a regex object and a string");
+    if (!IS_STRING(argv[0]) || !IS_RE(argv[1])) {
+        return raiseErr(vm, "re:match expects a string and a regex object");
     }
 
-    ObjRe* re_obj = AS_RE(argv[0]);
-    const char* text = AS_CSTRING(argv[1]);
+    const char* text = AS_CSTRING(argv[0]);
+    ObjRe* re_obj = AS_RE(argv[1]);
     ReProgram* prog = (ReProgram*)re_obj->program;
 
     const char* submatch[MAX_GROUPS * 2];

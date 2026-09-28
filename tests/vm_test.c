@@ -749,20 +749,20 @@ static VMTestCase interpret_tests[] = {
     },
     {
         .name = "regex match with capturing groups",
-        .src = "(import re)(re:match (re:re \"a(b*)(c+)\") \"abbbc\")",
+        .src = "(import re)(re:match \"abbbc\" (re:re \"a(b*)(c+)\"))",
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_LIST,
                            .as.string = "[\"abbbc\" \"bbb\" \"c\"]"},
     },
     {
         .name = "regex match non-matching optional group",
-        .src = "(import re)(re:match (re:re \"a(b)?c\") \"ac\")",
+        .src = "(import re)(re:match \"ac\" (re:re \"a(b)?c\"))",
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_LIST, .as.string = "[\"ac\" null]"},
     },
     {
         .name = "regex match failing match returns nil",
-        .src = "(import re)(re:match (re:re \"a(b)c\") \"adc\")",
+        .src = "(import re)(re:match \"adc\" (re:re \"a(b)c\"))",
         .expected_result = INTERPRET_OK,
         .expected_value = {EXPECT_NIL},
     },
