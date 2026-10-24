@@ -187,6 +187,46 @@ static char *test_list_map(void) {
     return run_list_tests(tests, sizeof(tests) / sizeof(tests[0]));
 }
 
+static char *test_list_grep(void) {
+    ListTestCase tests[] = {
+        {.name = "grep keeps matching elements",
+         .src = "(import list [grep]) (grep [1 2 3 4 5 6] (fn [x] (eq (mod x 2) 0)))",
+         .expected_str = "[2 4 6]",
+         .expected_type = EXPECT_LIST},
+        {.name = "grep over empty list returns empty",
+         .src = "(import list [grep]) (is-empty? (grep [] (fn [x] true)))",
+         .expected_str = "true",
+         .expected_type = EXPECT_BOOL},
+        {.name = "grep with no matches returns empty list",
+         .src = "(import list [grep]) (is-empty? (grep [1 2 3] (fn [x] (gt x 10))))",
+         .expected_str = "true",
+         .expected_type = EXPECT_BOOL},
+        {.name = "grep with all elements matching returns all",
+         .src = "(import list [grep]) (grep [1 2 3] (fn [x] true))",
+         .expected_str = "[1 2 3]",
+         .expected_type = EXPECT_LIST},
+        {.name = "grep preserves order",
+         .src = "(import list [grep]) (grep [5 1 4 2 3] (fn [x] (gte x 3)))",
+         .expected_str = "[5 4 3]",
+         .expected_type = EXPECT_LIST},
+        {.name = "grep with native function",
+         .src = "(import list [grep]) (import str [contains?]) "
+                "(grep [\"foo\" \"bar\" \"baz\"] (fn [s] (contains? s \"a\")))",
+         .expected_str = "[\"bar\" \"baz\"]",
+         .expected_type = EXPECT_LIST},
+        {.name = "grep is non-destructive",
+         .src = "(import list [grep]) (let l [1 2 3 4]) "
+                "(grep l (fn [x] (gt x 2))) (len l)",
+         .expected_str = "4",
+         .expected_type = EXPECT_INT},
+        {.name = "grep is pipeable",
+         .src = "(import list [grep]) ([1 2 3 4 5 6] | (grep (fn [x] (eq (mod x 2) 0))))",
+         .expected_str = "[2 4 6]",
+         .expected_type = EXPECT_LIST},
+    };
+    return run_list_tests(tests, sizeof(tests) / sizeof(tests[0]));
+}
+
 static char *test_list_reduce(void) {
     ListTestCase tests[] = {
         {.name = "reduce sum",
@@ -315,6 +355,7 @@ void modules_list_suite(void) {
     mu_run_test(test_list_cons_push);
     mu_run_test(test_list_append);
     mu_run_test(test_list_map);
+    mu_run_test(test_list_grep);
     mu_run_test(test_list_reduce);
     mu_run_test(test_list_composition);
     mu_run_test(test_list_reverse);

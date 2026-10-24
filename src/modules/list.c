@@ -155,6 +155,70 @@ static Value mapNative(VM* vm, int argc, Value* argv) {
     return result;
 }
 
+static Value grepNative(VM* vm, int argc, Value* argv) {
+    (void)argc;
+    if (!IS_LIST(argv[0]))
+        return raiseErr(vm, "list:grep: first argument must be a list");
+    Value fn = argv[1];
+    if (!IS_OBJ(fn) ||
+        (OBJ_TYPE(fn) != OBJ_CLOSURE && OBJ_TYPE(fn) != OBJ_NATIVE))
+        return raiseErr(vm, "list:grep: second argument must be a function");
+
+    ObjList* list = AS_LIST(argv[0]);
+    uint32_t len = list->len;
+    if (len == 0) return argv[0];
+
+    // Collect elements from spine (all rooted through argv[0] on the VM stack).
+    Value* elems = malloc(len * sizeof(Value));
+    if (elems == NULL) return raiseErr(vm, "list:grep: allocation failed");
+    Value cur = list->head;
+    for (uint32_t i = 0; i < len; i++) {
+        elems[i] = AS_PAIR(cur)->first;
+        cur = AS_PAIR(cur)->second;
+    }
+
+    bool* keep = malloc(len * sizeof(bool));
+    if (keep == NULL) {
+        free(elems);
+        return raiseErr(vm, "list:grep: allocation failed");
+    }
+
+    uint32_t matched = 0;
+    for (uint32_t i = 0; i < len; i++) {
+        Value result = callFromNative(vm, fn, 1, &elems[i]);
+        if (vm->last_result != INTERPRET_OK) {
+            free(elems);
+            free(keep);
+            return NIL_VAL;
+        }
+        keep[i] = !isFalsey(result);
+        if (keep[i]) matched++;
+    }
+
+    if (matched == 0) {
+        free(elems);
+        free(keep);
+        return OBJ_VAL(newList(vm, 0, NIL_VAL));
+    }
+
+    // Build result chain right-to-left; chain kept rooted at stack_top[-1].
+    push(vm, NIL_VAL);
+    for (int32_t i = (int32_t)len - 1; i >= 0; i--) {
+        if (!keep[i]) continue;
+        push(vm, elems[i]);
+        vm->stack_top[-1] =
+            OBJ_VAL(newPair(vm, vm->stack_top[-1], vm->stack_top[-2]));
+        vm->stack_top[-2] = vm->stack_top[-1];
+        pop(vm);
+    }
+
+    Value result = OBJ_VAL(newList(vm, matched, vm->stack_top[-1]));
+    pop(vm);
+    free(elems);
+    free(keep);
+    return result;
+}
+
 static Value reduceNative(VM* vm, int argc, Value* argv) {
     (void)argc;
     if (!IS_LIST(argv[0]))
@@ -419,6 +483,7 @@ static const NativeReg list_functions[] = {
     {"push", 2, pushNative},
     {"append", 2, appendNative},
     {"map", 2, mapNative},
+    {"grep", 2, grepNative},
     {"reduce", 3, reduceNative},
     {"sort", 1, sortNative},
     {"sort-by", 2, sortByNative},
