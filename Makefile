@@ -12,12 +12,15 @@ ifeq ($(DEBUG),1)
 	endif
 endif
 
-CFLAGS = -std=c23 -Wall -Wextra -Wpedantic $(DEBUG_FLAGS)
+UV_CFLAGS = $(shell pkg-config --cflags libuv)
+UV_LIBS = $(shell pkg-config --libs libuv)
+
+CFLAGS = -std=c23 -Wall -Wextra -Wpedantic $(DEBUG_FLAGS) $(UV_CFLAGS)
 LDFLAGS =
 ifeq ($(SANITIZE),1)
 	LDFLAGS += -fsanitize=address
 endif
-LIBS = -lm
+LIBS = -lm $(UV_LIBS)
 
 # Project structure
 SRCDIR = src

@@ -1,6 +1,8 @@
 #ifndef liss_vm_h
 #define liss_vm_h
 
+#include <uv.h>
+
 #include "chunk.h"  // Include for Chunk definition
 #include "common.h"
 #include "object.h"
@@ -31,6 +33,11 @@ typedef struct {
                         // entered
     Value* stack_top;   // Stack top at the time of entering the try block
 } TryBlock;
+
+typedef struct PendingTimer {
+    Value closure;
+    struct PendingTimer* next;
+} PendingTimer;
 
 typedef struct {
     size_t stack_capacity;
@@ -64,12 +71,15 @@ typedef struct VM {
     Obj* new_objs;
     Table strings;
     Table modules;
+    uv_loop_t loop;  // owned for the VM's whole lifetime; see newVM/destroyVM
     ObjModule* core_module;  // The core module containing built-in functions
                              // and constants
     ObjModule* main_module;
 
     Value last_popped_value;    // Store the last popped value
     ObjUpvalue* open_upvalues;  // Linked list of open upvalues
+    PendingTimer*
+        pending_timers;  // closures kept alive while a timer:after is armed
 
     void* compiler;  // Current compiler (if any) to help GC mark its roots
 
@@ -85,7 +95,7 @@ typedef struct VM {
 static inline VMOptions defaultVMOptions() {
     VMOptions options = {
         .frames_max = 32,
-        .gc_threshold = 1024 * 1024,   // 1MB
+        .gc_threshold = 1024 * 1024,    // 1MB
         .young_threshold = 256 * 1024,  // 256KB
         .heap_growth_factor = 2,
         .stack_capacity = 256,

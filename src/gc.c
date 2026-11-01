@@ -121,6 +121,10 @@ static void markNewRoots(VM* vm) {
         markNewObject(vm, (Obj*)uv);
     }
 
+    for (PendingTimer* pt = vm->pending_timers; pt != NULL; pt = pt->next) {
+        markNewValue(vm, pt->closure);
+    }
+
     markCompilerRoots(vm);
 
     for (size_t i = 0; i < vm->rmb_cnt; i++) {
@@ -186,6 +190,9 @@ void markRoots(VM* vm) {
     for (ObjUpvalue* upvalue = vm->open_upvalues; upvalue != NULL;
          upvalue = upvalue->next) {
         markObject(vm, (Obj*)upvalue);
+    }
+    for (PendingTimer* pt = vm->pending_timers; pt != NULL; pt = pt->next) {
+        markValue(vm, pt->closure);
     }
 
     markCompilerRoots(vm);
@@ -332,7 +339,7 @@ void sweep(VM* vm) {
 }
 
 void freeObject(VM* vm, Obj* object) {
-    //DEBUG_LOG("Freeing object %p type %d", (void*)object, object->type);
+    // DEBUG_LOG("Freeing object %p type %d", (void*)object, object->type);
 
     ObjType object_type = object->type;
     memset(object, 0xEF,

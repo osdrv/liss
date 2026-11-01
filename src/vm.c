@@ -44,6 +44,7 @@ VM* newVM(VMOptions options) {
     vm->old_objs = NULL;
     vm->stack_top = vm->stack;
     vm->open_upvalues = NULL;
+    vm->pending_timers = NULL;
     vm->raise_value = NIL_VAL;
     vm->last_popped_value = NIL_VAL;
     vm->rmb_set = NULL;
@@ -61,6 +62,11 @@ VM* newVM(VMOptions options) {
     vm->frame_cap = 8;
     vm->frames = reallocate(NULL, NULL, 0, sizeof(CallFrame) * vm->frame_cap);
 
+    if (uv_loop_init(&vm->loop) != 0) {
+        fprintf(stderr, "Failed to initialize the event loop.\n");
+        exit(1);
+    }
+
     initTableWithCapacity(&vm->modules, MAX_MODULES);
     ObjString* core_name = copyString(vm, "core", 4);
     push(vm, OBJ_VAL(core_name));
@@ -74,6 +80,13 @@ VM* newVM(VMOptions options) {
 
 void destroyVM(VM* vm) {
     if (vm == NULL) return;
+    // Non-zero means some handle (timer, tcp, ...) was never closed before
+    // destroying the VM -- a bug once those exist, harmless today since none
+    // are created yet.
+    int uv_rc = uv_loop_close(&vm->loop);
+    if (uv_rc != 0) {
+        DEBUG_LOG("uv_loop_close returned %d: %s", uv_rc, uv_strerror(uv_rc));
+    }
     freeTable(&vm->strings);
     freeTable(&vm->modules);
     Obj* lists[] = {vm->new_objs, vm->old_objs};
@@ -88,6 +101,13 @@ void destroyVM(VM* vm) {
     reallocate(vm, vm->frames, sizeof(CallFrame) * vm->frame_cap, 0);
     // Correctly free the VM struct and its flexible array member
     reallocate(vm, vm->rmb_set, sizeof(Obj*) * vm->rmb_cap, 0);
+
+    PendingTimer* pt = vm->pending_timers;
+    while (pt != NULL) {
+        PendingTimer* next = pt->next;
+        reallocate(vm, pt, sizeof(PendingTimer), 0);
+        pt = next;
+    }
     reallocate(NULL, vm,
                sizeof(VM) + sizeof(Value) * vm->options.stack_capacity, 0);
 }

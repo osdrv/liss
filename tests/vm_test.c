@@ -22,7 +22,8 @@ static char* test_vm_stack(void) {
         .stack_capacity = 16,
         .gc_threshold = 1024,
         .heap_growth_factor = 2,
-        .stress_gc = true, .stress_minor_gc = true,
+        .stress_gc = true,
+        .stress_minor_gc = true,
         .frames_max = 32,
     };
     VM* vm = newVM(options);  // Create a VM with a small stack for testing
@@ -609,7 +610,8 @@ static VMTestCase interpret_tests[] = {
         // a/b/c are dangling pointers into stack slots that the second call to
         // `make` reuses for its own a/b/c (100/200/300), so calling f1 after
         // f2 exists would read the wrong values.
-        .name = "closures over nested-block locals stay isolated across sibling calls",
+        .name = "closures over nested-block locals stay isolated across "
+                "sibling calls",
         .src = "(fn make [x y z]"
                "  ("
                "    (let a x)"
@@ -950,7 +952,8 @@ static char* test_vm_interpret(void) {
             .stack_capacity = 64,
             .gc_threshold = 1024,
             .heap_growth_factor = 2,
-            .stress_gc = true, .stress_minor_gc = true,
+            .stress_gc = true,
+            .stress_minor_gc = true,
             .frames_max = 32,
         };
         VM* vm = newVM(options);

@@ -8,6 +8,7 @@
 #include "object.h"
 #include "re.h"
 #include "str.h"
+#include "timer.h"
 #include "vm.h"
 
 typedef void (*NativeModuleLoader)(VM* vm, ObjModule* module);
@@ -18,13 +19,10 @@ typedef struct {
 } NativeModuleEntry;
 
 static const NativeModuleEntry native_module_registry[] = {
-    {"core", registerCoreNatives},
-    {"list", registerListNatives},
-    {"math", registerMathNatives},
-    {"io", registerIONatives},
-    {"re", registerRENatives},
-    {"str", registerStrNatives},
-    {NULL, NULL},
+    {"core", registerCoreNatives},   {"list", registerListNatives},
+    {"math", registerMathNatives},   {"io", registerIONatives},
+    {"re", registerRENatives},       {"str", registerStrNatives},
+    {"timer", registerTimerNatives}, {NULL, NULL},
 };
 
 #endif

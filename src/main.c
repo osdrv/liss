@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <uv.h>
 
 #include "common.h"
 #include "repl.h"
@@ -87,6 +88,13 @@ static void runFile(const char* path, VMOptions options) {
         destroyVM(vm);
         exit(70);
     }
+
+    // Let any pending timers/handles (timer:after, tcp, ...) run to completion.
+    // UV_RUN_DEFAULT loops internally until nothing's left to do;
+    // once actors/continuations exist, this needs to become a manual
+    // UV_RUN_ONCE loop so our own scheduler code gets a turn between
+    // iterations.
+    uv_run(&vm->loop, UV_RUN_DEFAULT);
     destroyVM(vm);
 }
 
