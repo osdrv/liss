@@ -68,6 +68,7 @@ typedef enum {
     TOKEN_NULL_KW,
     TOKEN_COND_KW,
     TOKEN_SWITCH_KW,
+    TOKEN_RECEIVE_KW,
     TOKEN_LET_KW,
     TOKEN_IMPORT_KW,
     TOKEN_AS_KW,

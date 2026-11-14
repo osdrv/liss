@@ -58,6 +58,7 @@ typedef enum {
 
     OP_SWAP,
     OP_JUMP_IF_ERR,
+    OP_RECEIVE,
 } OpCode;
 
 #endif

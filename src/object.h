@@ -23,6 +23,7 @@ typedef enum {
     OBJ_FUNCTION,
     OBJ_STRING,
     OBJ_CLOSURE,
+    OBJ_CONTINUATION,
     OBJ_UPVALUE,
     OBJ_ERROR,
     OBJ_NATIVE,
@@ -83,6 +84,14 @@ typedef struct ObjClosure {
         upvalues;  // Array of pointers to the upvalues this closure captures
     int upvalue_cnt;
 } ObjClosure;
+
+typedef struct ObjContinuation {
+    Obj obj;
+    ObjClosure* closure;
+    void** ip;
+    int slot_count;
+    Value* saved_slots;
+} ObjContinuation;
 
 typedef struct ObjError {
     Obj obj;
@@ -188,6 +197,7 @@ uint32_t hashString(const char* key, int length);
 ObjFunction* newFunction(VM* vm, ObjModule* module);
 ObjClosure* newClosure(VM* vm, ObjFunction* function);
 ObjUpvalue* newUpvalue(VM* vm, Value* slot);
+ObjContinuation* newContinuation(VM* vm);
 ObjError* newError(VM* vm, const char* message);
 ObjNative* newNative(VM* vm, const char* name, int arity, NativeFn function);
 ObjList* newList(VM* vm, uint32_t len, Value head);

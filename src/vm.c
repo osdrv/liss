@@ -14,6 +14,7 @@
 #include "modules/modules.h"
 #include "object.h"
 #include "opcode.h"
+#include "regex.h"
 #include "table.h"
 #include "value.h"
 
@@ -45,6 +46,7 @@ VM* newVM(VMOptions options) {
     vm->stack_top = vm->stack;
     vm->open_upvalues = NULL;
     vm->pending_timers = NULL;
+    vm->pending_receive = NULL;
     vm->raise_value = NIL_VAL;
     vm->last_popped_value = NIL_VAL;
     vm->rmb_set = NULL;
@@ -301,6 +303,64 @@ static void closeUpvalue(VM* vm, Value* last) {
     }
 }
 
+static void ensureFrameCap(VM* vm) {
+    if (vm->frame_cnt + 1 <= vm->frame_cap) return;
+    int new_cap = vm->frame_cap * 2;
+    if (new_cap > vm->options.frames_max) {
+        new_cap = vm->options.frames_max;
+    }
+    int old_cap = vm->frame_cap;
+    vm->frame_cap = new_cap;
+    vm->frames = reallocate(vm, vm->frames, sizeof(CallFrame) * old_cap,
+                            sizeof(CallFrame) * vm->frame_cap);
+}
+
+typedef struct {
+    VM* vm;
+    ObjContinuation* continuation;
+} ReceiveTimerCtx;
+
+static void onReceiveClosed(uv_handle_t* handle) {
+    free(handle->data);
+    free(handle);
+}
+
+static void resumeContinuation(VM* vm, ObjContinuation* k) {
+    ensureFrameCap(vm);
+    CallFrame* frame = &vm->frames[vm->frame_cnt++];
+    frame->closure = k->closure;
+    frame->ip = k->ip;
+    frame->slots = vm->stack_top;
+
+    for (int i = 0; i < k->slot_count; i++) {
+        push(vm, k->saved_slots[i]);
+    }
+
+    vm->pending_receive = NULL;
+
+    InterpretResult r = run(vm);
+    if (r == INTERPRET_RUNTIME_ERROR) {
+        DEBUG_LOG("resumed continuation raised an error: %s", vm->error_msg);
+    }
+}
+
+static void onReceiveFired(uv_timer_t* handle) {
+    ReceiveTimerCtx* ctx = (ReceiveTimerCtx*)handle->data;
+    resumeContinuation(ctx->vm, ctx->continuation);
+    uv_close((uv_handle_t*)handle, onReceiveClosed);
+}
+
+static void armReceiveTimer(VM* vm, ObjContinuation* k, uint64_t ms) {
+    ReceiveTimerCtx* ctx = malloc(sizeof(ReceiveTimerCtx));
+    ctx->vm = vm;
+    ctx->continuation = k;
+
+    uv_timer_t* handle = malloc(sizeof(uv_timer_t));
+    uv_timer_init(&vm->loop, handle);
+    handle->data = ctx;
+    uv_timer_start(handle, onReceiveFired, ms, 0);
+}
+
 static bool duplicateString(VM* vm, Value a, Value b) {
     if (!IS_STRING(a) || !IS_INT(b)) {
         RUNTIME_ERR(vm,
@@ -365,18 +425,6 @@ void printConsts(Chunk* chunk) {
         DEBUG_LOG("  %04d: %s", i, str);
         free(str);
     }
-}
-
-static void ensureFrameCap(VM* vm) {
-    if (vm->frame_cnt + 1 <= vm->frame_cap) return;
-    int new_cap = vm->frame_cap * 2;
-    if (new_cap > vm->options.frames_max) {
-        new_cap = vm->options.frames_max;
-    }
-    int old_cap = vm->frame_cap;
-    vm->frame_cap = new_cap;
-    vm->frames = reallocate(vm, vm->frames, sizeof(CallFrame) * old_cap,
-                            sizeof(CallFrame) * vm->frame_cap);
 }
 
 // Call a Liss value (closure or native) from within a C native function.
@@ -832,6 +880,7 @@ static InterpretResult run(VM* vm) {
 
         &&OP_SWAP_IMPL,
         &&OP_JUMP_IF_ERR_IMPL,
+        &&OP_RECEIVE_IMPL,
     };
     g_dispatch_table = dispatch_table;
 
@@ -1378,6 +1427,35 @@ OP_JUMP_IF_ERR_IMPL: {
         frame->ip += offset;
     }
     DISPATCH();
+}
+
+OP_RECEIVE_IMPL: {
+    Value ms_val = pop(vm);
+    if (!IS_INT(ms_val) || AS_INT(ms_val) < 0) {
+        RUNTIME_ERR(vm, "receive: after clause must be a non-negative number");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RESCUE;
+    }
+    int64_t ms = AS_INT(ms_val);
+
+    int slot_count = (int)(vm->stack_top - frame->slots);
+    ObjContinuation* k = newContinuation(vm);
+    vm->pending_receive = k;
+    k->closure = frame->closure;
+    k->ip = frame->ip;
+    k->saved_slots = reallocate(vm, NULL, 0, sizeof(Value) * slot_count);
+    k->slot_count = slot_count;
+    for (int i = 0; i < slot_count; i++) {
+        k->saved_slots[i] = frame->slots[i];
+    }
+
+    armReceiveTimer(vm, k, (uint64_t)ms);
+
+    closeUpvalue(vm, frame->slots);
+    vm->stack_top = frame->slots;
+    vm->frame_cnt--;
+    result = INTERPRET_SUSPENDED;
+    goto RETURN;
 }
 
 RESCUE: {

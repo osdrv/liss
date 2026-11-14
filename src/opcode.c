@@ -61,6 +61,8 @@ const char* opcodeToString(OpCode opcode) {
             return "OP_PAIR";
         case OP_GET_MODULE_GLOBAL:
             return "OP_GET_MODULE_GLOBAL";
+        case OP_RECEIVE:
+            return "OP_RECEIVE";
         default:
             return "UNKNOWN_OPCODE";
     }

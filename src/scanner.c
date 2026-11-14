@@ -53,16 +53,6 @@ static bool isMidHyphen(Scanner* scanner) {
            next == '_' || (next >= '0' && next <= '9');
 }
 
-static bool isAnyChar(Scanner* scanner, const char* options) {
-    char c = peek(scanner);
-    for (int i = 0; options[i] != '\0'; i++) {
-        if (c == options[i]) {
-            return true;
-        }
-    }
-    return false;
-}
-
 // This function returns true if the current character is in the options string
 // and hasn't been seen before in the current token. It uses a boolean array
 // to track which characters have been seen.

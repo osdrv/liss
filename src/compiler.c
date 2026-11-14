@@ -572,6 +572,29 @@ static void parseTry(Compiler* compiler) {
     patchJump(compiler, jump_to);
 }
 
+static void parseReceive(Compiler* compiler, bool is_tail) {
+    consume(compiler, TOKEN_LBRAKET, "expect '[' after receive");
+    if (compiler->parser->hadError) return;
+
+    Token head =
+        consume(compiler, TOKEN_IDENTIFIER, "expect 'after' clause in receive");
+    if (compiler->parser->hadError) return;
+    if (!(head.length == 5 && memcmp(head.start, "after", 5) == 0)) {
+        COMPILE_ERR(compiler, "receive: only 'after' is supported for now");
+        return;
+    }
+
+    parseExpression(compiler, false);  // milliseconds
+    if (compiler->parser->hadError) return;
+
+    emitByte(compiler, OP_RECEIVE);
+
+    parseExpression(compiler, is_tail);  // the body
+    if (compiler->parser->hadError) return;
+
+    consume(compiler, TOKEN_RBRAKET, "expect ']' to close receive arm");
+}
+
 static void parseList(Compiler* compiler) {
     int len = 0;
     while (compiler->parser->current.type != TOKEN_RBRAKET) {
@@ -899,6 +922,10 @@ static void parseGrouping(Compiler* compiler, bool is_tail) {
         case TOKEN_SWITCH_KW:
             advance(compiler);
             parseSwitch(compiler, is_tail);
+            break;
+        case TOKEN_RECEIVE_KW:
+            advance(compiler);
+            parseReceive(compiler, is_tail);
             break;
         case TOKEN_IMPORT_KW:
             advance(compiler);

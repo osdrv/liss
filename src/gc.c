@@ -43,6 +43,14 @@ static void markNewChildren(VM* vm, Obj* object) {
             }
             break;
         }
+        case OBJ_CONTINUATION: {
+            ObjContinuation* k = (ObjContinuation*)object;
+            markNewObject(vm, (Obj*)k->closure);
+            for (int i = 0; i < k->slot_count; i++) {
+                markNewValue(vm, k->saved_slots[i]);
+            }
+            break;
+        }
         case OBJ_UPVALUE: {
             ObjUpvalue* upvalue = (ObjUpvalue*)object;
             markNewValue(vm, upvalue->closed);
@@ -121,6 +129,8 @@ static void markNewRoots(VM* vm) {
         markNewObject(vm, (Obj*)uv);
     }
 
+    markNewObject(vm, (Obj*)vm->pending_receive);
+
     for (PendingTimer* pt = vm->pending_timers; pt != NULL; pt = pt->next) {
         markNewValue(vm, pt->closure);
     }
@@ -191,6 +201,7 @@ void markRoots(VM* vm) {
          upvalue = upvalue->next) {
         markObject(vm, (Obj*)upvalue);
     }
+    markObject(vm, (Obj*)vm->pending_receive);
     for (PendingTimer* pt = vm->pending_timers; pt != NULL; pt = pt->next) {
         markValue(vm, pt->closure);
     }
@@ -228,6 +239,14 @@ void markObject(VM* vm, Obj* object) {
             markObject(vm, (Obj*)closure->function);
             for (int i = 0; i < closure->upvalue_cnt; i++) {
                 markObject(vm, (Obj*)closure->upvalues[i]);
+            }
+            break;
+        }
+        case OBJ_CONTINUATION: {
+            ObjContinuation* k = (ObjContinuation*)object;
+            markObject(vm, (Obj*)k->closure);
+            for (int i = 0; i < k->slot_count; i++) {
+                markValue(vm, k->saved_slots[i]);
             }
             break;
         }
@@ -367,6 +386,12 @@ void freeObject(VM* vm, Obj* object) {
             reallocate(vm, closure->upvalues,
                        sizeof(ObjUpvalue*) * closure->upvalue_cnt, 0);
             reallocate(vm, closure, sizeof(ObjClosure), 0);
+            break;
+        }
+        case OBJ_CONTINUATION: {
+            ObjContinuation* k = (ObjContinuation*)object;
+            reallocate(vm, k->saved_slots, sizeof(Value) * k->slot_count, 0);
+            reallocate(vm, k, sizeof(ObjContinuation), 0);
             break;
         }
         case OBJ_UPVALUE: {

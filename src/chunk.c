@@ -281,6 +281,9 @@ char* sprintChunk(const Chunk* chunk) {
             case OP_SWAP:
                 APPEND_TO_BUFFER("OP_SWAP\n");
                 break;
+            case OP_RECEIVE:
+                APPEND_TO_BUFFER("OP_RECEIVE\n");
+                break;
             case OP_SLIDE:
                 APPEND_TO_BUFFER("OP_SLIDE %d\n", chunk->code[i + 1]);
                 i++;

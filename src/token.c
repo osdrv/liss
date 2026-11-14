@@ -22,6 +22,8 @@ const char* printTokenType(TokenType type) {
             return "TOKEN_COND_KW";
         case TOKEN_SWITCH_KW:
             return "TOKEN_SWITCH_KW";
+        case TOKEN_RECEIVE_KW:
+            return "TOKEN_RECEIVE_KW";
         case TOKEN_LET_KW:
             return "TOKEN_LET_KW";
         case TOKEN_IMPORT_KW:

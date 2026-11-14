@@ -18,7 +18,8 @@
 typedef enum {
     INTERPRET_OK,
     INTERPRET_COMPILE_ERROR,
-    INTERPRET_RUNTIME_ERROR
+    INTERPRET_RUNTIME_ERROR,
+    INTERPRET_SUSPENDED
 } InterpretResult;
 
 typedef struct {
@@ -80,6 +81,8 @@ typedef struct VM {
     ObjUpvalue* open_upvalues;  // Linked list of open upvalues
     PendingTimer*
         pending_timers;  // closures kept alive while a timer:after is armed
+
+    ObjContinuation* pending_receive;
 
     void* compiler;  // Current compiler (if any) to help GC mark its roots
 

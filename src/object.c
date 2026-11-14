@@ -91,6 +91,16 @@ ObjUpvalue* newUpvalue(VM* vm, Value* slot) {
     return upvalue;
 }
 
+ObjContinuation* newContinuation(VM* vm) {
+    ObjContinuation* continuation = (ObjContinuation*)allocateObject(
+        vm, sizeof(ObjContinuation), OBJ_CONTINUATION);
+    continuation->closure = NULL;
+    continuation->ip = NULL;
+    continuation->slot_count = 0;
+    continuation->saved_slots = NULL;
+    return continuation;
+}
+
 ObjList* newList(VM* vm, uint32_t len, Value head) {
     push(vm, head);
     ObjList* list = (ObjList*)allocateObject(vm, sizeof(ObjList), OBJ_LIST);
