@@ -21,7 +21,7 @@
 typedef void (*NativeModuleLoader)(VM* vm, ObjModule* module);
 
 // --- Forward Declarations ---
-static InterpretResult run(VM* vm);
+static InterpretResult run(VM* vm, int sentinel_frame_cnt);
 static int loadThreadedCode(VM* vm, ObjFunction* function,
                             void* dispatch_table[]);
 
@@ -207,7 +207,7 @@ InterpretResult interpret(VM* vm, const char* source, ObjModule* module) {
     frame->slots = vm->stack_top - 1;  // point at the closure we've just pushed
     frame->ip = NULL;
 
-    InterpretResult result = run(vm);
+    InterpretResult result = run(vm, old_frame_cnt);
 
     vm->stack_top = old_stack_top;
     vm->frame_cnt = old_frame_cnt;
@@ -326,19 +326,20 @@ static void onReceiveClosed(uv_handle_t* handle) {
 }
 
 static void resumeContinuation(VM* vm, ObjContinuation* k) {
-    ensureFrameCap(vm);
-    CallFrame* frame = &vm->frames[vm->frame_cnt++];
-    frame->closure = k->closure;
-    frame->ip = k->ip;
-    frame->slots = vm->stack_top;
+    for (int j = 0; j < k->frame_count; j++) {
+        ensureFrameCap(vm);
+        CallFrame* frame = &vm->frames[vm->frame_cnt++];
+        frame->closure = k->frames[j].closure;
+        frame->ip = k->frames[j].ip;
+        frame->slots = vm->stack_top;
 
-    for (int i = 0; i < k->slot_count; i++) {
-        push(vm, k->saved_slots[i]);
+        for (int i = 0; i < k->frames[j].slot_count; i++) {
+            push(vm, k->frames[j].saved_slots[i]);
+        }
     }
 
     vm->pending_receive = NULL;
-
-    InterpretResult r = run(vm);
+    InterpretResult r = run(vm, 0);
     if (r == INTERPRET_RUNTIME_ERROR) {
         DEBUG_LOG("resumed continuation raised an error: %s", vm->error_msg);
     }
@@ -489,7 +490,7 @@ Value callFromNative(VM* vm, Value callee, int argc, Value* argv) {
     vm->try_cnt = 0;
     vm->last_result = INTERPRET_OK;
 
-    InterpretResult r = run(vm);
+    InterpretResult r = run(vm, old_frame_cnt);
     Value ret = vm->last_popped_value;
     vm->stack_top = old_stack_top;
     vm->last_popped_value = old_last_popped;
@@ -770,7 +771,7 @@ LOADER_CLEANUP:
     return result;
 }
 
-static InterpretResult run(VM* vm) {
+static InterpretResult run(VM* vm, int sentinel_frame_cnt) {
 #define BINARY_OP(op)                                                         \
     do {                                                                      \
         Value b = pop(vm);                                                    \
@@ -884,7 +885,6 @@ static InterpretResult run(VM* vm) {
     };
     g_dispatch_table = dispatch_table;
 
-    int sentinel_frame_cnt = vm->frame_cnt - 1;
     InterpretResult result = INTERPRET_OK;
     CallFrame* frame = &vm->frames[vm->frame_cnt - 1];
     if (frame->closure->function->loaded_code == NULL) {
@@ -1436,24 +1436,49 @@ OP_RECEIVE_IMPL: {
         result = INTERPRET_RUNTIME_ERROR;
         goto RESCUE;
     }
+    if (sentinel_frame_cnt != 0) {
+        RUNTIME_ERR(
+            vm,
+            "receive: cannot suspend across a native function call boundary");
+        result = INTERPRET_RUNTIME_ERROR;
+        goto RESCUE;
+    }
     int64_t ms = AS_INT(ms_val);
 
-    int slot_count = (int)(vm->stack_top - frame->slots);
+    int frame_count = vm->frame_cnt - sentinel_frame_cnt;
     ObjContinuation* k = newContinuation(vm);
     vm->pending_receive = k;
-    k->closure = frame->closure;
-    k->ip = frame->ip;
-    k->saved_slots = reallocate(vm, NULL, 0, sizeof(Value) * slot_count);
-    k->slot_count = slot_count;
-    for (int i = 0; i < slot_count; i++) {
-        k->saved_slots[i] = frame->slots[i];
+
+    SavedFrame* frames_buf =
+        reallocate(vm, NULL, 0, sizeof(SavedFrame) * frame_count);
+    for (int j = 0; j < frame_count; j++) {
+        frames_buf[j].closure = NULL;
+        frames_buf[j].ip = NULL;
+        frames_buf[j].slot_count = 0;
+        frames_buf[j].saved_slots = NULL;
+    }
+    k->frames = frames_buf;
+    k->frame_count = frame_count;
+
+    for (int j = 0; j < frame_count; j++) {
+        int i = sentinel_frame_cnt + j;
+        Value* slots_base = vm->frames[i].slots;
+        int count = (i == vm->frame_cnt - 1)
+                        ? (int)(vm->stack_top - slots_base)
+                        : (int)(vm->frames[i + 1].slots - slots_base);
+        Value* saved = reallocate(vm, NULL, 0, sizeof(Value) * count);
+        for (int s = 0; s < count; s++) saved[s] = slots_base[s];
+        frames_buf[j].closure = vm->frames[i].closure;
+        frames_buf[j].ip = vm->frames[i].ip;
+        frames_buf[j].saved_slots = saved;
+        frames_buf[j].slot_count = count;
     }
 
     armReceiveTimer(vm, k, (uint64_t)ms);
 
-    closeUpvalue(vm, frame->slots);
-    vm->stack_top = frame->slots;
-    vm->frame_cnt--;
+    closeUpvalue(vm, vm->frames[sentinel_frame_cnt].slots);
+    vm->stack_top = vm->frames[sentinel_frame_cnt].slots;
+    vm->frame_cnt = sentinel_frame_cnt;
     result = INTERPRET_SUSPENDED;
     goto RETURN;
 }

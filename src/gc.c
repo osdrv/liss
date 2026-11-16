@@ -45,9 +45,11 @@ static void markNewChildren(VM* vm, Obj* object) {
         }
         case OBJ_CONTINUATION: {
             ObjContinuation* k = (ObjContinuation*)object;
-            markNewObject(vm, (Obj*)k->closure);
-            for (int i = 0; i < k->slot_count; i++) {
-                markNewValue(vm, k->saved_slots[i]);
+            for (int f = 0; f < k->frame_count; f++) {
+                markNewObject(vm, (Obj*)k->frames[f].closure);
+                for (int i = 0; i < k->frames[f].slot_count; i++) {
+                    markNewValue(vm, k->frames[f].saved_slots[i]);
+                }
             }
             break;
         }
@@ -244,9 +246,11 @@ void markObject(VM* vm, Obj* object) {
         }
         case OBJ_CONTINUATION: {
             ObjContinuation* k = (ObjContinuation*)object;
-            markObject(vm, (Obj*)k->closure);
-            for (int i = 0; i < k->slot_count; i++) {
-                markValue(vm, k->saved_slots[i]);
+            for (int f = 0; f < k->frame_count; f++) {
+                markObject(vm, (Obj*)k->frames[f].closure);
+                for (int i = 0; i < k->frames[f].slot_count; i++) {
+                    markValue(vm, k->frames[f].saved_slots[i]);
+                }
             }
             break;
         }
@@ -390,7 +394,11 @@ void freeObject(VM* vm, Obj* object) {
         }
         case OBJ_CONTINUATION: {
             ObjContinuation* k = (ObjContinuation*)object;
-            reallocate(vm, k->saved_slots, sizeof(Value) * k->slot_count, 0);
+            for (int f = 0; f < k->frame_count; f++) {
+                reallocate(vm, k->frames[f].saved_slots,
+                           sizeof(Value) * k->frames[f].slot_count, 0);
+            }
+            reallocate(vm, k->frames, sizeof(SavedFrame) * k->frame_count, 0);
             reallocate(vm, k, sizeof(ObjContinuation), 0);
             break;
         }

@@ -85,12 +85,17 @@ typedef struct ObjClosure {
     int upvalue_cnt;
 } ObjClosure;
 
-typedef struct ObjContinuation {
-    Obj obj;
+typedef struct {
     ObjClosure* closure;
     void** ip;
     int slot_count;
     Value* saved_slots;
+} SavedFrame;
+
+typedef struct ObjContinuation {
+    Obj obj;
+    int frame_count;
+    SavedFrame* frames;
 } ObjContinuation;
 
 typedef struct ObjError {

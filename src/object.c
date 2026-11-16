@@ -94,10 +94,8 @@ ObjUpvalue* newUpvalue(VM* vm, Value* slot) {
 ObjContinuation* newContinuation(VM* vm) {
     ObjContinuation* continuation = (ObjContinuation*)allocateObject(
         vm, sizeof(ObjContinuation), OBJ_CONTINUATION);
-    continuation->closure = NULL;
-    continuation->ip = NULL;
-    continuation->slot_count = 0;
-    continuation->saved_slots = NULL;
+    continuation->frame_count = 0;
+    continuation->frames = NULL;
     return continuation;
 }
 
